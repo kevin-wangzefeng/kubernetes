@@ -18,7 +18,21 @@ bridge-utils:
     - mode: 644
     - makedirs: true
 
-{% if grains.os == 'Fedora' and grains.osrelease_info[0] >= 22 %}
+{% if pillar.get('is_systemd') %}
+
+{{ pillar.get('systemd_system_path') }}/docker.service:
+  file.managed:
+    - source: salt://docker/docker.service
+    - template: jinja
+    - user: root
+    - group: root
+    - mode: 644
+    - defaults:
+        environment_file: {{ environment_file }}
+
+{% endif %}
+
+{% if (grains.os == 'Fedora' and grains.osrelease_info[0] >= 22) or (grains.os == 'CentOS') %}
 
 docker:
   pkg:
@@ -29,6 +43,9 @@ docker:
       - pkg: docker
     - watch:
       - file: {{ environment_file }}
+{% if pillar.get('is_systemd') %}
+      - file: {{ pillar.get('systemd_system_path') }}/docker.service
+{% endif %}
       - pkg: docker
 
 {% else %}

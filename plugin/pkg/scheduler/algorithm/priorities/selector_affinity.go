@@ -24,33 +24,32 @@ import (
 )
 
 type SelectorAffinity struct {
-	serviceLister    algorithm.ServiceLister
-	controllerLister algorithm.ControllerLister
+	serviceLister algorithm.ServiceLister
 }
 
-func NewSelectorAffinityPriority(serviceLister algorithm.ServiceLister, controllerLister algorithm.ControllerLister) algorithm.PriorityFunction {
+func NewSelectorAffinityPriority(serviceLister algorithm.ServiceLister) algorithm.PriorityFunction {
 	selectorAffinity := &SelectorAffinity{
-		serviceLister:    serviceLister,
-		controllerLister: controllerLister,
+		serviceLister: serviceLister,
 	}
 	return selectorAffinity.CalculateAffinityPriority
 }
 
-func (s *selectorAffinity) CalculateAffinityPriority(pod *api.Pod, podLister alogorithm.PodLister, minionLister algorithm.MinionLister) (algorithm.HostPriorityList, error) {
-	affinitySelector := labels.Set(pod.Spec.AffinitySelector)
-	
+func (s *SelectorAffinity) CalculateAffinityPriority(pod *api.Pod, podLister algorithm.PodLister, minionLister algorithm.MinionLister) (algorithm.HostPriorityList, error) {
+	affinitySelector := labels.SelectorFromSet(pod.Spec.AffinitySelector)
+	// glog.V(10).Infof("affinitySelector: %v", affinitySelector)
 	// var affinityPods []*api.Pod
 	var maxCount int
 	counts := map[string]int{}
-	allPods,err := podLister.List(labels.Everything())
-	
+	allPods, err := podLister.List(labels.Everything())
+
 	if err == nil {
 		if len(allPods) > 0 {
 			for _, onePod := range allPods {
 				if onePod.Namespace != pod.Namespace {
 					continue
-				} 
-				if affinitySelector.Matches(labels.Set(pod.Objectmeta.Labels)) {
+				}
+				if affinitySelector.Matches(labels.Set(onePod.ObjectMeta.Labels)) {
+					// glog.V(10).Infof("pod: %v, onepod: %v", pod.Name, onePod.Name)
 					//affinityPods = append(affinityPods, onePod)  //也许没用
 					counts[onePod.Spec.NodeName]++
 					if counts[onePod.Spec.NodeName] > maxCount {
@@ -80,9 +79,8 @@ func (s *selectorAffinity) CalculateAffinityPriority(pod *api.Pod, podLister alo
 		}
 		result = append(result, algorithm.HostPriority{Host: minion.Name, Score: int(fScore)})
 		glog.V(10).Infof(
-			"%v -> %v: SelectorSpreadPriority, Score: (%d)", pod.Name, minion.Name, int(fScore),
+			"%v -> %v: SelectorAffinityPriority, Score: (%d)", pod.Name, minion.Name, int(fScore),
 		)
 	}
 	return result, nil
 }
-

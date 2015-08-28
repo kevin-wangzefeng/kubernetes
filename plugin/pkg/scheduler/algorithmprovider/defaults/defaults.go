@@ -79,7 +79,7 @@ func defaultPriorities() util.StringSet {
 			"SelectorAffinityPriority",
 			factory.PriorityConfigFactory{
 				Function: func(args factory.PluginFactoryArgs) algorithm.PriorityFunction {
-					return priorities.NewSelectorAffinityPriority(args.ServiceLister, args.ControllerLister)
+					return priorities.NewSelectorAffinityPriority(args.ServiceLister)
 				},
 				Weight: 1,
 			},

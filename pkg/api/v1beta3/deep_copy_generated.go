@@ -1314,6 +1314,14 @@ func deepCopy_v1beta3_PodSpec(in PodSpec, out *PodSpec, c *conversion.Cloner) er
 	} else {
 		out.NodeSelector = nil
 	}
+	if in.AffinitySelector != nil {
+		out.AffinitySelector = make(map[string]string)
+		for key, val := range in.AffinitySelector {
+			out.AffinitySelector[key] = val
+		}
+	} else {
+		out.AffinitySelector = nil
+	}
 	out.ServiceAccount = in.ServiceAccount
 	out.Host = in.Host
 	out.HostNetwork = in.HostNetwork

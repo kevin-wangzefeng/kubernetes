@@ -879,6 +879,9 @@ type PodSpec struct {
 	// NodeSelector is a selector which must be true for the pod to fit on a node
 	NodeSelector map[string]string `json:"nodeSelector,omitempty" description:"selector which must match a node's labels for the pod to be scheduled on that node"`
 
+	//AffinitySelector is a selector whick list the service for pod to affinity
+	AffinitySelector map[string]string `json:"affinitySelector,omitempty" description:"selector whick list the service for pod to affinity"`
+
 	// ServiceAccount is the name of the ServiceAccount to use to run this pod
 	ServiceAccount string `json:"serviceAccount,omitempty" description:"name of the ServiceAccount to use to run this pod"`
 

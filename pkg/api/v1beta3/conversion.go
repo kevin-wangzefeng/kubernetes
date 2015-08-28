@@ -493,6 +493,14 @@ func convert_v1beta3_PodSpec_To_api_PodSpec(in *PodSpec, out *api.PodSpec, s con
 	} else {
 		out.NodeSelector = nil
 	}
+	if in.AffinitySelector != nil {
+		out.AffinitySelector = make(map[string]string)
+		for key, val := range in.AffinitySelector {
+			out.AffinitySelector[key] = val
+		}
+	} else {
+		out.AffinitySelector = nil
+	}
 	out.ServiceAccountName = in.ServiceAccount
 	out.NodeName = in.Host
 	out.HostNetwork = in.HostNetwork
@@ -554,6 +562,14 @@ func convert_api_PodSpec_To_v1beta3_PodSpec(in *api.PodSpec, out *PodSpec, s con
 		}
 	} else {
 		out.NodeSelector = nil
+	}
+	if in.AffinitySelector != nil {
+		out.AffinitySelector = make(map[string]string)
+		for key, val := range in.AffinitySelector {
+			out.AffinitySelector[key] = val
+		}
+	} else {
+		out.AffinitySelector = nil
 	}
 	out.ServiceAccount = in.ServiceAccountName
 	out.Host = in.NodeName

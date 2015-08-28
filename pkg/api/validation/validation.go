@@ -948,6 +948,7 @@ func ValidatePodSpec(spec *api.PodSpec) errs.ValidationErrorList {
 	allErrs = append(allErrs, validateRestartPolicy(&spec.RestartPolicy).Prefix("restartPolicy")...)
 	allErrs = append(allErrs, validateDNSPolicy(&spec.DNSPolicy).Prefix("dnsPolicy")...)
 	allErrs = append(allErrs, ValidateLabels(spec.NodeSelector, "nodeSelector")...)
+	allErrs = append(allErrs, ValidateLabels(spec.AffinitySelector, "affinitySelector")...)
 	allErrs = append(allErrs, validateHostNetwork(spec.HostNetwork, spec.Containers).Prefix("hostNetwork")...)
 	allErrs = append(allErrs, validateImagePullSecrets(spec.ImagePullSecrets).Prefix("imagePullSecrets")...)
 	if len(spec.ServiceAccountName) > 0 {

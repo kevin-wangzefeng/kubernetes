@@ -36,8 +36,6 @@ func NewSelectorAffinityPriority(serviceLister algorithm.ServiceLister) algorith
 
 func (s *SelectorAffinity) CalculateAffinityPriority(pod *api.Pod, podLister algorithm.PodLister, minionLister algorithm.MinionLister) (algorithm.HostPriorityList, error) {
 	affinitySelector := labels.SelectorFromSet(pod.Spec.AffinitySelector)
-	// glog.V(10).Infof("affinitySelector: %v", affinitySelector)
-	// var affinityPods []*api.Pod
 	var maxCount int
 	counts := map[string]int{}
 	allPods, err := podLister.List(labels.Everything())
@@ -48,12 +46,12 @@ func (s *SelectorAffinity) CalculateAffinityPriority(pod *api.Pod, podLister alg
 				if onePod.Namespace != pod.Namespace {
 					continue
 				}
-				if affinitySelector.Matches(labels.Set(onePod.ObjectMeta.Labels)) {
-					// glog.V(10).Infof("pod: %v, onepod: %v", pod.Name, onePod.Name)
-					//affinityPods = append(affinityPods, onePod)  //也许没用
-					counts[onePod.Spec.NodeName]++
-					if counts[onePod.Spec.NodeName] > maxCount {
-						maxCount = counts[onePod.Spec.NodeName]
+				for key, val := onePod.ObjectMeta.Labels {
+					if affinitySelector.Has(key) && affinitySelector.Get(key) == val {
+						counts[onePod.Spec.NodeName]++
+						if counts[onePod.Spec.NodeName] > maxCount {
+							maxCount = counts[onePod.Spec.NodeName]
+						}
 					}
 				}
 			}

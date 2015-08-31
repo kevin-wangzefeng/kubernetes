@@ -12412,7 +12412,7 @@
      },
      "affinitySelector": {
       "type": "any",
-      "description": "selector which must match a node's labels for the pod to affinity"
+      "description": "selector whick list the service for pod to affinity"
      },
      "serviceAccount": {
       "type": "string",

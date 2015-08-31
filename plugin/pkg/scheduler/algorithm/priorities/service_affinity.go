@@ -34,12 +34,12 @@ func NewServiceAffinityPriority(serviceLister algorithm.ServiceLister) algorithm
 	return serviceAffinity.CalculateAffinityPriority
 }
 
-// CalculateAffinityPriority calculate all pods' priority base on the affinitySelector and pod's labels. 
-// The more matches, the more priorities. 
+// CalculateAffinityPriority calculate all pods' priority base on the affinitySelector and pod's labels.
+// The more matches, the more priorities.
 func (s *ServiceAffinity) CalculateAffinityPriority(pod *api.Pod, podLister algorithm.PodLister, minionLister algorithm.MinionLister) (algorithm.HostPriorityList, error) {
 	var maxCount int
 	counts := map[string]int{}
-	affinitySelector := labels.SelectorFromSet(pod.Spec.AffinitySelector)
+	affinitySelector := labels.Set(pod.Spec.AffinitySelector)
 	// Actually, we should matching pod's affinitySelector with service's selector.
 	// Then, matching service's serlector with exist pod's labels. Find service's pods.
 	// Finally, we should calculate the	priorties with affinitySelector and the pod's labels.

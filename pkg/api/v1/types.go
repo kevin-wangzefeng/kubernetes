@@ -877,7 +877,7 @@ type PodSpec struct {
 
 	//AffinitySelector is a selector whick list the service for pod to affinity
 	AffinitySelector map[string]string `json:"affinitySelector,omitempty" description:"selector whick list the service for pod to affinity"`
-	
+
 	// ServiceAccountName is the name of the ServiceAccount to use to run this pod
 	ServiceAccountName string `json:"serviceAccountName,omitempty" description:"name of the ServiceAccount to use to run this pod; see http://releases.k8s.io/v1.0.4/docs/service_accounts.md"`
 	// DeprecatedServiceAccount is a depreciated alias for ServiceAccountName.

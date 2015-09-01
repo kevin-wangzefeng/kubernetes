@@ -131,7 +131,7 @@ func TestServiceAffinityPriority(t *testing.T) {
             nodes:        []string{"machine1", "machine2"},
             services:     []api.Service{{Spec: api.ServiceSpec{Selector: labels1}}},
             expectedList: []algorithm.HostPriority{{"machine1", 10}, {"machine2", 5}},
-            test:         "two service pods, one in default namespace, none to affiliate",
+            test:         "four service pods, two on machine1 to affiliate, one on machine2 to affiliate",
         },
 
     }

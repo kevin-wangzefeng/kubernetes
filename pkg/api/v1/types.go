@@ -876,7 +876,7 @@ type PodSpec struct {
 	NodeSelector map[string]string `json:"nodeSelector,omitempty" description:"selector which must match a node's labels for the pod to be scheduled on that node; see http://releases.k8s.io/v1.0.4/examples/node-selection/README.md"`
 
 	//AffinitySelector is a selector whick list the service for pod to affinity
-	AffinitySelector map[string]string `json:"affinitySelector,omitempty" description:"selector whick list the service for pod to affinity"`
+	AffinitySelector map[string]string `json:"affinitySelector,omitempty" description:"selector which list the service for pod to affinity"`
 
 	// ServiceAccountName is the name of the ServiceAccount to use to run this pod
 	ServiceAccountName string `json:"serviceAccountName,omitempty" description:"name of the ServiceAccount to use to run this pod; see http://releases.k8s.io/v1.0.4/docs/service_accounts.md"`

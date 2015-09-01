@@ -34,30 +34,36 @@ func NewServiceAffinityPriority(serviceLister algorithm.ServiceLister) algorithm
 	return serviceAffinity.CalculateAffinityPriority
 }
 
-// CalculateAffinityPriority calculate all pods' priority base on the affinitySelector and pod's labels.
-// The more matches, the more priorities.
+// CalculateAffinityPriority affiliates a pod to the existing services' pods
+// that matches the labels indicated in affinitySelector.
+// The more existing pods to affiliate deployed on, the higher priority the node gets.
 func (s *ServiceAffinity) CalculateAffinityPriority(pod *api.Pod, podLister algorithm.PodLister, minionLister algorithm.MinionLister) (algorithm.HostPriorityList, error) {
 	var maxCount int
 	counts := map[string]int{}
 	affinitySelector := labels.Set(pod.Spec.AffinitySelector)
-	// Actually, we should matching pod's affinitySelector with service's selector.
-	// Then, matching service's serlector with exist pod's labels. Find service's pods.
-	// Finally, we should calculate the	priorties with affinitySelector and the pod's labels.
-	// Now, we matching pod's affinitySelector with exist pod's labels directly.
-	allPods, err := podLister.List(labels.Everything())
 
+	// Logically, we should match pod's affinitySelector with services' selectors.
+	// Then, to find services' pods, we need to match pods' labels with services'
+	// selectors. Finally, calculate the priorties with affinitySelector and the
+	// found pods' labels.
+	// As a result of optimization, we match the pod's affinitySelector with
+	// existing pods' labels here.
+	allPods, err := podLister.List(labels.Everything())
 	if err != nil {
 		glog.V(10).Infof("PodLister Error")
 		return nil, err
 	}
+
 	if len(allPods) > 0 {
 		for _, onePod := range allPods {
-			// Only matching pods with the same namespace
+			// Only match pods in the same namespace
 			if onePod.Namespace != pod.Namespace {
 				continue
 			}
+
+			// match affinitySelector with every pod's labels.
+			// Every matched label will add to the minion's priority
 			for key, val := range onePod.ObjectMeta.Labels {
-				// matching every affinitySelector with every pod's label. Every matched label will add to the minion's priority
 				if affinitySelector.Has(key) && affinitySelector.Get(key) == val {
 					counts[onePod.Spec.NodeName]++
 					if counts[onePod.Spec.NodeName] > maxCount {
@@ -78,7 +84,7 @@ func (s *ServiceAffinity) CalculateAffinityPriority(pod *api.Pod, podLister algo
 	// score int - scale of 0-10
 	// 0 being the lowest priority and 10 being the highest
 	for _, minion := range minions.Items {
-		// initializing to the default/max minion score of 0
+		// initializing to the default/min minion score of 0
 		fScore := float32(0)
 		if maxCount > 0 {
 			fScore = 10 * (float32(counts[minion.Name]) / float32(maxCount))

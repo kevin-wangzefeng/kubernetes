@@ -81,6 +81,7 @@ type Host interface {
 
 // InitNetworkPlugin inits the plugin that matches networkPluginName. Plugins must have unique names.
 func InitNetworkPlugin(plugins []NetworkPlugin, networkPluginName string, host Host) (NetworkPlugin, error) {
+	glog.Infof("(kubelet:InitNetworkPlugin) initializing plugin %v with host %+v", networkPluginName, host)
 	if networkPluginName == "" {
 		// default to the no_op plugin
 		plug := &noopNetworkPlugin{}
@@ -127,21 +128,26 @@ type noopNetworkPlugin struct {
 }
 
 func (plugin *noopNetworkPlugin) Init(host Host) error {
+	glog.Infof("(kubelet:noopNetworkPlugin) init with host %+v", host)
 	return nil
 }
 
 func (plugin *noopNetworkPlugin) Name() string {
+	glog.Infof("(kubelet:noopNetworkPlugin:Name) Name %+v", DefaultPluginName)
 	return DefaultPluginName
 }
 
 func (plugin *noopNetworkPlugin) SetUpPod(namespace string, name string, id kubeletTypes.DockerID) error {
+	glog.Infof("(kubelet:noopNetworkPlugin:SetUpPod) setup pod with ns %+v name %v and docker id %+v", namespace, name, id)
 	return nil
 }
 
 func (plugin *noopNetworkPlugin) TearDownPod(namespace string, name string, id kubeletTypes.DockerID) error {
+	glog.Infof("(kubelet:noopNetworkPlugin:TearDownPod) init with namespace %+v, name %v id %+v", namespace, name, id)
 	return nil
 }
 
 func (plugin *noopNetworkPlugin) Status(namespace string, name string, id kubeletTypes.DockerID) (*PodNetworkStatus, error) {
+	glog.Infof("(kubelet:noopNetworkPlugin:Status) namespace %+v name %v id %+v", namespace, name, id)
 	return nil, nil
 }

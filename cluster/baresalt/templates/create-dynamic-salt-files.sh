@@ -24,6 +24,12 @@ instance_prefix: '$(echo "$INSTANCE_PREFIX" | sed -e "s/'/''/g")'
 node_instance_prefix: $NODE_INSTANCE_PREFIX
 service_cluster_ip_range: $SERVICE_CLUSTER_IP_RANGE
 admission_control: '$(echo "$ADMISSION_CONTROL" | sed -e "s/'/''/g")'
+enable_cluster_monitoring: '$(echo "$ENABLE_CLUSTER_MONITORING" | sed -e "s/'/''/g")'
+enable_cluster_logging: '$(echo "$ENABLE_CLUSTER_LOGGING" | sed -e "s/'/''/g")'
+enable_cluster_ui: '$(echo "$ENABLE_CLUSTER_UI" | sed -e "s/'/''/g")'
+enable_node_logging: '$(echo "$ENABLE_NODE_LOGGING" | sed -e "s/'/''/g")'
+logging_destination: '$(echo "$LOGGING_DESTINATION" | sed -e "s/'/''/g")'
+elasticsearch_replicas: '$(echo "$ELASTICSEARCH_LOGGING_REPLICAS" | sed -e "s/'/''/g")'
 EOF
 
 mkdir -p /srv/salt-overlay/salt/nginx

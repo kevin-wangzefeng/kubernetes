@@ -295,6 +295,7 @@ func NewMainKubelet(
 		resolverConfig:                 resolverConfig,
 		cpuCFSQuota:                    cpuCFSQuota,
 		daemonEndpoints:                daemonEndpoints,
+		flannelServer:                  &FlannelServer{kubeClient},
 	}
 
 	if plug, err := network.InitNetworkPlugin(networkPlugins, networkPluginName, &networkHost{klet}); err != nil {
@@ -498,6 +499,8 @@ type Kubelet struct {
 	probeManager prober.Manager
 	// TODO: Move prober ownership to the probeManager once the runtime no longer depends on it.
 	prober prober.Prober
+	// Serves flannel interface over http
+	flannelServer *FlannelServer
 
 	// How long to keep idle streaming command execution/port forwarding
 	// connections open before terminating them

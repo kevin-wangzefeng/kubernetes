@@ -337,7 +337,6 @@ func (dm *DockerManager) inspectContainer(dockerID, containerName, tPath string,
 			}
 			// override the above if a network plugin exists
 			if dm.networkPlugin.Name() != network.DefaultPluginName {
-				glog.Infof("(kubelet:dockertools:inspectContainer) invoking network plugin %+v", dm.networkPlugin.Name())
 				netStatus, err := dm.networkPlugin.Status(pod.Namespace, pod.Name, kubeletTypes.DockerID(dockerID))
 				if err != nil {
 					glog.Errorf("NetworkPlugin %s failed on the status hook for pod '%s' - %v", dm.networkPlugin.Name(), pod.Name, err)
@@ -1284,7 +1283,6 @@ func (dm *DockerManager) KillPod(pod *api.Pod, runningPod kubecontainer.Pod) err
 	}
 	wg.Wait()
 	if networkContainer != nil {
-		glog.Infof("(kubelet:dockertools:killPod) invoking network plugin %+v", dm.networkPlugin.Name())
 		if err := dm.networkPlugin.TearDownPod(runningPod.Namespace, runningPod.Name, kubeletTypes.DockerID(networkContainer.ID)); err != nil {
 			glog.Errorf("Failed tearing down the infra container: %v", err)
 			errs <- err
@@ -1818,7 +1816,6 @@ func (dm *DockerManager) SyncPod(pod *api.Pod, runningPod kubecontainer.Pod, pod
 
 		// Call the networking plugin
 		if err == nil {
-			glog.Infof("(kubelet:dockertools:SyncPod) invoking network plugin %+v", dm.networkPlugin.Name())
 			err = dm.networkPlugin.SetUpPod(pod.Namespace, pod.Name, podInfraContainerID)
 		}
 		if err != nil {

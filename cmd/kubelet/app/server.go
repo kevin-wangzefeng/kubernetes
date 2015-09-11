@@ -63,8 +63,9 @@ import (
 )
 
 const (
-	defaultRootDir = "/var/lib/kubelet"
-	networkConfig  = "/var/run/flannel/network.json"
+	defaultRootDir    = "/var/lib/kubelet"
+	networkConfig     = "/var/run/flannel/network.json"
+	useDefaultOverlay = true
 )
 
 // KubeletServer encapsulates all of the parameters necessary for starting up
@@ -210,7 +211,7 @@ func NewKubeletServer() *KubeletServer {
 		SystemContainer:   "",
 
 		// Flannel parameters
-		UseDefaultOverlay: false,
+		UseDefaultOverlay: useDefaultOverlay,
 		NetworkConfig:     networkConfig,
 	}
 }

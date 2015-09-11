@@ -82,6 +82,9 @@ for (( i=0; i<${#MINION_NAMES[@]}; i++)); do
   fi
 done
 
+# Placeholder for any other manifests that may be per-node.
+mkdir -p /etc/kubernetes/manifests
+
 # Prepopulate the name of the Master
 mkdir -p /etc/salt/minion.d
 echo "master: $MASTER_NAME" > /etc/salt/minion.d/master.conf

@@ -62,7 +62,10 @@ import (
 	"k8s.io/kubernetes/pkg/cloudprovider"
 )
 
-const defaultRootDir = "/var/lib/kubelet"
+const (
+	defaultRootDir = "/var/lib/kubelet"
+	networkConfig  = "/var/run/flannel/network.json"
+)
 
 // KubeletServer encapsulates all of the parameters necessary for starting up
 // a kubelet. These can either be set via command line or directly.
@@ -140,6 +143,10 @@ type KubeletServer struct {
 	ChaosChance float64
 	// Crash immediately, rather than eating panics.
 	ReallyCrashForTesting bool
+
+	// Flannel config parameters
+	UseDefaultOverlay bool
+	NetworkConfig     string
 }
 
 // bootstrapping interface for kubelet, targets the initialization protocol
@@ -201,6 +208,10 @@ func NewKubeletServer() *KubeletServer {
 		RootDirectory:     defaultRootDir,
 		SyncFrequency:     10 * time.Second,
 		SystemContainer:   "",
+
+		// Flannel parameters
+		UseDefaultOverlay: false,
+		NetworkConfig:     networkConfig,
 	}
 }
 
@@ -278,6 +289,10 @@ func (s *KubeletServer) AddFlags(fs *pflag.FlagSet) {
 	fs.Float64Var(&s.ChaosChance, "chaos-chance", s.ChaosChance, "If > 0.0, introduce random client errors and latency. Intended for testing. [default=0.0]")
 	fs.BoolVar(&s.Containerized, "containerized", s.Containerized, "Experimental support for running kubelet in a container.  Intended for testing. [default=false]")
 	fs.Uint64Var(&s.MaxOpenFiles, "max-open-files", 1000000, "Number of files that can be opened by Kubelet process. [default=1000000]")
+
+	// Flannel config parameters
+	fs.BoolVar(&s.UseDefaultOverlay, "use-default-overlay", s.UseDefaultOverlay, "Experimental support for starting the kubelet with the default overlay network (flannel). Assumes flanneld is already running in client mode. [default=false]")
+	fs.StringVar(&s.NetworkConfig, "network-config", s.NetworkConfig, "Absolute path to a network json file, as accepted by flannel.")
 }
 
 // KubeletConfig returns a KubeletConfig suitable for being run, or an error if the server setup
@@ -296,6 +311,9 @@ func (s *KubeletServer) KubeletConfig() (*KubeletConfig, error) {
 	hostIPCSources, err := kubelet.GetValidatedSources(strings.Split(s.HostIPCSources, ","))
 	if err != nil {
 		return nil, err
+	}
+	if s.UseDefaultOverlay && s.NetworkConfig == "" {
+		return nil, fmt.Errorf("Please specify --network-config in addition to --use-default-overlay")
 	}
 
 	mounter := mount.New()
@@ -403,6 +421,10 @@ func (s *KubeletServer) KubeletConfig() (*KubeletConfig, error) {
 		TLSOptions:                     tlsOptions,
 		Writer:                         writer,
 		VolumePlugins:                  ProbeVolumePlugins(),
+
+		// Flannel options
+		UseDefaultOverlay: s.UseDefaultOverlay,
+		NetworkConfig:     s.NetworkConfig,
 	}, nil
 }
 
@@ -847,6 +869,10 @@ type KubeletConfig struct {
 	TLSOptions                     *kubelet.TLSOptions
 	Writer                         io.Writer
 	VolumePlugins                  []volume.VolumePlugin
+
+	// Flannel parameters
+	UseDefaultOverlay bool
+	NetworkConfig     string
 }
 
 func CreateAndInitKubelet(kc *KubeletConfig) (k KubeletBootstrap, pc *config.PodConfig, err error) {
@@ -921,6 +947,10 @@ func CreateAndInitKubelet(kc *KubeletConfig) (k KubeletBootstrap, pc *config.Pod
 		kc.CPUCFSQuota,
 		daemonEndpoints,
 		kc.OOMAdjuster)
+
+		// Flannel parameters
+		kc.UseDefaultOverlay,
+		kc.NetworkConfig)
 
 	if err != nil {
 		return nil, nil, err

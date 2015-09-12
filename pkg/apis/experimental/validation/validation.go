@@ -167,6 +167,11 @@ func ValidateDeploymentName(name string, prefix bool) (bool, string) {
 	return apivalidation.NameIsDNSSubdomain(name, prefix)
 }
 
+// Validates that the given name can be used as a ingressPoint name.
+func ValidateIngressPointName(name string, prefix bool) (bool, string) {
+	return apivalidation.NameIsDNSSubdomain(name, prefix)
+}
+
 func ValidatePositiveIntOrPercent(intOrPercent util.IntOrString, fieldName string) errs.ValidationErrorList {
 	allErrs := errs.ValidationErrorList{}
 	if intOrPercent.Kind == util.IntstrString {
@@ -315,5 +320,21 @@ func ValidateJobUpdate(oldJob, job *experimental.Job) errs.ValidationErrorList {
 	allErrs := errs.ValidationErrorList{}
 	allErrs = append(allErrs, apivalidation.ValidateObjectMetaUpdate(&oldJob.ObjectMeta, &job.ObjectMeta).Prefix("metadata")...)
 	allErrs = append(allErrs, ValidateJobSpec(&job.Spec).Prefix("spec")...)
+	return allErrs
+}
+
+func ValidateIngressPointUpdate(old, update *experimental.IngressPoint) errs.ValidationErrorList {
+	allErrs := errs.ValidationErrorList{}
+	allErrs = append(allErrs, apivalidation.ValidateObjectMetaUpdate(&update.ObjectMeta, &old.ObjectMeta).Prefix("metadata")...)
+	// TODO ValidateIngressPointSpec not implemented.
+	// allErrs = append(allErrs, ValidateIngressPointSpec(&update.Spec).Prefix("spec")...)
+	return allErrs
+}
+
+func ValidateIngressPoint(obj *experimental.IngressPoint) errs.ValidationErrorList {
+	allErrs := errs.ValidationErrorList{}
+	allErrs = append(allErrs, apivalidation.ValidateObjectMeta(&obj.ObjectMeta, true, ValidateIngressPointName).Prefix("metadata")...)
+	// TODO ValidateIngressPointSpec not implemented.
+	// allErrs = append(allErrs, ValidateIngressPointSpec(&obj.Spec).Prefix("spec")...)
 	return allErrs
 }

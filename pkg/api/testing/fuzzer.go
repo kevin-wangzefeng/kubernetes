@@ -356,6 +356,14 @@ func FuzzerFor(t *testing.T, version string, src rand.Source) *fuzz.Fuzzer {
 			// string, which will cause tests failure.
 			s.APIGroup = "something"
 		},
+		func(s *experimental.IngressPoint, c fuzz.Continue) {
+			// We can't use c.RandString() here because it may generate empty
+			// string, which will cause tests failure.
+			for i := range s.Spec.PathList {
+				service := &s.Spec.PathList[i].Service
+				service.Namespace = "testNamespace"
+			}
+		},
 	)
 	return f
 }

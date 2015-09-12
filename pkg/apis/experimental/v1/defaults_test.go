@@ -189,6 +189,56 @@ func TestSetDefaultDeployment(t *testing.T) {
 	}
 }
 
+func TestSetDefaultIngressPoint(t *testing.T) {
+	tests := []struct {
+		inp             *IngressPoint
+		expectNamespace string
+	}{
+		{
+			inp: &IngressPoint{
+				Spec: IngressPointSpec{
+					PathList: []PathRef{
+						{
+							Service: ServiceRef{
+								Namespace: "",
+							},
+						},
+					},
+				},
+			},
+			expectNamespace: api.NamespaceDefault,
+		},
+		{
+			inp: &IngressPoint{
+				Spec: IngressPointSpec{
+					PathList: []PathRef{
+						{
+							Service: ServiceRef{
+								Namespace: "testNamespace",
+							},
+						},
+					},
+				},
+			},
+			expectNamespace: "testNamespace",
+		},
+	}
+
+	for _, test := range tests {
+		inp := test.inp
+		obj2 := roundTrip(t, runtime.Object(inp))
+		inp2, ok := obj2.(*IngressPoint)
+		if !ok {
+			t.Errorf("unexpected object: %v", inp2)
+			t.FailNow()
+		}
+		namespace := inp2.Spec.PathList[0].Service.Namespace
+		if test.expectNamespace != namespace {
+			t.Errorf("expected: %s, got: %s", test.expectNamespace, namespace)
+		}
+	}
+}
+
 func roundTrip(t *testing.T, obj runtime.Object) runtime.Object {
 	data, err := v1.Codec.Encode(obj)
 	if err != nil {

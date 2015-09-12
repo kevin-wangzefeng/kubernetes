@@ -75,5 +75,14 @@ func addDefaultingFuncs() {
 				*obj.Spec.UniqueLabelKey = "deployment.kubernetes.io/podTemplateHash"
 			}
 		},
+		func(obj *IngressPoint) {
+			// Iterates all the ServiceRefs and set defulat namespace to all service refs that don't have one
+			for i := range obj.Spec.PathList {
+				service := &obj.Spec.PathList[i].Service
+				if service.Namespace == "" {
+					service.Namespace = api.NamespaceDefault
+				}
+			}
+		},
 	)
 }

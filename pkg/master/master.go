@@ -54,6 +54,7 @@ import (
 	endpointsetcd "k8s.io/kubernetes/pkg/registry/endpoint/etcd"
 	eventetcd "k8s.io/kubernetes/pkg/registry/event/etcd"
 	expcontrolleretcd "k8s.io/kubernetes/pkg/registry/experimental/controller/etcd"
+	ingressetcd "k8s.io/kubernetes/pkg/registry/ingress/etcd"
 	jobetcd "k8s.io/kubernetes/pkg/registry/job/etcd"
 	limitrangeetcd "k8s.io/kubernetes/pkg/registry/limitrange/etcd"
 	"k8s.io/kubernetes/pkg/registry/namespace"
@@ -828,6 +829,7 @@ func (m *Master) experimental(c *Config) *apiserver.APIGroupVersion {
 	daemonSetStorage := daemonetcd.NewREST(c.ExpDatabaseStorage)
 	deploymentStorage := deploymentetcd.NewREST(c.ExpDatabaseStorage)
 	jobStorage := jobetcd.NewREST(c.ExpDatabaseStorage)
+	ingressStorage := ingressetcd.NewREST(c.DatabaseStorage)
 
 	storage := map[string]rest.Storage{
 		strings.ToLower("replicationControllers"):       controllerStorage.ReplicationController,
@@ -837,6 +839,7 @@ func (m *Master) experimental(c *Config) *apiserver.APIGroupVersion {
 		strings.ToLower("daemonsets"):                   daemonSetStorage,
 		strings.ToLower("deployments"):                  deploymentStorage,
 		strings.ToLower("jobs"):                         jobStorage,
+		strings.ToLower("ingresses"):                    ingressStorage,
 	}
 
 	return &apiserver.APIGroupVersion{

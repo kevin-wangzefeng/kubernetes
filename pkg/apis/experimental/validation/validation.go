@@ -168,6 +168,11 @@ func ValidateDeploymentName(name string, prefix bool) (bool, string) {
 	return apivalidation.NameIsDNSSubdomain(name, prefix)
 }
 
+// Validates that the given name can be used as a ingress name.
+func ValidateIngressName(name string, prefix bool) (bool, string) {
+	return apivalidation.NameIsDNSSubdomain(name, prefix)
+}
+
 func ValidatePositiveIntOrPercent(intOrPercent util.IntOrString, fieldName string) errs.ValidationErrorList {
 	allErrs := errs.ValidationErrorList{}
 	if intOrPercent.Kind == util.IntstrString {
@@ -331,5 +336,21 @@ func ValidateJobSpecUpdate(oldSpec, spec experimental.JobSpec) errs.ValidationEr
 	if !api.Semantic.DeepEqual(oldSpec.Template, spec.Template) {
 		allErrs = append(allErrs, errs.NewFieldInvalid("template", "[omitted]", "field is immutable"))
 	}
+	return allErrs
+}
+
+func ValidateIngressUpdate(old, update *experimental.Ingress) errs.ValidationErrorList {
+	allErrs := errs.ValidationErrorList{}
+	allErrs = append(allErrs, apivalidation.ValidateObjectMetaUpdate(&update.ObjectMeta, &old.ObjectMeta).Prefix("metadata")...)
+	// TODO ValidateIngressSpec not implemented.
+	// allErrs = append(allErrs, ValidateIngressSpec(&update.Spec).Prefix("spec")...)
+	return allErrs
+}
+
+func ValidateIngress(obj *experimental.Ingress) errs.ValidationErrorList {
+	allErrs := errs.ValidationErrorList{}
+	allErrs = append(allErrs, apivalidation.ValidateObjectMeta(&obj.ObjectMeta, true, ValidateIngressName).Prefix("metadata")...)
+	// TODO ValidateIngressSpec not implemented.
+	// allErrs = append(allErrs, ValidateIngressSpec(&obj.Spec).Prefix("spec")...)
 	return allErrs
 }

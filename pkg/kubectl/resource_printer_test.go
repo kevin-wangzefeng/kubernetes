@@ -1268,3 +1268,79 @@ func TestPrintDeployment(t *testing.T) {
 		buf.Reset()
 	}
 }
+
+func TestPrintIngressPoint(t *testing.T) {
+	tests := []struct {
+		ingressPoint experimental.IngressPoint
+		expect       string
+	}{
+		{
+			experimental.IngressPoint{
+				ObjectMeta: api.ObjectMeta{
+					Namespace:         "testIngressNs",
+					Name:              "testIngressPoint1",
+					CreationTimestamp: util.Time{Time: time.Now().Add(1.9e9)},
+				},
+				Spec: experimental.IngressPointSpec{
+					Host:     "test.com",
+					PathList: make([]experimental.PathRef, 1),
+				},
+				Status: experimental.IngressPointStatus{
+					Address: "test.address",
+				},
+			},
+			"testIngressPoint1\ttest.com\t\t\t\t\t0\n",
+		},
+		{
+			experimental.IngressPoint{
+				ObjectMeta: api.ObjectMeta{
+					Namespace:         "testIngressNs",
+					Name:              "testIngressPoint2",
+					CreationTimestamp: util.Time{Time: time.Now().Add(1.9e9)},
+				},
+				Spec: experimental.IngressPointSpec{
+					Host: "test.com",
+					PathList: []experimental.PathRef{
+						{
+							Domain: "testDomain2",
+							Path:   "testPath2",
+							Service: experimental.ServiceRef{
+								Name:      "service2",
+								Namespace: "serviceNamespace2",
+								Port:      8080,
+							},
+						},
+						{
+							Domain: "testDomain3",
+							Path:   "testPath3",
+							Service: experimental.ServiceRef{
+								Name:      "service3",
+								Namespace: "serviceNamespace3",
+								Port:      8081,
+							},
+						},
+					},
+				},
+				Status: experimental.IngressPointStatus{
+					Address: "test.address3",
+				},
+			},
+			"testIngressPoint2\ttest.com\ttestDomain2\ttestPath2\tservice2\tserviceNamespace2\t8080\ntestIngressPoint2\ttest.com\ttestDomain3\ttestPath3\tservice3\tserviceNamespace3\t8081\n",
+		},
+	}
+
+	buf := bytes.NewBuffer([]byte{})
+	for _, test := range tests {
+		printIngressPoint(&test.ingressPoint, buf, false, false, true, []string{})
+		if buf.String() != test.expect {
+			t.Fatalf("Expected: %s, got: %s", test.expect, buf.String())
+		}
+		buf.Reset()
+
+		printIngressPoint(&test.ingressPoint, buf, true, false, true, []string{})
+		if !strings.HasPrefix(buf.String(), "testIngressNs") {
+			t.Fatalf("Expected Prefix: %s, got: %s", "testIngressNs", buf.String())
+		}
+		buf.Reset()
+	}
+}

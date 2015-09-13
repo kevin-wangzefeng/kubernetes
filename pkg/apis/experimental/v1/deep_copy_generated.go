@@ -998,6 +998,62 @@ func deepCopy_v1_HorizontalPodAutoscalerStatus(in HorizontalPodAutoscalerStatus,
 	return nil
 }
 
+func deepCopy_v1_IngressPoint(in IngressPoint, out *IngressPoint, c *conversion.Cloner) error {
+	if err := deepCopy_v1_TypeMeta(in.TypeMeta, &out.TypeMeta, c); err != nil {
+		return err
+	}
+	if err := deepCopy_v1_ObjectMeta(in.ObjectMeta, &out.ObjectMeta, c); err != nil {
+		return err
+	}
+	if err := deepCopy_v1_IngressPointSpec(in.Spec, &out.Spec, c); err != nil {
+		return err
+	}
+	if err := deepCopy_v1_IngressPointStatus(in.Status, &out.Status, c); err != nil {
+		return err
+	}
+	return nil
+}
+
+func deepCopy_v1_IngressPointList(in IngressPointList, out *IngressPointList, c *conversion.Cloner) error {
+	if err := deepCopy_v1_TypeMeta(in.TypeMeta, &out.TypeMeta, c); err != nil {
+		return err
+	}
+	if err := deepCopy_v1_ListMeta(in.ListMeta, &out.ListMeta, c); err != nil {
+		return err
+	}
+	if in.Items != nil {
+		out.Items = make([]IngressPoint, len(in.Items))
+		for i := range in.Items {
+			if err := deepCopy_v1_IngressPoint(in.Items[i], &out.Items[i], c); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.Items = nil
+	}
+	return nil
+}
+
+func deepCopy_v1_IngressPointSpec(in IngressPointSpec, out *IngressPointSpec, c *conversion.Cloner) error {
+	out.Host = in.Host
+	if in.PathList != nil {
+		out.PathList = make([]PathRef, len(in.PathList))
+		for i := range in.PathList {
+			if err := deepCopy_v1_PathRef(in.PathList[i], &out.PathList[i], c); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.PathList = nil
+	}
+	return nil
+}
+
+func deepCopy_v1_IngressPointStatus(in IngressPointStatus, out *IngressPointStatus, c *conversion.Cloner) error {
+	out.Address = in.Address
+	return nil
+}
+
 func deepCopy_v1_Job(in Job, out *Job, c *conversion.Cloner) error {
 	if err := deepCopy_v1_TypeMeta(in.TypeMeta, &out.TypeMeta, c); err != nil {
 		return err
@@ -1113,6 +1169,15 @@ func deepCopy_v1_JobStatus(in JobStatus, out *JobStatus, c *conversion.Cloner) e
 	return nil
 }
 
+func deepCopy_v1_PathRef(in PathRef, out *PathRef, c *conversion.Cloner) error {
+	out.Domain = in.Domain
+	out.Path = in.Path
+	if err := deepCopy_v1_ServiceRef(in.Service, &out.Service, c); err != nil {
+		return err
+	}
+	return nil
+}
+
 func deepCopy_v1_ReplicationControllerDummy(in ReplicationControllerDummy, out *ReplicationControllerDummy, c *conversion.Cloner) error {
 	if err := deepCopy_v1_TypeMeta(in.TypeMeta, &out.TypeMeta, c); err != nil {
 		return err
@@ -1180,6 +1245,13 @@ func deepCopy_v1_ScaleStatus(in ScaleStatus, out *ScaleStatus, c *conversion.Clo
 	} else {
 		out.Selector = nil
 	}
+	return nil
+}
+
+func deepCopy_v1_ServiceRef(in ServiceRef, out *ServiceRef, c *conversion.Cloner) error {
+	out.Name = in.Name
+	out.Namespace = in.Namespace
+	out.Port = in.Port
 	return nil
 }
 
@@ -1343,17 +1415,23 @@ func init() {
 		deepCopy_v1_HorizontalPodAutoscalerList,
 		deepCopy_v1_HorizontalPodAutoscalerSpec,
 		deepCopy_v1_HorizontalPodAutoscalerStatus,
+		deepCopy_v1_IngressPoint,
+		deepCopy_v1_IngressPointList,
+		deepCopy_v1_IngressPointSpec,
+		deepCopy_v1_IngressPointStatus,
 		deepCopy_v1_Job,
 		deepCopy_v1_JobCondition,
 		deepCopy_v1_JobList,
 		deepCopy_v1_JobSpec,
 		deepCopy_v1_JobStatus,
+		deepCopy_v1_PathRef,
 		deepCopy_v1_ReplicationControllerDummy,
 		deepCopy_v1_ResourceConsumption,
 		deepCopy_v1_RollingUpdateDeployment,
 		deepCopy_v1_Scale,
 		deepCopy_v1_ScaleSpec,
 		deepCopy_v1_ScaleStatus,
+		deepCopy_v1_ServiceRef,
 		deepCopy_v1_SubresourceReference,
 		deepCopy_v1_ThirdPartyResource,
 		deepCopy_v1_ThirdPartyResourceData,

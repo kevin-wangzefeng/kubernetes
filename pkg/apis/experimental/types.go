@@ -461,3 +461,75 @@ type JobCondition struct {
 	// Human readable message indicating details about last transition.
 	Message string `json:"message,omitempty"`
 }
+
+// IngressPoint encapsulates the inputs needed to connect an alias to endpoints.
+// It represents a rule collection of inbound connections from the external network
+// that would be satisfied by a load balancer.
+type IngressPoint struct {
+	api.TypeMeta `json:",inline"`
+	// Standard object's metadata.
+	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata
+	api.ObjectMeta `json:"metadata,omitempty"`
+
+	// Spec is the desired state of the IngressPoint.
+	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#spec-and-status
+	Spec IngressPointSpec `json:"spec,omitempty"`
+
+	// Status is the current state of the IngressPoint.
+	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#spec-and-status
+	Status IngressPointStatus `json:"status,omitempty"`
+}
+
+// IngressPointList is a collection of IngressPoints,
+type IngressPointList struct {
+	api.TypeMeta `json:",inline"`
+	// Standard object's metadata.
+	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata
+	api.ListMeta `json:"metadata,omitempty"`
+
+	// Items is the list of ingressPoints.
+	Items []IngressPoint `json:"items"`
+}
+
+// ServiceRef represents a reference to a single service:port.
+type ServiceRef struct {
+	// Define the name of the referenced service.
+	Name string `json:"name,omitempty"`
+
+	// Define the namespace of the referenced service.
+	Namespace string `json:"namespace,omitempty"`
+
+	// Define the service's port which the http traffic will be forwarded to.
+	Port int `json:"port,omitempty"`
+}
+
+// PathRef represents a single load balancer rule of forwarding the specified url to the related backend service.
+type PathRef struct {
+	// Domain describe http url's domain.
+	// Examples: "foo.example.com", "bar.example.com".
+	Domain string `json:"domain,omitempty"`
+
+	// Path defines http url's path.
+	// Examples: "/images", "/images/*".
+	Path string `json:"path,omitempty"`
+
+	// The ServiceRef indicates the unified service by service name, namespace and port.
+	Service ServiceRef `json:"service,omitempty"`
+}
+
+// IngressPointSpec describes the ingressPoint the user wishes to exist.
+type IngressPointSpec struct {
+	// Alias/Dns that points to the services, can be host or host:port.
+	// Examples: "www.example.com", "www.example.com:8080".
+	Host string `json:"host,omitempty"`
+
+	// PathList defines all the ingressPoint related the host.
+	PathList []PathRef `json:"pathlist,omitempty"`
+}
+
+// IngressPointStatus describes the current state of this ingressPoint.
+type IngressPointStatus struct {
+
+	// Address describes the loadbalancer's ingress IP address.
+	Address string `json:"ip,omitempty"`
+}

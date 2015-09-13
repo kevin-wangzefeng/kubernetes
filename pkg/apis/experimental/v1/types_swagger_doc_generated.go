@@ -178,6 +178,46 @@ func (HorizontalPodAutoscalerStatus) SwaggerDoc() map[string]string {
 	return map_HorizontalPodAutoscalerStatus
 }
 
+var map_IngressPoint = map[string]string{
+	"":         "IngressPoint encapsulates the inputs needed to connect an alias to endpoints. It represents a rule collection of inbound connections from the external network that would be satisfied by a load balancer.",
+	"metadata": "Standard object's metadata. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata",
+	"spec":     "Spec is the desired state of the IngressPoint. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#spec-and-status",
+	"status":   "Status is the current state of the IngressPoint. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#spec-and-status",
+}
+
+func (IngressPoint) SwaggerDoc() map[string]string {
+	return map_IngressPoint
+}
+
+var map_IngressPointList = map[string]string{
+	"":         "IngressPointList is a collection of IngressPoints.",
+	"metadata": "Standard object's metadata. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata",
+	"items":    "Items is the list of ingressPoints.",
+}
+
+func (IngressPointList) SwaggerDoc() map[string]string {
+	return map_IngressPointList
+}
+
+var map_IngressPointSpec = map[string]string{
+	"":         "IngressPointSpec describes the ingressPoint the user wishes to exist.",
+	"host":     "Alias/Dns that points to the services, can be host or host:port. Examples: \"www.example.com\", \"www.example.com:8080\".",
+	"pathlist": "PathList defines all the ingressPoint related the host.",
+}
+
+func (IngressPointSpec) SwaggerDoc() map[string]string {
+	return map_IngressPointSpec
+}
+
+var map_IngressPointStatus = map[string]string{
+	"":   "IngressPointStatus describes the current state of this ingressPoint.",
+	"ip": "Address describes the loadbalancer's ingress IP address.",
+}
+
+func (IngressPointStatus) SwaggerDoc() map[string]string {
+	return map_IngressPointStatus
+}
+
 var map_Job = map[string]string{
 	"":         "Job represents the configuration of a single job.",
 	"metadata": "Standard object's metadata. More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata",
@@ -239,6 +279,17 @@ func (JobStatus) SwaggerDoc() map[string]string {
 	return map_JobStatus
 }
 
+var map_PathRef = map[string]string{
+	"":        "PathRef represents a single load balancer rule of forwarding the specified url to the related backend service.",
+	"domain":  "Domain describe http url's domain. Examples: \"foo.example.com\", \"bar.example.com\".",
+	"path":    "Path defines http url's path. Examples: \"/images\", \"/images/*\".",
+	"service": "The ServiceRef indicates the unified service by service name, namespace and port.",
+}
+
+func (PathRef) SwaggerDoc() map[string]string {
+	return map_PathRef
+}
+
 var map_ReplicationControllerDummy = map[string]string{
 	"": "Dummy definition",
 }
@@ -296,6 +347,17 @@ var map_ScaleStatus = map[string]string{
 
 func (ScaleStatus) SwaggerDoc() map[string]string {
 	return map_ScaleStatus
+}
+
+var map_ServiceRef = map[string]string{
+	"":          "ServiceRef represents a reference to a single service:port.",
+	"name":      "Define the name of the referenced service.",
+	"namespace": "Define the namespace of the referenced service.",
+	"port":      "Define the service's port which the http traffic will be forwarded to.",
+}
+
+func (ServiceRef) SwaggerDoc() map[string]string {
+	return map_ServiceRef
 }
 
 var map_SubresourceReference = map[string]string{

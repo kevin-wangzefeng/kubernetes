@@ -1788,6 +1788,74 @@ func convert_experimental_HorizontalPodAutoscalerStatus_To_v1_HorizontalPodAutos
 	return nil
 }
 
+func convert_experimental_IngressPoint_To_v1_IngressPoint(in *experimental.IngressPoint, out *IngressPoint, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*experimental.IngressPoint))(in)
+	}
+	if err := convert_api_TypeMeta_To_v1_TypeMeta(&in.TypeMeta, &out.TypeMeta, s); err != nil {
+		return err
+	}
+	if err := convert_api_ObjectMeta_To_v1_ObjectMeta(&in.ObjectMeta, &out.ObjectMeta, s); err != nil {
+		return err
+	}
+	if err := convert_experimental_IngressPointSpec_To_v1_IngressPointSpec(&in.Spec, &out.Spec, s); err != nil {
+		return err
+	}
+	if err := convert_experimental_IngressPointStatus_To_v1_IngressPointStatus(&in.Status, &out.Status, s); err != nil {
+		return err
+	}
+	return nil
+}
+
+func convert_experimental_IngressPointList_To_v1_IngressPointList(in *experimental.IngressPointList, out *IngressPointList, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*experimental.IngressPointList))(in)
+	}
+	if err := convert_api_TypeMeta_To_v1_TypeMeta(&in.TypeMeta, &out.TypeMeta, s); err != nil {
+		return err
+	}
+	if err := convert_api_ListMeta_To_v1_ListMeta(&in.ListMeta, &out.ListMeta, s); err != nil {
+		return err
+	}
+	if in.Items != nil {
+		out.Items = make([]IngressPoint, len(in.Items))
+		for i := range in.Items {
+			if err := convert_experimental_IngressPoint_To_v1_IngressPoint(&in.Items[i], &out.Items[i], s); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.Items = nil
+	}
+	return nil
+}
+
+func convert_experimental_IngressPointSpec_To_v1_IngressPointSpec(in *experimental.IngressPointSpec, out *IngressPointSpec, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*experimental.IngressPointSpec))(in)
+	}
+	out.Host = in.Host
+	if in.PathList != nil {
+		out.PathList = make([]PathRef, len(in.PathList))
+		for i := range in.PathList {
+			if err := convert_experimental_PathRef_To_v1_PathRef(&in.PathList[i], &out.PathList[i], s); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.PathList = nil
+	}
+	return nil
+}
+
+func convert_experimental_IngressPointStatus_To_v1_IngressPointStatus(in *experimental.IngressPointStatus, out *IngressPointStatus, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*experimental.IngressPointStatus))(in)
+	}
+	out.Address = in.Address
+	return nil
+}
+
 func convert_experimental_Job_To_v1_Job(in *experimental.Job, out *Job, s conversion.Scope) error {
 	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
 		defaulting.(func(*experimental.Job))(in)
@@ -1916,6 +1984,18 @@ func convert_experimental_JobStatus_To_v1_JobStatus(in *experimental.JobStatus, 
 	return nil
 }
 
+func convert_experimental_PathRef_To_v1_PathRef(in *experimental.PathRef, out *PathRef, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*experimental.PathRef))(in)
+	}
+	out.Domain = in.Domain
+	out.Path = in.Path
+	if err := convert_experimental_ServiceRef_To_v1_ServiceRef(&in.Service, &out.Service, s); err != nil {
+		return err
+	}
+	return nil
+}
+
 func convert_experimental_ReplicationControllerDummy_To_v1_ReplicationControllerDummy(in *experimental.ReplicationControllerDummy, out *ReplicationControllerDummy, s conversion.Scope) error {
 	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
 		defaulting.(func(*experimental.ReplicationControllerDummy))(in)
@@ -1977,6 +2057,16 @@ func convert_experimental_ScaleStatus_To_v1_ScaleStatus(in *experimental.ScaleSt
 	} else {
 		out.Selector = nil
 	}
+	return nil
+}
+
+func convert_experimental_ServiceRef_To_v1_ServiceRef(in *experimental.ServiceRef, out *ServiceRef, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*experimental.ServiceRef))(in)
+	}
+	out.Name = in.Name
+	out.Namespace = in.Namespace
+	out.Port = in.Port
 	return nil
 }
 
@@ -2304,6 +2394,74 @@ func convert_v1_HorizontalPodAutoscalerStatus_To_experimental_HorizontalPodAutos
 	return nil
 }
 
+func convert_v1_IngressPoint_To_experimental_IngressPoint(in *IngressPoint, out *experimental.IngressPoint, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*IngressPoint))(in)
+	}
+	if err := convert_v1_TypeMeta_To_api_TypeMeta(&in.TypeMeta, &out.TypeMeta, s); err != nil {
+		return err
+	}
+	if err := convert_v1_ObjectMeta_To_api_ObjectMeta(&in.ObjectMeta, &out.ObjectMeta, s); err != nil {
+		return err
+	}
+	if err := convert_v1_IngressPointSpec_To_experimental_IngressPointSpec(&in.Spec, &out.Spec, s); err != nil {
+		return err
+	}
+	if err := convert_v1_IngressPointStatus_To_experimental_IngressPointStatus(&in.Status, &out.Status, s); err != nil {
+		return err
+	}
+	return nil
+}
+
+func convert_v1_IngressPointList_To_experimental_IngressPointList(in *IngressPointList, out *experimental.IngressPointList, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*IngressPointList))(in)
+	}
+	if err := convert_v1_TypeMeta_To_api_TypeMeta(&in.TypeMeta, &out.TypeMeta, s); err != nil {
+		return err
+	}
+	if err := convert_v1_ListMeta_To_api_ListMeta(&in.ListMeta, &out.ListMeta, s); err != nil {
+		return err
+	}
+	if in.Items != nil {
+		out.Items = make([]experimental.IngressPoint, len(in.Items))
+		for i := range in.Items {
+			if err := convert_v1_IngressPoint_To_experimental_IngressPoint(&in.Items[i], &out.Items[i], s); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.Items = nil
+	}
+	return nil
+}
+
+func convert_v1_IngressPointSpec_To_experimental_IngressPointSpec(in *IngressPointSpec, out *experimental.IngressPointSpec, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*IngressPointSpec))(in)
+	}
+	out.Host = in.Host
+	if in.PathList != nil {
+		out.PathList = make([]experimental.PathRef, len(in.PathList))
+		for i := range in.PathList {
+			if err := convert_v1_PathRef_To_experimental_PathRef(&in.PathList[i], &out.PathList[i], s); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.PathList = nil
+	}
+	return nil
+}
+
+func convert_v1_IngressPointStatus_To_experimental_IngressPointStatus(in *IngressPointStatus, out *experimental.IngressPointStatus, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*IngressPointStatus))(in)
+	}
+	out.Address = in.Address
+	return nil
+}
+
 func convert_v1_Job_To_experimental_Job(in *Job, out *experimental.Job, s conversion.Scope) error {
 	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
 		defaulting.(func(*Job))(in)
@@ -2432,6 +2590,18 @@ func convert_v1_JobStatus_To_experimental_JobStatus(in *JobStatus, out *experime
 	return nil
 }
 
+func convert_v1_PathRef_To_experimental_PathRef(in *PathRef, out *experimental.PathRef, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*PathRef))(in)
+	}
+	out.Domain = in.Domain
+	out.Path = in.Path
+	if err := convert_v1_ServiceRef_To_experimental_ServiceRef(&in.Service, &out.Service, s); err != nil {
+		return err
+	}
+	return nil
+}
+
 func convert_v1_ReplicationControllerDummy_To_experimental_ReplicationControllerDummy(in *ReplicationControllerDummy, out *experimental.ReplicationControllerDummy, s conversion.Scope) error {
 	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
 		defaulting.(func(*ReplicationControllerDummy))(in)
@@ -2493,6 +2663,16 @@ func convert_v1_ScaleStatus_To_experimental_ScaleStatus(in *ScaleStatus, out *ex
 	} else {
 		out.Selector = nil
 	}
+	return nil
+}
+
+func convert_v1_ServiceRef_To_experimental_ServiceRef(in *ServiceRef, out *experimental.ServiceRef, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*ServiceRef))(in)
+	}
+	out.Name = in.Name
+	out.Namespace = in.Namespace
+	out.Port = in.Port
 	return nil
 }
 
@@ -2646,16 +2826,22 @@ func init() {
 		convert_experimental_HorizontalPodAutoscalerSpec_To_v1_HorizontalPodAutoscalerSpec,
 		convert_experimental_HorizontalPodAutoscalerStatus_To_v1_HorizontalPodAutoscalerStatus,
 		convert_experimental_HorizontalPodAutoscaler_To_v1_HorizontalPodAutoscaler,
+		convert_experimental_IngressPointList_To_v1_IngressPointList,
+		convert_experimental_IngressPointSpec_To_v1_IngressPointSpec,
+		convert_experimental_IngressPointStatus_To_v1_IngressPointStatus,
+		convert_experimental_IngressPoint_To_v1_IngressPoint,
 		convert_experimental_JobCondition_To_v1_JobCondition,
 		convert_experimental_JobList_To_v1_JobList,
 		convert_experimental_JobSpec_To_v1_JobSpec,
 		convert_experimental_JobStatus_To_v1_JobStatus,
 		convert_experimental_Job_To_v1_Job,
+		convert_experimental_PathRef_To_v1_PathRef,
 		convert_experimental_ReplicationControllerDummy_To_v1_ReplicationControllerDummy,
 		convert_experimental_ResourceConsumption_To_v1_ResourceConsumption,
 		convert_experimental_ScaleSpec_To_v1_ScaleSpec,
 		convert_experimental_ScaleStatus_To_v1_ScaleStatus,
 		convert_experimental_Scale_To_v1_Scale,
+		convert_experimental_ServiceRef_To_v1_ServiceRef,
 		convert_experimental_SubresourceReference_To_v1_SubresourceReference,
 		convert_experimental_ThirdPartyResourceDataList_To_v1_ThirdPartyResourceDataList,
 		convert_experimental_ThirdPartyResourceData_To_v1_ThirdPartyResourceData,
@@ -2692,6 +2878,10 @@ func init() {
 		convert_v1_HorizontalPodAutoscaler_To_experimental_HorizontalPodAutoscaler,
 		convert_v1_HostPathVolumeSource_To_api_HostPathVolumeSource,
 		convert_v1_ISCSIVolumeSource_To_api_ISCSIVolumeSource,
+		convert_v1_IngressPointList_To_experimental_IngressPointList,
+		convert_v1_IngressPointSpec_To_experimental_IngressPointSpec,
+		convert_v1_IngressPointStatus_To_experimental_IngressPointStatus,
+		convert_v1_IngressPoint_To_experimental_IngressPoint,
 		convert_v1_JobCondition_To_experimental_JobCondition,
 		convert_v1_JobList_To_experimental_JobList,
 		convert_v1_JobSpec_To_experimental_JobSpec,
@@ -2703,6 +2893,7 @@ func init() {
 		convert_v1_NFSVolumeSource_To_api_NFSVolumeSource,
 		convert_v1_ObjectFieldSelector_To_api_ObjectFieldSelector,
 		convert_v1_ObjectMeta_To_api_ObjectMeta,
+		convert_v1_PathRef_To_experimental_PathRef,
 		convert_v1_PersistentVolumeClaimVolumeSource_To_api_PersistentVolumeClaimVolumeSource,
 		convert_v1_PodTemplateSpec_To_api_PodTemplateSpec,
 		convert_v1_Probe_To_api_Probe,
@@ -2716,6 +2907,7 @@ func init() {
 		convert_v1_Scale_To_experimental_Scale,
 		convert_v1_SecretVolumeSource_To_api_SecretVolumeSource,
 		convert_v1_SecurityContext_To_api_SecurityContext,
+		convert_v1_ServiceRef_To_experimental_ServiceRef,
 		convert_v1_SubresourceReference_To_experimental_SubresourceReference,
 		convert_v1_TCPSocketAction_To_api_TCPSocketAction,
 		convert_v1_ThirdPartyResourceDataList_To_experimental_ThirdPartyResourceDataList,

@@ -784,3 +784,228 @@ func TestValidateJob(t *testing.T) {
 		}
 	}
 }
+
+// IngressPoint testcases
+func TestValidateIngressPoint(t *testing.T) {
+	// Success case
+	successCases := []experimental.IngressPoint{
+		{
+			ObjectMeta: api.ObjectMeta{
+				Name:      "myingresspoint",
+				Namespace: api.NamespaceDefault,
+			},
+			Spec: experimental.IngressPointSpec{
+				Host: "www.foo.com",
+				PathList: []experimental.PathRef{
+					{
+						Domain: "www.foo.com",
+						Path:   "/foo",
+						Service: experimental.ServiceRef{
+							Name:      "fooservice",
+							Namespace: "default",
+							Port:      8080,
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, successCase := range successCases {
+		if errs := ValidateIngressPoint(&successCase); len(errs) != 0 {
+			t.Errorf("expected success: %v", errs)
+		}
+	}
+
+	// Error cases
+	errorCases := map[string]experimental.IngressPoint{
+		// TODO
+		// Invalid IngressPoint.Metadata.Name
+		"must be a DNS subdomain": {
+			ObjectMeta: api.ObjectMeta{
+				Name:      "_myingresspoint",
+				Namespace: api.NamespaceDefault,
+			},
+		},
+
+		// Invalid IngressPoint.Spec.Host
+		"spec.host: invalid value": {
+			ObjectMeta: api.ObjectMeta{
+				Name:      "myingresspoint",
+				Namespace: api.NamespaceDefault,
+			},
+			Spec: experimental.IngressPointSpec{
+				Host: "_wrong.foo.com",
+				PathList: []experimental.PathRef{
+					{
+						Domain: "www.foo.com",
+						Path:   "/foo",
+						Service: experimental.ServiceRef{
+							Name:      "fooservice",
+							Namespace: "default",
+							Port:      8080,
+						},
+					},
+				},
+			},
+		},
+
+		// Invalid IngressPoint.Spec.PathList.Domain
+		"spec.pathlist[0].path.domain": {
+			ObjectMeta: api.ObjectMeta{
+				Name:      "myingresspoint",
+				Namespace: api.NamespaceDefault,
+			},
+			Spec: experimental.IngressPointSpec{
+				Host: "www.foo.com",
+				PathList: []experimental.PathRef{
+					{
+						Domain: "_wrong.foo.com",
+						Path:   "/foo",
+						Service: experimental.ServiceRef{
+							Name:      "fooservice",
+							Namespace: "default",
+							Port:      8080,
+						},
+					},
+				},
+			},
+		},
+
+		// Invalid IngressPoint.Spec.PathList.Path
+		"spec.pathlist[0].path.path": {
+			ObjectMeta: api.ObjectMeta{
+				Name:      "myingresspoint",
+				Namespace: api.NamespaceDefault,
+			},
+			Spec: experimental.IngressPointSpec{
+				Host: "www.foo.com",
+				PathList: []experimental.PathRef{
+					{
+						Domain: "www.foo.com",
+						Path:   "wrongpath",
+						Service: experimental.ServiceRef{
+							Name:      "fooservice",
+							Namespace: "default",
+							Port:      8080,
+						},
+					},
+				},
+			},
+		},
+
+		// Duplicate IngressPoint.Spec.PathList.Path
+		"spec.pathlist[1].path: invalid value": {
+			ObjectMeta: api.ObjectMeta{
+				Name:      "myingresspoint",
+				Namespace: api.NamespaceDefault,
+			},
+			Spec: experimental.IngressPointSpec{
+				Host: "www.foo.com",
+				PathList: []experimental.PathRef{
+					{
+						Domain: "www.foo.com",
+						Path:   "/foo",
+						Service: experimental.ServiceRef{
+							Name:      "fooservice",
+							Namespace: "default",
+							Port:      8080,
+						},
+					},
+					{
+						Domain: "www.foo.com",
+						Path:   "/foo",
+						Service: experimental.ServiceRef{
+							Name:      "barservice",
+							Namespace: "default",
+							Port:      8080,
+						},
+					},
+					{
+						Domain: "www.bar.com",
+						Path:   "/foo",
+						Service: experimental.ServiceRef{
+							Name:      "barservice",
+							Namespace: "default",
+							Port:      8080,
+						},
+					},
+				},
+			},
+		},
+
+		// Invalid IngressPoint.Spec.PathList.Service.Name
+		"spec.pathlist[0].path.service.name: invalid value": {
+			ObjectMeta: api.ObjectMeta{
+				Name:      "myingresspoint",
+				Namespace: api.NamespaceDefault,
+			},
+			Spec: experimental.IngressPointSpec{
+				Host: "www.foo.com",
+				PathList: []experimental.PathRef{
+					{
+						Domain: "www.foo.com",
+						Path:   "/foo",
+						Service: experimental.ServiceRef{
+							Name:      "0123456789",
+							Namespace: "default",
+							Port:      8080,
+						},
+					},
+				},
+			},
+		},
+
+		// Invalid IngressPoint.Spec.PathList.Service.Namespace
+		"spec.pathlist[0].path.service.namespace: invalid value": {
+			ObjectMeta: api.ObjectMeta{
+				Name:      "myingresspoint",
+				Namespace: api.NamespaceDefault,
+			},
+			Spec: experimental.IngressPointSpec{
+				Host: "www.foo.com",
+				PathList: []experimental.PathRef{
+					{
+						Domain: "www.foo.com",
+						Path:   "/foo",
+						Service: experimental.ServiceRef{
+							Name:      "fooservice",
+							Namespace: "_wrong_namespace_name",
+							Port:      8080,
+						},
+					},
+				},
+			},
+		},
+
+		// Invalid IngressPoint.Spec.PathList.Service.Port
+		"spec.pathlist[0].path.service.port": {
+			ObjectMeta: api.ObjectMeta{
+				Name:      "myingresspoint",
+				Namespace: api.NamespaceDefault,
+			},
+			Spec: experimental.IngressPointSpec{
+				Host: "www.foo.com",
+				PathList: []experimental.PathRef{
+					{
+						Domain: "www.foo.com",
+						Path:   "/foo",
+						Service: experimental.ServiceRef{
+							Name:      "fooservice",
+							Namespace: "default",
+							Port:      65537,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for errMsg, errorCase := range errorCases {
+		errs := ValidateIngressPoint(&errorCase)
+		if len(errs) == 0 {
+			t.Errorf("expected failure for %s", errMsg)
+		} else if !strings.Contains(errs[0].Error(), errMsg) {
+			t.Errorf("unexpected error: %v, expected: %s", errs[0], errMsg)
+		}
+	}
+}

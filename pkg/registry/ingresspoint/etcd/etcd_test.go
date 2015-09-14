@@ -45,6 +45,11 @@ func validNewIngressPoint() *experimental.IngressPoint {
 				{
 					Domain: "foo.example.com",
 					Path:   "/images",
+					Service: experimental.ServiceRef{
+						Name:      "fooservice",
+						Namespace: "default",
+						Port:      8080,
+					},
 				},
 			},
 		},
@@ -61,14 +66,19 @@ func TestCreate(t *testing.T) {
 	test.TestCreate(
 		// valid
 		IngressPoint,
-		// invalid (invalid name)
+		// Invalid IngressPoint.Spec.PathList.Path
 		&experimental.IngressPoint{
 			Spec: experimental.IngressPointSpec{
 				Host: "bar",
 				PathList: []experimental.PathRef{
 					{
 						Domain: "foo.example.com",
-						Path:   "/images",
+						Path:   "images",
+						Service: experimental.ServiceRef{
+							Name:      "fooservice",
+							Namespace: "default",
+							Port:      8080,
+						},
 					},
 				},
 			},
@@ -129,7 +139,6 @@ func TestWatch(t *testing.T) {
 		[]labels.Set{},
 		// not matching labels
 		[]labels.Set{
-			{"a": "c"},
 			{"foo": "bar"},
 		},
 		// matching fields

@@ -17,7 +17,9 @@ limitations under the License.
 package validation
 
 import (
+	"fmt"
 	"strconv"
+	"strings"
 
 	"k8s.io/kubernetes/pkg/api"
 	apivalidation "k8s.io/kubernetes/pkg/api/validation"
@@ -27,6 +29,12 @@ import (
 	errs "k8s.io/kubernetes/pkg/util/fielderrors"
 	"k8s.io/kubernetes/pkg/util/sets"
 )
+
+func intervalErrorMsg(lo, hi int) string {
+	return fmt.Sprintf(`must be greater than %d and less than %d`, lo, hi)
+}
+
+var portRangeErrorMsg string = intervalErrorMsg(0, 65536)
 
 const isNegativeErrorMsg string = `must be non-negative`
 
@@ -323,18 +331,110 @@ func ValidateJobUpdate(oldJob, job *experimental.Job) errs.ValidationErrorList {
 	return allErrs
 }
 
-func ValidateIngressPointUpdate(old, update *experimental.IngressPoint) errs.ValidationErrorList {
+// ValidateIngressPoint tests if required fields in the IngressPoint are set
+func ValidateIngressPoint(ingressPoint *experimental.IngressPoint) errs.ValidationErrorList {
 	allErrs := errs.ValidationErrorList{}
-	allErrs = append(allErrs, apivalidation.ValidateObjectMetaUpdate(&update.ObjectMeta, &old.ObjectMeta).Prefix("metadata")...)
-	// TODO ValidateIngressPointSpec not implemented.
-	// allErrs = append(allErrs, ValidateIngressPointSpec(&update.Spec).Prefix("spec")...)
+
+	allErrs = append(allErrs, apivalidation.ValidateObjectMeta(&ingressPoint.ObjectMeta, true, ValidateIngressPointName).Prefix("metadata")...)
+	allErrs = append(allErrs, ValidateIngressPointSpec(&ingressPoint.Spec).Prefix("spec")...)
 	return allErrs
 }
 
-func ValidateIngressPoint(obj *experimental.IngressPoint) errs.ValidationErrorList {
+// ValidateIngressPointUpdate tests to make sure a ingressPoint update can be applied.  Modifies oldIngressPoint
+func ValidateIngressPointUpdate(oldIngressPoint, ingressPoint *experimental.IngressPoint) errs.ValidationErrorList {
 	allErrs := errs.ValidationErrorList{}
-	allErrs = append(allErrs, apivalidation.ValidateObjectMeta(&obj.ObjectMeta, true, ValidateIngressPointName).Prefix("metadata")...)
-	// TODO ValidateIngressPointSpec not implemented.
-	// allErrs = append(allErrs, ValidateIngressPointSpec(&obj.Spec).Prefix("spec")...)
+
+	allErrs = append(allErrs, apivalidation.ValidateObjectMetaUpdate(&ingressPoint.ObjectMeta, &oldIngressPoint.ObjectMeta).Prefix("metadata")...)
+	allErrs = append(allErrs, ValidateIngressPointSpec(&ingressPoint.Spec).Prefix("spec")...)
+	return allErrs
+}
+
+// ValidateIngressPointSpec tests if required fields in the IngressPoint spec are set
+func ValidateIngressPointSpec(spec *experimental.IngressPointSpec) errs.ValidationErrorList {
+	allErrs := errs.ValidationErrorList{}
+
+	// host is not required but if it is set ensure it meets DNS requirements
+	if len(spec.Host) > 0 {
+		if !util.IsDNS1123Subdomain(spec.Host) {
+			allErrs = append(allErrs, errs.NewFieldInvalid("host", spec.Host, "host must conform to DNS 1123 subdomain conventions"))
+		}
+	}
+
+	allErrs = append(allErrs, ValidatePathlist(spec.PathList).Prefix("pathlist")...)
+	return allErrs
+}
+
+// ValidatePathlist tests if required fields in the IngressPointSpec.Pathlist are set
+func ValidatePathlist(pathlist []experimental.PathRef) errs.ValidationErrorList {
+	allErrs := errs.ValidationErrorList{}
+
+	if len(pathlist) == 0 {
+		return append(allErrs, errs.NewFieldRequired("pathlist"))
+	}
+
+	// check duplicate path for the same domain, consider (domain, path) pairs
+	domainPaths := make(map[experimental.PathRef]bool)
+
+	for i, path := range pathlist {
+		pErrs := errs.ValidationErrorList{}
+
+		// TODO: more sophisticated and friendily checks should be used here
+		// e.g. Path1 = /foo, Path2 = /foo/, Path3 = /foo/* should supposed to be equivalent paths if they are under the same Domain
+		// check duplicate path for the same domain
+		var key experimental.PathRef
+		key.Domain = path.Domain
+		key.Path = path.Path
+		if _, found := domainPaths[key]; found {
+			pErrs = append(pErrs, errs.NewFieldInvalid(fmt.Sprintf("spec.pathlist[%d].path", i), path.Path, "duplicate path specified"))
+		}
+		domainPaths[key] = true
+
+		// then validate
+		pErrs = append(pErrs, ValidateIngressPointPath(&path).Prefix("path")...)
+		pErrs = append(pErrs, ValidateIngressPointService(&path.Service).Prefix("service")...)
+
+		allErrs = append(allErrs, pErrs.PrefixIndex(i)...)
+	}
+
+	return allErrs
+}
+
+// ValidateIngressPointPath tests if required fields in the IngressPointSpec.Pathlist.Path are set
+func ValidateIngressPointPath(path *experimental.PathRef) errs.ValidationErrorList {
+	allErrs := errs.ValidationErrorList{}
+
+	if len(path.Domain) == 0 {
+		allErrs = append(allErrs, errs.NewFieldRequired("domain"))
+	} else if !util.IsDNS1123Subdomain(path.Domain) {
+		allErrs = append(allErrs, errs.NewFieldInvalid("domain", path.Domain, "domain must conform to DNS 1123 subdomain conventions"))
+	}
+
+	if len(path.Path) > 0 && !strings.HasPrefix(path.Path, "/") {
+		allErrs = append(allErrs, errs.NewFieldInvalid("path", path.Path, "path must begin with /"))
+	}
+
+	allErrs = append(allErrs, ValidateIngressPointService(&path.Service).Prefix("service")...)
+
+	return allErrs
+}
+
+// ValidateIngressPointService tests if required fields in the IngressPointSpec.Pathlist.Service are set
+func ValidateIngressPointService(service *experimental.ServiceRef) errs.ValidationErrorList {
+	allErrs := errs.ValidationErrorList{}
+
+	if len(service.Name) == 0 {
+		return append(allErrs, errs.NewFieldRequired("name"))
+	} else if ok, errMsg := apivalidation.ValidateServiceName(service.Name, false); !ok {
+		allErrs = append(allErrs, errs.NewFieldInvalid("name", service.Name, errMsg))
+	}
+
+	if ok, errMsg := apivalidation.ValidateNamespaceName(service.Namespace, false); !ok {
+		allErrs = append(allErrs, errs.NewFieldInvalid("namespace", service.Namespace, errMsg))
+	}
+
+	if !util.IsValidPortNum(service.Port) {
+		allErrs = append(allErrs, errs.NewFieldInvalid("port", service.Port, portRangeErrorMsg))
+	}
+
 	return allErrs
 }

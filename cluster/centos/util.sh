@@ -96,7 +96,18 @@ function trap-add {
 function validate-cluster() {
   # by default call the generic validate-cluster.sh script, customizable by
   # any cluster provider if this does not fit.
+  set +e
+
   "${KUBE_ROOT}/cluster/validate-cluster.sh"
+  #echo $?
+
+  echo "check service status"
+  verify-master
+  for minion in ${MINIONS}; do
+    verify-minion ${minion}
+  done
+
+  #"${KUBE_ROOT}/cluster/validate-cluster.sh"
 }
 
 # Instantiate a kubernetes cluster
@@ -105,11 +116,6 @@ function kube-up() {
 
   for minion in ${MINIONS}; do
     provision-minion ${minion}
-  done
-
-  verify-master
-  for minion in ${MINIONS}; do
-    verify-minion ${minion}
   done
 
   detect-master
@@ -143,9 +149,10 @@ function verify-master() {
     validated="0"
     local daemon
     for daemon in "${required_daemon[@]}"; do
+      #local is_active=$(kube-ssh "${MASTER}" "sudo systemctl is-active ${daemon}")
       local rc=0
-      kube-ssh "${MASTER}" "sudo pgrep -f ${daemon}" >/dev/null 2>&1 || rc="$?"
-      if [[ "${rc}" -ne "0" ]]; then
+      kube-ssh "${MASTER}" "sudo systemctl is-active ${daemon}" >/dev/null 2>&1 || rc="$?"
+      if [[ "${rc}" != "0" ]]; then
         printf "."
         validated="1"
         ((try_count=try_count+2))

@@ -27,5 +27,9 @@ script
 end script
 
 post-start script
-	/usr/bin/mk-docker-opts.sh -d /run/flannel/docker
+	exec /usr/bin/mk-docker-opts.sh -d /run/flannel/docker
+end script
+
+post-stop script
+        rm /run/flannel/docker
 end script

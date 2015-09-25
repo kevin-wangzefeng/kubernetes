@@ -8,7 +8,7 @@ Before=docker.service
 
 [Service]
 EnvironmentFile=-/opt/kubernetes/cfg/flannel
-ExecStart=/usr/bin/flanneld \${FLANNEL_ETCD} \${FLANNEL_ETCD_KEY}
+ExecStart=/usr/bin/flanneld \${FLANNEL_OPTS}
 ExecStartPost=/usr/bin/mk-docker-opts.sh -d /run/flannel/docker
 
 Type=notify

@@ -1,27 +1,27 @@
 {% if grains.os == 'Ubuntu' %}
-{% set environment_file = '/etc/default/flannel' %}
+{% set environment_file = '/etc/default/flanneld' %}
 {{ environment_file }}:
   file.managed:
-    - source: salt://flannel/default
+    - source: salt://flanneld/flanneld.conf
     - template: jinja
     - user: root
     - group: root
     - mode: 644
     - makedirs: true
 
-{% set init_file = '/etc/init/flannel.conf' %}
+{% set init_file = '/etc/init/flanneld.conf' %}
 {{ init_file }}:
   file.managed:
-    - source: salt://flannel/flannel.conf.upstart
+    - source: salt://flanneld/flanneld.conf.upstart
     - user: root
     - group: root
     - mode: 644
     - makedirs: true   
 
-{% set initd_file = '/etc/init.d/flannel' %}
+{% set initd_file = '/etc/init.d/flanneld' %}
 {{ initd_file }}:
   file.managed:
-    - source: salt://flannel/flannel.upstart
+    - source: salt://flanneld/flanneld.upstart
     - user: root
     - group: root
     - mode: 644
@@ -30,20 +30,20 @@
 {% else %}
 
 # copy centos files.
-{% set environment_file = '/opt/kubernetes/cfg/flannel' %}
+{% set environment_file = '/opt/kubernetes/cfg/flanneld' %}
 {{ environment_file }}:
   file.managed:
-    - source: salt://flannel/flanenl.service.conf
+    - source: salt://flanneld/flanneld.conf
     - template: jinja
     - user: root
     - group: root
     - mode: 644
     - makedirs: true
 
-{% set service_file = '/usr/lib/systemd/system/flannel.service' %}
+{% set service_file = '/usr/lib/systemd/system/flanneld.service' %}
 {{ service_file }}:
   file.managed:
-    - source: salt://flannel/flannel.service
+    - source: salt://flanneld/flanneld.service
     - user: root
     - group: root
     - mode: 644
@@ -51,11 +51,11 @@
 
 {% endif %}
 
-# copy flannel binary to nodes
-{% set binary_file = '/usr/bin/flannel' %}
+# copy flanneld binary to nodes
+{% set binary_file = '/usr/bin/flanneld' %}
 {{ binary_file }}:
   file.managed:
-    - source: salt://kube-bin/flannel
+    - source: salt://kube-bin/flanneld
     - user: root
     - group: root
     - mode: 755
@@ -70,11 +70,11 @@
     - mode: 755
     - makedirs: true
 
-flannel:
+flanneld:
   service:
-    - name: flannel
+    - name: flanneld
     - running
     - reload: True
     - watch:
-      - file: {{ environment_file }} 
+      - file: {{ binary_file }} 
 

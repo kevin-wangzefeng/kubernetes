@@ -1,0 +1,18 @@
+# TODO(@kenvin-wangzefeng): not finished
+
+
+[Unit]
+Description=Flanneld overlay address etcd agent
+After=network.target
+Before=docker.service
+
+[Service]
+EnvironmentFile=-/opt/kubernetes/cfg/flannel
+ExecStart=/usr/bin/flanneld \${FLANNEL_ETCD} \${FLANNEL_ETCD_KEY}
+ExecStartPost=/usr/bin/mk-docker-opts.sh -d /run/flannel/docker
+
+Type=notify
+
+[Install]
+WantedBy=multi-user.target
+RequiredBy=docker.service

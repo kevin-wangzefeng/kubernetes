@@ -27,6 +27,15 @@
     - mode: 644
     - makedirs: true
 
+/etc/init/mk-docker-opts.conf:
+  file.managed:
+    - source: salt://flanneld/mk-docker-opts.conf.upstart
+    - user: root
+    - group: root
+    - mode: 644
+    - makedirs: true
+
+
 {% else %}
 
 # copy centos files.

@@ -1,0 +1,15 @@
+description "Flannel service"
+
+respawn
+
+start on flanneld
+
+script
+	while [ ! -e "/run/flannel/subnet.env" ]
+	do
+		sleep 3
+	done
+
+	/usr/bin/mk-docker-opts.sh -d /run/flannel/docker
+end script
+

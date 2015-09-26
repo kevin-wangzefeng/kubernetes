@@ -1,15 +1,15 @@
-description "Flannel service"
+description "Generate DOCKER_OPTS uses Flannel network"
 
 respawn
 
 start on flanneld
 
 script
-	while [ ! -e "/run/flannel/subnet.env" ]
-	do
-		sleep 3
-	done
+  while [ ! -e "/run/flannel/subnet.env" ]
+  do
+    sleep 3
+  done
 
-	/usr/bin/mk-docker-opts.sh -d /run/flannel/docker
+  /usr/bin/mk-docker-opts.sh -d /run/flannel/docker
 end script
 

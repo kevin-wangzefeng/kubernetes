@@ -35,6 +35,13 @@
     - mode: 644
     - makedirs: true
 
+/etc/init/set_docker_bridge.conf:
+  file.managed:
+    - source: salt://flanneld/set_docker_bridge.conf
+    - user: root
+    - group: root
+    - mode: 644
+    - makedirs: true
 
 {% else %}
 
@@ -64,7 +71,7 @@
 {% set binary_file = '/usr/bin/flanneld' %}
 {{ binary_file }}:
   file.managed:
-    - source: salt://kube-bin/flanneld
+    - source: salt://kube-bins/flanneld
     - user: root
     - group: root
     - mode: 755
@@ -73,7 +80,7 @@
 {% set post_start_script = '/usr/bin/mk-docker-opts.sh' %}
 {{ post_start_script }}:
   file.managed:
-    - source: salt://kube-bin/mk-docker-opts.sh
+    - source: salt://kube-bins/mk-docker-opts.sh
     - user: root
     - group: root
     - mode: 755

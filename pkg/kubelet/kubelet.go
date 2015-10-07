@@ -299,8 +299,6 @@ func NewMainKubelet(
 		resolverConfig:                 resolverConfig,
 		cpuCFSQuota:                    cpuCFSQuota,
 		daemonEndpoints:                daemonEndpoints,
-		flannelServer:                  &FlannelServer{kubeClient},
-		useDefaultOverlay:              useDefaultOverlay,
 
 		// Flannel parameters
 		useDefaultOverlay: useDefaultOverlay && kubeClient != nil,
@@ -513,9 +511,6 @@ type Kubelet struct {
 	probeManager prober.Manager
 	// TODO: Move prober ownership to the probeManager once the runtime no longer depends on it.
 	prober prober.Prober
-	// Serves flannel interface over http
-	flannelServer     *FlannelServer
-	useDefaultOverlay bool
 
 	// How long to keep idle streaming command execution/port forwarding
 	// connections open before terminating them
@@ -615,6 +610,7 @@ type Kubelet struct {
 
 	// Information about the ports which are opened by daemons on Node running this Kubelet server.
 	daemonEndpoints *api.NodeDaemonEndpoints
+
 	// Flannel parameters
 	useDefaultOverlay bool
 	networkConfig     string

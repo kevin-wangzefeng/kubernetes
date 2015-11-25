@@ -691,6 +691,100 @@ func TestValidateDaemonSet(t *testing.T) {
 	}
 }
 
+func TestValidateDedicatedUpdate(t *testing.T) {
+	type ddUpdateTest struct {
+		old    extensions.Dedicated
+		update extensions.Dedicated
+	}
+	successCases := []ddUpdateTest{
+		{
+			old: extensions.Dedicated{
+				ObjectMeta: api.ObjectMeta{Name: "abc", Namespace: api.NamespaceDefault},
+				Spec: extensions.DedicatedSpec{
+					LabelValue: "foo",
+				},
+			},
+			update: extensions.Dedicated{
+				ObjectMeta: api.ObjectMeta{Name: "abc", Namespace: api.NamespaceDefault},
+				Spec: extensions.DedicatedSpec{
+					LabelValue: "bar",
+				},
+			},
+		},
+	}
+	for _, successCase := range successCases {
+		successCase.old.ObjectMeta.ResourceVersion = "1"
+		successCase.update.ObjectMeta.ResourceVersion = "1"
+		if errs := ValidateDedicatedUpdate(&successCase.update, &successCase.old); len(errs) != 0 {
+			t.Errorf("expected success: %v", errs)
+		}
+	}
+	errorCases := map[string]ddUpdateTest{
+		"change Dedicated name": {
+			old: extensions.Dedicated{
+				ObjectMeta: api.ObjectMeta{Name: "", Namespace: api.NamespaceDefault},
+				Spec: extensions.DedicatedSpec{
+					LabelValue: "foo",
+				},
+			},
+			update: extensions.Dedicated{
+				ObjectMeta: api.ObjectMeta{Name: "abc", Namespace: api.NamespaceDefault},
+				Spec: extensions.DedicatedSpec{
+					LabelValue: "foo",
+				},
+			},
+		},
+	}
+	for testName, errorCase := range errorCases {
+		if errs := ValidateDedicatedUpdate(&errorCase.update, &errorCase.old); len(errs) == 0 {
+			t.Errorf("expected failure: %s", testName)
+		}
+	}
+}
+
+func TestValidateDedicated(t *testing.T) {
+	validLabelValue := "foo"
+	invalidLabelValue := "foo_"
+
+	successCases := []extensions.Dedicated{
+		{
+			ObjectMeta: api.ObjectMeta{Name: "abc", Namespace: api.NamespaceDefault},
+			Spec: extensions.DedicatedSpec{
+				LabelValue: validLabelValue,
+			},
+		},
+	}
+	for _, successCase := range successCases {
+		if errs := ValidateDedicated(&successCase); len(errs) != 0 {
+			t.Errorf("expected success: %v", errs)
+		}
+	}
+
+	errorCases := map[string]extensions.Dedicated{
+		"Invalid label value": {
+			ObjectMeta: api.ObjectMeta{Name: "", Namespace: api.NamespaceDefault},
+			Spec: extensions.DedicatedSpec{
+				LabelValue: invalidLabelValue,
+			},
+		},
+	}
+	for k, v := range errorCases {
+		errs := ValidateDedicated(&v)
+		if len(errs) == 0 {
+			t.Errorf("expected failure for %s", k)
+		}
+		for i := range errs {
+			field := errs[i].(*validation.Error).Field
+			if !strings.HasPrefix(field, "spec.template.") &&
+				field != "metadata.name" &&
+				field != "metadata.namespace" &&
+				field != "spec.labelValue" {
+				t.Errorf("%s: missing prefix for: %v", k, errs[i])
+			}
+		}
+	}
+}
+
 func validDeployment() *extensions.Deployment {
 	return &extensions.Deployment{
 		ObjectMeta: api.ObjectMeta{

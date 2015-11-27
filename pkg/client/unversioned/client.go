@@ -52,7 +52,6 @@ type Interface interface {
 	SwaggerSchemaInterface
 	Extensions() ExtensionsInterface
 	Discovery() DiscoveryInterface
-	DedicatedMachinesNamespacer
 }
 
 func (c *Client) ReplicationControllers(namespace string) ReplicationControllerInterface {
@@ -258,8 +257,4 @@ func (c *Client) Extensions() ExtensionsInterface {
 
 func (c *Client) Discovery() DiscoveryInterface {
 	return c.DiscoveryClient
-}
-
-func (c *Client) DedicatedMachines(namespace string) DedicatedMachineInterface {
-	return newDedicatedMachines(c, namespace)
 }

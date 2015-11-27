@@ -24,7 +24,7 @@ import (
 	"k8s.io/kubernetes/pkg/watch"
 )
 
-// DaemonsSetsNamespacer has methods to work with DedicatedMachine resources in a namespace
+// DedicatedMachinesNamespacer has methods to work with DedicatedMachine resources in a namespace
 type DedicatedMachinesNamespacer interface {
 	DedicatedMachines(namespace string) DedicatedMachineInterface
 }
@@ -34,12 +34,11 @@ type DedicatedMachineInterface interface {
 	Get(name string) (*extensions.DedicatedMachine, error)
 	Create(ctrl *extensions.DedicatedMachine) (*extensions.DedicatedMachine, error)
 	Update(ctrl *extensions.DedicatedMachine) (*extensions.DedicatedMachine, error)
-	UpdateStatus(ctrl *extensions.DedicatedMachine) (*extensions.DedicatedMachine, error)
 	Delete(name string) error
 	Watch(label labels.Selector, field fields.Selector, opts api.ListOptions) (watch.Interface, error)
 }
 
-// dedicatedMachines implements DaemonsSetsNamespacer interface
+// dedicatedMachines implements DedicatedMachinesNamespacer interface
 type dedicatedMachines struct {
 	r  *ExtensionsClient
 	ns string
@@ -58,40 +57,33 @@ func (c *dedicatedMachines) List(label labels.Selector, field fields.Selector) (
 	return
 }
 
-// Get returns information about a particular daemon set.
+// Get returns information about a particular dedicatedMachine set.
 func (c *dedicatedMachines) Get(name string) (result *extensions.DedicatedMachine, err error) {
 	result = &extensions.DedicatedMachine{}
 	err = c.r.Get().Namespace(c.ns).Resource("dedicatedmachines").Name(name).Do().Into(result)
 	return
 }
 
-// Create creates a new daemon set.
-func (c *dedicatedMachines) Create(daemon *extensions.DedicatedMachine) (result *extensions.DedicatedMachine, err error) {
+// Create creates a new dedicatedMachine set.
+func (c *dedicatedMachines) Create(dedicatedMachine *extensions.DedicatedMachine) (result *extensions.DedicatedMachine, err error) {
 	result = &extensions.DedicatedMachine{}
-	err = c.r.Post().Namespace(c.ns).Resource("dedicatedmachines").Body(daemon).Do().Into(result)
+	err = c.r.Post().Namespace(c.ns).Resource("dedicatedmachines").Body(dedicatedMachine).Do().Into(result)
 	return
 }
 
-// Update updates an existing daemon set.
-func (c *dedicatedMachines) Update(daemon *extensions.DedicatedMachine) (result *extensions.DedicatedMachine, err error) {
+// Update updates an existing dedicatedMachine set.
+func (c *dedicatedMachines) Update(dedicatedMachine *extensions.DedicatedMachine) (result *extensions.DedicatedMachine, err error) {
 	result = &extensions.DedicatedMachine{}
-	err = c.r.Put().Namespace(c.ns).Resource("dedicatedmachines").Name(daemon.Name).Body(daemon).Do().Into(result)
+	err = c.r.Put().Namespace(c.ns).Resource("dedicatedmachines").Name(dedicatedMachine.Name).Body(dedicatedMachine).Do().Into(result)
 	return
 }
 
-// UpdateStatus updates an existing daemon set status
-func (c *dedicatedMachines) UpdateStatus(daemon *extensions.DedicatedMachine) (result *extensions.DedicatedMachine, err error) {
-	result = &extensions.DedicatedMachine{}
-	err = c.r.Put().Namespace(c.ns).Resource("dedicatedmachines").Name(daemon.Name).SubResource("status").Body(daemon).Do().Into(result)
-	return
-}
-
-// Delete deletes an existing daemon set.
+// Delete deletes an existing dedicatedMachine set.
 func (c *dedicatedMachines) Delete(name string) error {
 	return c.r.Delete().Namespace(c.ns).Resource("dedicatedmachines").Name(name).Do().Error()
 }
 
-// Watch returns a watch.Interface that watches the requested daemon sets.
+// Watch returns a watch.Interface that watches the requested dedicatedMachine sets.
 func (c *dedicatedMachines) Watch(label labels.Selector, field fields.Selector, opts api.ListOptions) (watch.Interface, error) {
 	return c.r.Get().
 		Prefix("watch").

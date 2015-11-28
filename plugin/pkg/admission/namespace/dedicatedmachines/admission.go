@@ -42,8 +42,9 @@ func init() {
 // It is useful in deployments that do not want to restrict creation of a namespace prior to its usage.
 type dedicated struct {
 	*admission.Handler
-	client client.Interface
-	store  cache.Store
+	client          client.Interface
+	extensionClient client.ExtensionsInterface
+	store           cache.Store
 }
 
 func (d *dedicated) Admit(a admission.Attributes) (err error) {
@@ -90,17 +91,18 @@ func (d *dedicated) Admit(a admission.Attributes) (err error) {
 		return errors.NewBadRequest("Resource was marked with kind Pod but was unable to be converted")
 	}
 
-	//TODO: add logic here
-	dedicatedMachine, err := d.client.DedicatedMachines(a.GetNamespace()).Get()
+	dedicatedMachines, err := d.extensionClient.DedicatedMachines(a.GetNamespace()).List(labels.Everything(), fields.Everything())
 	if err != nil {
 		return admission.NewForbidden(a, err)
 	}
 
 	if pod.Spec.NodeSelector == nil {
-		pod.Spec.NodeSelector = map[string]string{"dedicated": dedicatedMachine.Spec.LabelValue}
-	} else {
-		pod.Spec.NodeSelector["dedicated"] = dedicatedMachine.Spec.LabelValue
+		pod.Spec.NodeSelector = map[string]string{}
 	}
+
+	// TODO: Currently only support one dedicatedMachine's LabelValue,
+	// when nodeSelector supports 'IN' operator, this need to be improved.
+	pod.Spec.NodeSelector["dedicated"] = dedicatedMachines.Items[0].Spec.LabelValue
 	return nil
 }
 

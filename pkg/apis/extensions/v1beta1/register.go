@@ -46,6 +46,8 @@ func addKnownTypes() {
 		&ThirdPartyResourceList{},
 		&DaemonSetList{},
 		&DaemonSet{},
+		&DedicatedMachine{},
+		&DedicatedMachineList{},
 		&ThirdPartyResourceData{},
 		&ThirdPartyResourceDataList{},
 		&Ingress{},
@@ -67,6 +69,8 @@ func (*ThirdPartyResource) IsAnAPIObject()          {}
 func (*ThirdPartyResourceList) IsAnAPIObject()      {}
 func (*DaemonSet) IsAnAPIObject()                   {}
 func (*DaemonSetList) IsAnAPIObject()               {}
+func (*DedicatedMachine) IsAnAPIObject()            {}
+func (*DedicatedMachineList) IsAnAPIObject()        {}
 func (*ThirdPartyResourceData) IsAnAPIObject()      {}
 func (*ThirdPartyResourceDataList) IsAnAPIObject()  {}
 func (*Ingress) IsAnAPIObject()                     {}

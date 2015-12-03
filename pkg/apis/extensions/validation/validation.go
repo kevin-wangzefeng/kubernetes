@@ -240,7 +240,7 @@ func ValidateDedicatedSpec(spec *extensions.DedicatedMachineSpec) validation.Err
 	allErrs := validation.ErrorList{}
 	var labelValueErrorMsg string = fmt.Sprintf(`must have at most %d characters, matching regex %s: e.g. "MyValue" or ""`, validation.LabelValueMaxLength, validation.LabelValueFmt)
 	if !validation.IsValidLabelValue(spec.LabelValue) {
-		allErrs = append(allErrs, validation.NewFieldInvalid("labelValue", spec.LabelValue, labelValueErrorMsg))
+		allErrs = append(allErrs, validation.NewInvalidError("labelValue", spec.LabelValue, labelValueErrorMsg))
 	}
 	return allErrs
 }

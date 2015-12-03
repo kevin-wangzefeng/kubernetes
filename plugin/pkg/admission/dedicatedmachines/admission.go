@@ -22,6 +22,7 @@ import (
 	"k8s.io/kubernetes/pkg/admission"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/errors"
+	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/client/cache"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/fields"
@@ -56,7 +57,7 @@ func (d *dedicated) Admit(a admission.Attributes) (err error) {
 		return errors.NewBadRequest("Resource was marked with kind Pod but was unable to be converted")
 	}
 
-	dedicatedMachines, err := d.extensionClient.DedicatedMachines(a.GetNamespace()).List(labels.Everything(), fields.Everything())
+	dedicatedMachines, err := d.extensionClient.DedicatedMachines(a.GetNamespace()).List(labels.Everything(), fields.Everything(), unversioned.ListOptions{})
 	if err != nil {
 		return admission.NewForbidden(a, err)
 	}
@@ -81,10 +82,10 @@ func NewDedicated(c client.Interface) admission.Interface {
 	reflector := cache.NewReflector(
 		&cache.ListWatch{
 			ListFunc: func() (runtime.Object, error) {
-				return c.Namespaces().List(labels.Everything(), fields.Everything())
+				return c.Namespaces().List(labels.Everything(), fields.Everything(), unversioned.ListOptions{})
 			},
-			WatchFunc: func(options api.ListOptions) (watch.Interface, error) {
-				return c.Namespaces().Watch(labels.Everything(), fields.Everything(), options)
+			WatchFunc: func(options unversioned.ListOptions) (watch.Interface, error) {
+				return c.Namespaces().Watch(options)
 			},
 		},
 		&api.Namespace{},
@@ -106,3 +107,4 @@ func createProvision(c client.Interface, store cache.Store) admission.Interface 
 		store:   store,
 	}
 }
+

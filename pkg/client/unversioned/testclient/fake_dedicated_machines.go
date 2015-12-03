@@ -17,7 +17,7 @@ limitations under the License.
 package testclient
 
 import (
-	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	kclientlib "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/fields"
@@ -44,7 +44,7 @@ func (c *FakeDedicatedMachines) Get(name string) (*extensions.DedicatedMachine, 
 	return obj.(*extensions.DedicatedMachine), err
 }
 
-func (c *FakeDedicatedMachines) List(label labels.Selector, field fields.Selector) (*extensions.DedicatedMachineList, error) {
+func (c *FakeDedicatedMachines) List(label labels.Selector, field fields.Selector, opts unversioned.ListOptions) (*extensions.DedicatedMachineList, error) {
 	obj, err := c.Fake.Invokes(NewListAction("dedicatedmachines", c.Namespace, label, field), &extensions.DedicatedMachineList{})
 	if obj == nil {
 		return nil, err
@@ -81,6 +81,7 @@ func (c *FakeDedicatedMachines) Delete(name string) error {
 	return err
 }
 
-func (c *FakeDedicatedMachines) Watch(label labels.Selector, field fields.Selector, opts api.ListOptions) (watch.Interface, error) {
-	return c.Fake.InvokesWatch(NewWatchAction("dedicatedmachines", c.Namespace, label, field, opts))
+func (c *FakeDedicatedMachines) Watch(opts unversioned.ListOptions) (watch.Interface, error) {
+	return c.Fake.InvokesWatch(NewWatchAction("dedicatedmachines", c.Namespace, opts))
 }
+

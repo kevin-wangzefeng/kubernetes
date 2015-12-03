@@ -18,6 +18,7 @@ package unversioned
 
 import (
 	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/fields"
 	"k8s.io/kubernetes/pkg/labels"
@@ -30,12 +31,12 @@ type DedicatedMachinesNamespacer interface {
 }
 
 type DedicatedMachineInterface interface {
-	List(label labels.Selector, field fields.Selector) (*extensions.DedicatedMachineList, error)
+	List(label labels.Selector, field fields.Selector, opts unversioned.ListOptions) (*extensions.DedicatedMachineList, error)
 	Get(name string) (*extensions.DedicatedMachine, error)
 	Create(ctrl *extensions.DedicatedMachine) (*extensions.DedicatedMachine, error)
 	Update(ctrl *extensions.DedicatedMachine) (*extensions.DedicatedMachine, error)
 	Delete(name string) error
-	Watch(label labels.Selector, field fields.Selector, opts api.ListOptions) (watch.Interface, error)
+	Watch(opts unversioned.ListOptions) (watch.Interface, error)
 }
 
 // dedicatedMachines implements DedicatedMachinesNamespacer interface
@@ -51,9 +52,9 @@ func newDedicatedMachines(c *ExtensionsClient, namespace string) *dedicatedMachi
 // Ensure statically that dedicatedMachines implements DedicatedMachinesInterface.
 var _ DedicatedMachineInterface = &dedicatedMachines{}
 
-func (c *dedicatedMachines) List(label labels.Selector, field fields.Selector) (result *extensions.DedicatedMachineList, err error) {
+func (c *dedicatedMachines) List(label labels.Selector, field fields.Selector, opts unversioned.ListOptions) (result *extensions.DedicatedMachineList, err error) {
 	result = &extensions.DedicatedMachineList{}
-	err = c.r.Get().Namespace(c.ns).Resource("dedicatedmachines").LabelsSelectorParam(label).FieldsSelectorParam(field).Do().Into(result)
+	err = c.r.Get().Namespace(c.ns).Resource("dedicatedmachines").VersionedParams(&opts, api.Scheme).LabelsSelectorParam(label).FieldsSelectorParam(field).Do().Into(result)
 	return
 }
 
@@ -84,14 +85,12 @@ func (c *dedicatedMachines) Delete(name string) error {
 }
 
 // Watch returns a watch.Interface that watches the requested dedicatedMachine sets.
-func (c *dedicatedMachines) Watch(label labels.Selector, field fields.Selector, opts api.ListOptions) (watch.Interface, error) {
+func (c *dedicatedMachines) Watch(opts unversioned.ListOptions) (watch.Interface, error) {
 	return c.r.Get().
 		Prefix("watch").
 		Namespace(c.ns).
 		Resource("dedicatedmachines").
-		Param("resourceVersion", opts.ResourceVersion).
-		TimeoutSeconds(TimeoutFromListOptions(opts)).
-		LabelsSelectorParam(label).
-		FieldsSelectorParam(field).
+		VersionedParams(&opts, api.Scheme).
 		Watch()
 }
+

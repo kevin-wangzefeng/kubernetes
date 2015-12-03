@@ -17,10 +17,12 @@ limitations under the License.
 package unversioned
 
 import (
+	"net/url"
 	"testing"
 
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/testapi"
+	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/fields"
 	"k8s.io/kubernetes/pkg/labels"
@@ -53,7 +55,7 @@ func TestListDedicatedMachines(t *testing.T) {
 			},
 		},
 	}
-	receivedDSs, err := c.Setup(t).Extensions().DedicatedMachines(ns).List(labels.Everything(), fields.Everything())
+	receivedDSs, err := c.Setup(t).Extensions().DedicatedMachines(ns).List(labels.Everything(), fields.Everything(), unversioned.ListOptions{})
 	c.Validate(t, receivedDSs, err)
 
 }
@@ -147,3 +149,17 @@ func TestCreateDedicatedMachine(t *testing.T) {
 	receivedDedicatedMachine, err := c.Setup(t).Extensions().DedicatedMachines(ns).Create(requestDedicatedMachine)
 	c.Validate(t, receivedDedicatedMachine, err)
 }
+
+func TestDedicatedMachineWatch(t *testing.T) {
+	c := &testClient{
+		Request: testRequest{
+			Method: "GET",
+			Path:   testapi.Extensions.ResourcePathWithPrefix("watch", getDMResourceName(), "", ""),
+			Query:  url.Values{"resourceVersion": []string{}},
+		},
+		Response: Response{StatusCode: 200},
+	}
+	_, err := c.Setup(t).DedicatedMachines(api.NamespaceAll).Watch(unversioned.ListOptions{})
+	c.Validate(t, nil, err)
+}
+

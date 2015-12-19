@@ -1411,6 +1411,10 @@ func TestValidatePodSpec(t *testing.T) {
 			DNSPolicy:             api.DNSClusterFirst,
 			ActiveDeadlineSeconds: &activeDeadlineSeconds,
 			ServiceAccountName:    "acct",
+			Affinity: &api.Affinity{
+				HardNodeAffinity: &api.NodeSelector{NodeSelectorTerms: []api.NodeSelectorTerm{{MatchExpressions: []api.NodeSelectorRequirement{{Key: "nodeselctreq2", Operator: api.NodeSelectorOpDoesNotExist}}}}},
+				SoftNodeAffinity: []api.SoftNodeAffinityTerm{{Weight: 2, MatchExpressions: []api.NodeSelectorRequirement{{Key: "nodeselctreq2", Operator: api.NodeSelectorOpDoesNotExist}}}},
+			},
 		},
 		{ // Populate HostNetwork.
 			Containers: []api.Container{
@@ -1441,6 +1445,16 @@ func TestValidatePodSpec(t *testing.T) {
 			Containers:    []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
 			RestartPolicy: api.RestartPolicyAlways,
 			DNSPolicy:     api.DNSClusterFirst,
+		},
+		{ // Populate Affinity.
+			Volumes:       []api.Volume{{Name: "vol", VolumeSource: api.VolumeSource{EmptyDir: &api.EmptyDirVolumeSource{}}}},
+			Containers:    []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
+			RestartPolicy: api.RestartPolicyAlways,
+			DNSPolicy:     api.DNSClusterFirst,
+			Affinity: &api.Affinity{
+				HardNodeAffinity: &api.NodeSelector{NodeSelectorTerms: []api.NodeSelectorTerm{{MatchExpressions: []api.NodeSelectorRequirement{{Key: "key1", Operator: api.NodeSelectorOpIn, Values: []string{"value1", "value2"}}}}}},
+				SoftNodeAffinity: []api.SoftNodeAffinityTerm{{Weight: 2, MatchExpressions: []api.NodeSelectorRequirement{{Key: "key2", Operator: api.NodeSelectorOpNotIn, Values: []string{"value1", "value2"}}}}},
+			},
 		},
 	}
 	for i := range successCases {
@@ -1513,6 +1527,26 @@ func TestValidatePodSpec(t *testing.T) {
 			Containers:    []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
 			RestartPolicy: api.RestartPolicyAlways,
 			DNSPolicy:     api.DNSClusterFirst,
+		},
+		"bad SoftNodeaffinity weight": {
+			Volumes:       []api.Volume{{Name: "vol", VolumeSource: api.VolumeSource{EmptyDir: &api.EmptyDirVolumeSource{}}}},
+			Containers:    []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
+			RestartPolicy: api.RestartPolicyAlways,
+			DNSPolicy:     api.DNSClusterFirst,
+			Affinity: &api.Affinity{
+				HardNodeAffinity: &api.NodeSelector{NodeSelectorTerms: []api.NodeSelectorTerm{{MatchExpressions: []api.NodeSelectorRequirement{{Key: "key1", Operator: api.NodeSelectorOpDoesNotExist}}}}},
+				SoftNodeAffinity: []api.SoftNodeAffinityTerm{{Weight: 0, MatchExpressions: []api.NodeSelectorRequirement{{Key: "key2", Operator: api.NodeSelectorOpDoesNotExist}}}},
+			},
+		},
+		"without values andOpIn in HardNodeaffinity ": {
+			Volumes:       []api.Volume{{Name: "vol", VolumeSource: api.VolumeSource{EmptyDir: &api.EmptyDirVolumeSource{}}}},
+			Containers:    []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
+			RestartPolicy: api.RestartPolicyAlways,
+			DNSPolicy:     api.DNSClusterFirst,
+			Affinity: &api.Affinity{
+				HardNodeAffinity: &api.NodeSelector{NodeSelectorTerms: []api.NodeSelectorTerm{{MatchExpressions: []api.NodeSelectorRequirement{{Key: "key1", Operator: api.NodeSelectorOpIn}}}}},
+				SoftNodeAffinity: []api.SoftNodeAffinityTerm{{Weight: 0, MatchExpressions: []api.NodeSelectorRequirement{{Key: "key2", Operator: api.NodeSelectorOpDoesNotExist}}}},
+			},
 		},
 	}
 	for k, v := range failureCases {

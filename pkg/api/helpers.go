@@ -263,3 +263,36 @@ func ParseRFC3339(s string, nowFn func() unversioned.Time) (unversioned.Time, er
 	}
 	return unversioned.Time{t}, nil
 }
+
+// NodeSelectorRequirementsAsSelector converts the []NodeSelectorRequirement api type into a struct that implements
+// labels.Selector
+func NodeSelectorRequirementsAsSelector(nsm []NodeSelectorRequirement) (labels.Selector, error) {
+	if nsm == nil {
+		return labels.Nothing(), nil
+	}
+	if len(nsm) == 0 {
+		return labels.Everything(), nil
+	}
+	selector := labels.NewSelector()
+	for _, expr := range nsm {
+		var op labels.Operator
+		switch expr.Operator {
+		case NodeSelectorOpIn:
+			op = labels.InOperator
+		case NodeSelectorOpNotIn:
+			op = labels.NotInOperator
+		case NodeSelectorOpExists:
+			op = labels.ExistsOperator
+		case NodeSelectorOpDoesNotExist:
+			op = labels.DoesNotExistOperator
+		default:
+			return nil, fmt.Errorf("%q is not a valid pod selector operator", expr.Operator)
+		}
+		r, err := labels.NewRequirement(expr.Key, op, sets.NewString(expr.Values...))
+		if err != nil {
+			return nil, err
+		}
+		selector = selector.Add(*r)
+	}
+	return selector, nil
+}

@@ -283,6 +283,10 @@ func NodeSelectorRequirementsAsSelector(nsm []NodeSelectorRequirement) (labels.S
 			op = labels.ExistsOperator
 		case NodeSelectorOpDoesNotExist:
 			op = labels.DoesNotExistOperator
+		case NodeSelectorOpGt:
+			op = labels.GreaterThanOperator
+		case NodeSelectorOpLt:
+			op = labels.LessThanOperator
 		default:
 			return nil, fmt.Errorf("%q is not a valid pod selector operator", expr.Operator)
 		}

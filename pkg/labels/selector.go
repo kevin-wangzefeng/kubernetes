@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"k8s.io/kubernetes/pkg/util/sets"
@@ -70,6 +71,8 @@ const (
 	NotEqualsOperator    Operator = "!="
 	NotInOperator        Operator = "notin"
 	ExistsOperator       Operator = "exists"
+	GreaterThanOperator  Operator = "Gt"
+	LessThanOperator     Operator = "Lt"
 )
 
 func NewSelector() Selector {
@@ -104,7 +107,8 @@ type Requirement struct {
 // (2) If the operator is In or NotIn, the values set must be non-empty.
 // (3) If the operator is Equals, DoubleEquals, or NotEquals, the values set must contain one value.
 // (4) If the operator is Exists or DoesNotExist, the value set must be empty.
-// (5) The key is invalid due to its length, or sequence
+// (5) If the operator is Gt or Lt, the values set must contain only one value.
+// (6) The key is invalid due to its length, or sequence
 //     of characters. See validateLabelKey for more details.
 //
 // The empty string is a valid value in the input values set.
@@ -124,6 +128,15 @@ func NewRequirement(key string, op Operator, vals sets.String) (*Requirement, er
 	case ExistsOperator, DoesNotExistOperator:
 		if len(vals) != 0 {
 			return nil, fmt.Errorf("values set must be empty for exists and does not exist")
+		}
+	case GreaterThanOperator, LessThanOperator:
+		if len(vals) != 1 {
+			return nil, fmt.Errorf("for 'Gt', 'Lt' operators, only one single value is required")
+		}
+		for val := range vals {
+			if _, err := strconv.ParseFloat(val, 64); err != nil {
+				return nil, fmt.Errorf("for 'Gt', 'Lt' operators, the value must be a number")
+			}
 		}
 	default:
 		return nil, fmt.Errorf("operator '%v' is not recognized", op)
@@ -162,6 +175,22 @@ func (r *Requirement) Matches(ls Labels) bool {
 		return ls.Has(r.key)
 	case DoesNotExistOperator:
 		return !ls.Has(r.key)
+	case GreaterThanOperator, LessThanOperator:
+		if !ls.Has(r.key) {
+			return false
+		}
+		lsValue, err := strconv.ParseFloat(ls.Get(r.key), 64)
+		if err != nil {
+			return false
+		}
+
+		// there is only one strValue in r.strValues here, checked in NewRequirement()
+		var rValue float64
+		for strValue := range r.strValues {
+			// value is already checked in NewRequirement, not check again here.
+			rValue, _ = strconv.ParseFloat(strValue, 64)
+		}
+		return (r.operator == GreaterThanOperator && rValue > lsValue) || (r.operator == LessThanOperator && rValue < lsValue)
 	default:
 		return false
 	}
@@ -210,6 +239,10 @@ func (r *Requirement) String() string {
 		buffer.WriteString(" in ")
 	case NotInOperator:
 		buffer.WriteString(" notin ")
+	case GreaterThanOperator:
+		buffer.WriteString(" > ")
+	case LessThanOperator:
+		buffer.WriteString(" < ")
 	case ExistsOperator, DoesNotExistOperator:
 		return buffer.String()
 	}
@@ -277,8 +310,10 @@ const (
 	DoesNotExistToken
 	DoubleEqualsToken
 	EqualsToken
+	GreaterThanToken
 	IdentifierToken // to represent keys and values
 	InToken
+	LessThanToken
 	NotEqualsToken
 	NotInToken
 	OpenParToken
@@ -292,7 +327,9 @@ var string2token = map[string]Token{
 	"!":     DoesNotExistToken,
 	"==":    DoubleEqualsToken,
 	"=":     EqualsToken,
+	">":     GreaterThanToken,
 	"in":    InToken,
+	"<":     LessThanToken,
 	"!=":    NotEqualsToken,
 	"notin": NotInToken,
 	"(":     OpenParToken,
@@ -312,7 +349,7 @@ func isWhitespace(ch byte) bool {
 // isSpecialSymbol detect if the character ch can be an operator
 func isSpecialSymbol(ch byte) bool {
 	switch ch {
-	case '=', '!', '(', ')', ',':
+	case '=', '!', '(', ')', ',', '>', '<':
 		return true
 	}
 	return false
@@ -573,6 +610,10 @@ func (p *Parser) parseOperator() (op Operator, err error) {
 		op = EqualsOperator
 	case DoubleEqualsToken:
 		op = DoubleEqualsOperator
+	case GreaterThanToken:
+		op = GreaterThanOperator
+	case LessThanToken:
+		op = LessThanOperator
 	case NotInToken:
 		op = NotInOperator
 	case NotEqualsToken:

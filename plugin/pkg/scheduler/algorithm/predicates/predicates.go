@@ -347,12 +347,50 @@ func NewSelectorMatchPredicate(info NodeInfo) algorithm.FitPredicate {
 	return selector.PodSelectorMatches
 }
 
+// New versions of the scheduler will apply their scheduling predicates
+// to both hardNodeAffinity and nodeSelector,
+// i.e. the pod can only schedule onto nodes that are in both sets.
+// We will not attempt to convert between hardNodeAffinity and nodeSelector.
 func PodMatchesNodeLabels(pod *api.Pod, node *api.Node) bool {
-	if len(pod.Spec.NodeSelector) == 0 {
+	if len(pod.Spec.NodeSelector) == 0 && (pod.Spec.Affinity == nil || pod.Spec.Affinity.HardNodeAffinity == nil) {
 		return true
 	}
-	selector := labels.SelectorFromSet(pod.Spec.NodeSelector)
-	return selector.Matches(labels.Set(node.Labels))
+
+	// Set nodeSelectorMatches default to true to avoid changing the final match result,
+	// will be updated to exact match result if nodeSelector is specified.
+	nodeSelectorMatches := true
+	if len(pod.Spec.NodeSelector) > 0 {
+		selector := labels.SelectorFromSet(pod.Spec.NodeSelector)
+		nodeSelectorMatches = selector.Matches(labels.Set(node.Labels))
+	}
+
+	// Set nodeAffinityMatches default to true to avoid changing the final match result,
+	// will be updated to exact match result if HardNodeAffinity is specified.
+	// A nil HardNodeAffinity means no-op
+	// A nil element of NodeSelector.NodeSelectorTerms matches no objects.
+	// An element of NodeSelector.NodeSelectorTerms that refers to an empty NodeSelectorTerm matches all objects.
+	nodeAffinityMatches := true
+	if pod.Spec.Affinity != nil && pod.Spec.Affinity.HardNodeAffinity != nil {
+		if len(pod.Spec.Affinity.HardNodeAffinity.NodeSelectorTerms) == 0 {
+			glog.V(10).Infof("No element in HardNodeAffinity.NodeSelectorTerms of Pod %+v, will match no labels of Node %+v.", podName(pod), node)
+			nodeAffinityMatches = labels.Nothing().Matches(labels.Set(node.Labels))
+			return nodeSelectorMatches && nodeAffinityMatches
+		}
+
+		// Match node selector term by term.
+		glog.V(10).Infof("Match for node selector terms %+v", pod.Spec.Affinity.HardNodeAffinity.NodeSelectorTerms)
+		nodeAffinityMatches = false
+		for _, req := range pod.Spec.Affinity.HardNodeAffinity.NodeSelectorTerms {
+			nodeSelector, err := api.NodeSelectorRequirementsAsSelector(req.MatchExpressions)
+			if err != nil {
+				glog.V(10).Infof("Failed to parse MatchExpressions: %+v, regarding as not match.", req.MatchExpressions)
+				return false
+			}
+			nodeAffinityMatches = nodeAffinityMatches || nodeSelector.Matches(labels.Set(node.Labels))
+		}
+	}
+
+	return nodeSelectorMatches && nodeAffinityMatches
 }
 
 type NodeSelector struct {

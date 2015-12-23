@@ -557,6 +557,128 @@ func TestPodFitsSelector(t *testing.T) {
 			fits: false,
 			test: "node labels are subset",
 		},
+		{
+			pod: &api.Pod{
+				Spec: api.PodSpec{
+					NodeSelector: map[string]string{
+						"foo": "bar",
+					},
+					Affinity: &api.Affinity{
+						HardNodeAffinity: &api.NodeSelector{NodeSelectorTerms: []api.NodeSelectorTerm{{MatchExpressions: []api.NodeSelectorRequirement{{Key: "foo", Operator: api.NodeSelectorOpIn, Values: []string{"bar", "value2"}}}}}},
+						SoftNodeAffinity: []api.SoftNodeAffinityTerm{{Weight: 2, MatchExpressions: []api.NodeSelectorRequirement{{Key: "key2", Operator: api.NodeSelectorOpNotIn, Values: []string{"value1", "value2"}}}}},
+					},
+				},
+			},
+			labels: map[string]string{
+				"foo": "bar",
+			},
+			fits: true,
+			test: "same labels with proper Affinity",
+		},
+		{
+			pod: &api.Pod{
+				Spec: api.PodSpec{
+					NodeSelector: map[string]string{
+						"foo": "bar",
+					},
+					Affinity: &api.Affinity{
+						HardNodeAffinity: &api.NodeSelector{NodeSelectorTerms: []api.NodeSelectorTerm{{MatchExpressions: []api.NodeSelectorRequirement{{Key: "foo", Operator: api.NodeSelectorOpIn, Values: []string{"value1", "value2"}}}}}},
+						SoftNodeAffinity: []api.SoftNodeAffinityTerm{{Weight: 2, MatchExpressions: []api.NodeSelectorRequirement{{Key: "key2", Operator: api.NodeSelectorOpNotIn, Values: []string{"value1", "value2"}}}}},
+					},
+				},
+			},
+			labels: map[string]string{
+				"foo": "bar",
+			},
+			fits: false,
+			test: "same labels and without matching Affinity values",
+		},
+		{
+			pod: &api.Pod{
+				Spec: api.PodSpec{
+					NodeSelector: map[string]string{
+						"foo": "bar",
+					},
+					Affinity: &api.Affinity{
+						HardNodeAffinity: &api.NodeSelector{NodeSelectorTerms: []api.NodeSelectorTerm{{MatchExpressions: []api.NodeSelectorRequirement{{Key: "foo", Operator: api.NodeSelectorOpIn, Values: []string{"bar", "value2"}}}}, {MatchExpressions: []api.NodeSelectorRequirement{{Key: "diffkey", Operator: api.NodeSelectorOpIn, Values: []string{"wrong", "value2"}}}}}},
+						SoftNodeAffinity: []api.SoftNodeAffinityTerm{{Weight: 2, MatchExpressions: []api.NodeSelectorRequirement{{Key: "key2", Operator: api.NodeSelectorOpNotIn, Values: []string{"value1", "value2"}}}}},
+					},
+				},
+			},
+			labels: map[string]string{
+				"foo": "bar",
+			},
+			fits: true,
+			test: "same labels with  Affinity with multiple NodeSelectTerms",
+		},
+		{
+			pod: &api.Pod{
+				Spec: api.PodSpec{
+					NodeSelector: map[string]string{
+						"foo": "bar",
+					},
+					Affinity: &api.Affinity{
+						HardNodeAffinity: &api.NodeSelector{},
+					},
+				},
+			},
+			labels: map[string]string{
+				"foo": "bar",
+			},
+			fits: false,
+			test: "same labels with  Affinity with nil NodeSelectTerms",
+		},
+		{
+			pod: &api.Pod{
+				Spec: api.PodSpec{
+					NodeSelector: map[string]string{
+						"foo": "bar",
+					},
+					Affinity: &api.Affinity{
+						HardNodeAffinity: &api.NodeSelector{NodeSelectorTerms: []api.NodeSelectorTerm{}},
+					},
+				},
+			},
+			labels: map[string]string{
+				"foo": "bar",
+			},
+			fits: true,
+			test: "same labels with  Affinity with zero NodeSelectTerms",
+		},
+		{
+			pod: &api.Pod{
+				Spec: api.PodSpec{
+					NodeSelector: map[string]string{
+						"foo": "bar",
+					},
+					Affinity: &api.Affinity{
+						HardNodeAffinity: &api.NodeSelector{NodeSelectorTerms: []api.NodeSelectorTerm{{}, {}}},
+					},
+				},
+			},
+			labels: map[string]string{
+				"foo": "bar",
+			},
+			fits: false,
+			test: "same labels with  Affinity with more NodeSelectTerms but with nil MatchExpressions",
+		},
+		{
+			pod: &api.Pod{
+				Spec: api.PodSpec{
+					NodeSelector: map[string]string{
+						"foo": "bar",
+					},
+					Affinity: &api.Affinity{
+						HardNodeAffinity: &api.NodeSelector{NodeSelectorTerms: []api.NodeSelectorTerm{{MatchExpressions: []api.NodeSelectorRequirement{}}}},
+					},
+				},
+			},
+			labels: map[string]string{
+				"foo": "bar",
+			},
+			fits: true,
+			test: "same labels with  Affinity with more NodeSelectTerms but with Zero MatchExpressions",
+		},
 	}
 	for _, test := range tests {
 		node := api.Node{ObjectMeta: api.ObjectMeta{Labels: test.labels}}

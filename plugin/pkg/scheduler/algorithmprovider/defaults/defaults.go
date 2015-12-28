@@ -92,5 +92,14 @@ func defaultPriorities() sets.String {
 				Weight: 1,
 			},
 		),
+		factory.RegisterPriorityConfigFactory(
+			"NodeAffinityPriority",
+			factory.PriorityConfigFactory{
+				Function: func(args factory.PluginFactoryArgs) algorithm.PriorityFunction {
+					return priorities.NewNodeAffinityPriority(args.NodeLister)
+				},
+				Weight: 1,
+			},
+		),
 	)
 }

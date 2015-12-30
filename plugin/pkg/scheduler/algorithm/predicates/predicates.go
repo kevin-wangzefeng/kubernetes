@@ -236,30 +236,35 @@ func NewSelectorMatchPredicate(info NodeInfo) algorithm.FitPredicate {
 	return selector.PodSelectorMatches
 }
 
+// New versions of the scheduler will apply their scheduling predicates
+// to both hardNodeAffinity and nodeSelector,
+// i.e. the pod can only schedule onto nodes that are in both sets.
+// We will not attempt to convert between hardNodeAffinity and nodeSelector.
 func PodMatchesNodeLabels(pod *api.Pod, node *api.Node) bool {
 	if len(pod.Spec.NodeSelector) == 0 && pod.Spec.Affinity == nil {
 		return true
 	}
-	selector := labels.SelectorFromSet(pod.Spec.NodeSelector)
+
+	// nodeSelector should not change the final match result unless it is specified.
+	nodeSelectorMatches := true
+	if len(pod.Spec.NodeSelector) > 0 {
+		selector := labels.SelectorFromSet(pod.Spec.NodeSelector)
+		nodeSelectorMatches = selector.Matches(labels.Set(node.Labels))
+	}
+
+	// nodeAffinityMatches should not change the final match result unless it is specified.
 	nodeAffinityMatches := true
-	if pod.Spec.Affinity != nil && pod.Spec.Affinity.HardNodeAffinity != nil {
+	if pod.Spec.Affinity != nil {
+		// A null node selector matches no objects
+		// A null node selector term matches no objects, too.
+		if pod.Spec.Affinity.HardNodeAffinity == nil || len(pod.Spec.Affinity.HardNodeAffinity.NodeSelectorTerms) == 0 {
+			nodeAffinityMatches = labels.Nothing().Matches(labels.Set(node.Labels))
+			return nodeSelectorMatches && nodeAffinityMatches
+		}
+
+		// Match node selector term by term.
+		// 'An empty node selector term matches all objects', is implemented in NodeSelectorRequirementsAsSelector()
 		nodeAffinityMatches = false
-		//A null node selector matches no objects.
-		if pod.Spec.Affinity.HardNodeAffinity.NodeSelectorTerms == nil {
-			nodeSelector1 := labels.Nothing()
-			nodeAffinityMatches = nodeSelector1.Matches(labels.Set(node.Labels))
-
-			return (selector.Matches(labels.Set(node.Labels)) && nodeAffinityMatches)
-		}
-		//An empty node selector matches all objects
-		if len(pod.Spec.Affinity.HardNodeAffinity.NodeSelectorTerms) == 0 {
-			nodeSelector2 := labels.Everything()
-			nodeAffinityMatches = nodeSelector2.Matches(labels.Set(node.Labels))
-
-			return (selector.Matches(labels.Set(node.Labels)) && nodeAffinityMatches)
-		}
-
-		//represents the OR of the selectors represented by the nodeSelectorTerms.
 		for _, req := range pod.Spec.Affinity.HardNodeAffinity.NodeSelectorTerms {
 			nodeSelector, err := api.NodeSelectorRequirementsAsSelector(req.MatchExpressions)
 			if err != nil {
@@ -268,7 +273,8 @@ func PodMatchesNodeLabels(pod *api.Pod, node *api.Node) bool {
 			nodeAffinityMatches = nodeAffinityMatches || nodeSelector.Matches(labels.Set(node.Labels))
 		}
 	}
-	return (selector.Matches(labels.Set(node.Labels)) && nodeAffinityMatches)
+
+	return nodeSelectorMatches && nodeAffinityMatches
 }
 
 type NodeSelector struct {

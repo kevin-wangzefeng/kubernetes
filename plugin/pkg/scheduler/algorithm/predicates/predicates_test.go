@@ -682,7 +682,7 @@ func TestPodFitsSelector(t *testing.T) {
 			labels: map[string]string{
 				"foo": "bar",
 			},
-			fits: true,
+			fits: false,
 			test: "same labels with Affinity with zero NodeSelectTerms",
 		},
 		{

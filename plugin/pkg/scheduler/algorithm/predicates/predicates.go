@@ -241,29 +241,31 @@ func NewSelectorMatchPredicate(info NodeInfo) algorithm.FitPredicate {
 // i.e. the pod can only schedule onto nodes that are in both sets.
 // We will not attempt to convert between hardNodeAffinity and nodeSelector.
 func PodMatchesNodeLabels(pod *api.Pod, node *api.Node) bool {
-	if len(pod.Spec.NodeSelector) == 0 && pod.Spec.Affinity == nil {
+	if len(pod.Spec.NodeSelector) == 0 && (pod.Spec.Affinity == nil || pod.Spec.Affinity.HardNodeAffinity == nil) {
 		return true
 	}
 
-	// nodeSelector should not change the final match result unless it is specified.
+	// Set nodeSelectorMatches default to true to avoid changing the final match result,
+	// will be updated to exact match result if nodeSelector is specified.
 	nodeSelectorMatches := true
 	if len(pod.Spec.NodeSelector) > 0 {
 		selector := labels.SelectorFromSet(pod.Spec.NodeSelector)
 		nodeSelectorMatches = selector.Matches(labels.Set(node.Labels))
 	}
 
-	// nodeAffinityMatches should not change the final match result unless it is specified.
+	// Set nodeAffinityMatches default to true to avoid changing the final match result,
+	// will be updated to exact match result if HardNodeAffinity is specified.
+	// A nil HardNodeAffinity means no-op
+	// A nil element of NodeSelector.NodeSelectorTerms matches no objects.
+	// An element of NodeSelector.NodeSelectorTerms that refers to an empty NodeSelectorTerm matches all objects.
 	nodeAffinityMatches := true
-	if pod.Spec.Affinity != nil {
-		// A null node selector matches no objects
-		// A null node selector term matches no objects, too.
-		if pod.Spec.Affinity.HardNodeAffinity == nil || len(pod.Spec.Affinity.HardNodeAffinity.NodeSelectorTerms) == 0 {
+	if pod.Spec.Affinity != nil && pod.Spec.Affinity.HardNodeAffinity != nil {
+		if len(pod.Spec.Affinity.HardNodeAffinity.NodeSelectorTerms) == 0 {
 			nodeAffinityMatches = labels.Nothing().Matches(labels.Set(node.Labels))
 			return nodeSelectorMatches && nodeAffinityMatches
 		}
 
 		// Match node selector term by term.
-		// 'An empty node selector term matches all objects', is implemented in NodeSelectorRequirementsAsSelector()
 		nodeAffinityMatches = false
 		for _, req := range pod.Spec.Affinity.HardNodeAffinity.NodeSelectorTerms {
 			nodeSelector, err := api.NodeSelectorRequirementsAsSelector(req.MatchExpressions)

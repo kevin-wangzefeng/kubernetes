@@ -32,6 +32,7 @@ import (
 func init() {
 	if err := Scheme.AddGeneratedDeepCopyFuncs(
 		deepCopy_api_AWSElasticBlockStoreVolumeSource,
+		deepCopy_api_Affinity,
 		deepCopy_api_Binding,
 		deepCopy_api_Capabilities,
 		deepCopy_api_CephFSVolumeSource,
@@ -97,6 +98,9 @@ func init() {
 		deepCopy_api_NodeDaemonEndpoints,
 		deepCopy_api_NodeList,
 		deepCopy_api_NodeResources,
+		deepCopy_api_NodeSelector,
+		deepCopy_api_NodeSelectorRequirement,
+		deepCopy_api_NodeSelectorTerm,
 		deepCopy_api_NodeSpec,
 		deepCopy_api_NodeStatus,
 		deepCopy_api_NodeSystemInfo,
@@ -152,6 +156,7 @@ func init() {
 		deepCopy_api_ServicePort,
 		deepCopy_api_ServiceSpec,
 		deepCopy_api_ServiceStatus,
+		deepCopy_api_SoftNodeAffinityTerm,
 		deepCopy_api_TCPSocketAction,
 		deepCopy_api_Volume,
 		deepCopy_api_VolumeMount,
@@ -178,6 +183,30 @@ func deepCopy_api_AWSElasticBlockStoreVolumeSource(in AWSElasticBlockStoreVolume
 	out.FSType = in.FSType
 	out.Partition = in.Partition
 	out.ReadOnly = in.ReadOnly
+	return nil
+}
+
+func deepCopy_api_Affinity(in Affinity, out *Affinity, c *conversion.Cloner) error {
+	if in.HardNodeAffinity != nil {
+		in, out := in.HardNodeAffinity, &out.HardNodeAffinity
+		*out = new(NodeSelector)
+		if err := deepCopy_api_NodeSelector(*in, *out, c); err != nil {
+			return err
+		}
+	} else {
+		out.HardNodeAffinity = nil
+	}
+	if in.SoftNodeAffinity != nil {
+		in, out := in.SoftNodeAffinity, &out.SoftNodeAffinity
+		*out = make([]SoftNodeAffinityTerm, len(in))
+		for i := range in {
+			if err := deepCopy_api_SoftNodeAffinityTerm(in[i], &(*out)[i], c); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.SoftNodeAffinity = nil
+	}
 	return nil
 }
 
@@ -1271,6 +1300,49 @@ func deepCopy_api_NodeResources(in NodeResources, out *NodeResources, c *convers
 	return nil
 }
 
+func deepCopy_api_NodeSelector(in NodeSelector, out *NodeSelector, c *conversion.Cloner) error {
+	if in.NodeSelectorTerms != nil {
+		in, out := in.NodeSelectorTerms, &out.NodeSelectorTerms
+		*out = make([]NodeSelectorTerm, len(in))
+		for i := range in {
+			if err := deepCopy_api_NodeSelectorTerm(in[i], &(*out)[i], c); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.NodeSelectorTerms = nil
+	}
+	return nil
+}
+
+func deepCopy_api_NodeSelectorRequirement(in NodeSelectorRequirement, out *NodeSelectorRequirement, c *conversion.Cloner) error {
+	out.Key = in.Key
+	out.Operator = in.Operator
+	if in.Values != nil {
+		in, out := in.Values, &out.Values
+		*out = make([]string, len(in))
+		copy(*out, in)
+	} else {
+		out.Values = nil
+	}
+	return nil
+}
+
+func deepCopy_api_NodeSelectorTerm(in NodeSelectorTerm, out *NodeSelectorTerm, c *conversion.Cloner) error {
+	if in.MatchExpressions != nil {
+		in, out := in.MatchExpressions, &out.MatchExpressions
+		*out = make([]NodeSelectorRequirement, len(in))
+		for i := range in {
+			if err := deepCopy_api_NodeSelectorRequirement(in[i], &(*out)[i], c); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.MatchExpressions = nil
+	}
+	return nil
+}
+
 func deepCopy_api_NodeSpec(in NodeSpec, out *NodeSpec, c *conversion.Cloner) error {
 	out.PodCIDR = in.PodCIDR
 	out.ExternalID = in.ExternalID
@@ -1941,6 +2013,15 @@ func deepCopy_api_PodSpec(in PodSpec, out *PodSpec, c *conversion.Cloner) error 
 	} else {
 		out.NodeSelector = nil
 	}
+	if in.Affinity != nil {
+		in, out := in.Affinity, &out.Affinity
+		*out = new(Affinity)
+		if err := deepCopy_api_Affinity(*in, *out, c); err != nil {
+			return err
+		}
+	} else {
+		out.Affinity = nil
+	}
 	out.ServiceAccountName = in.ServiceAccountName
 	out.NodeName = in.NodeName
 	if in.SecurityContext != nil {
@@ -2551,6 +2632,22 @@ func deepCopy_api_ServiceSpec(in ServiceSpec, out *ServiceSpec, c *conversion.Cl
 func deepCopy_api_ServiceStatus(in ServiceStatus, out *ServiceStatus, c *conversion.Cloner) error {
 	if err := deepCopy_api_LoadBalancerStatus(in.LoadBalancer, &out.LoadBalancer, c); err != nil {
 		return err
+	}
+	return nil
+}
+
+func deepCopy_api_SoftNodeAffinityTerm(in SoftNodeAffinityTerm, out *SoftNodeAffinityTerm, c *conversion.Cloner) error {
+	out.Weight = in.Weight
+	if in.MatchExpressions != nil {
+		in, out := in.MatchExpressions, &out.MatchExpressions
+		*out = make([]NodeSelectorRequirement, len(in))
+		for i := range in {
+			if err := deepCopy_api_NodeSelectorRequirement(in[i], &(*out)[i], c); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.MatchExpressions = nil
 	}
 	return nil
 }

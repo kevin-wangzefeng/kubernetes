@@ -1376,7 +1376,7 @@ func validateSoftNodeAffinity(softNodeAffinity []api.SoftNodeAffinityTerm, fldPa
 	return allErrs
 }
 
-// ValidatePodAffinity test that the specified Affinity field in PocSpec has valid data
+// ValidatePodAffinity test that the specified Affinity field in PodSpec has valid data
 func ValidatePodAffinity(affinity *api.Affinity, specPath, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 

@@ -23,6 +23,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/golang/glog"
 	"k8s.io/kubernetes/pkg/util/sets"
 	"k8s.io/kubernetes/pkg/util/validation"
 )
@@ -131,7 +132,7 @@ func NewRequirement(key string, op Operator, vals sets.String) (*Requirement, er
 		}
 	case GreaterThanOperator, LessThanOperator:
 		if len(vals) != 1 {
-			return nil, fmt.Errorf("for 'Gt', 'Lt' operators, only one single value is required")
+			return nil, fmt.Errorf("for 'Gt', 'Lt' operators, exactly one value is required")
 		}
 		for val := range vals {
 			if _, err := strconv.ParseFloat(val, 64); err != nil {
@@ -181,14 +182,23 @@ func (r *Requirement) Matches(ls Labels) bool {
 		}
 		lsValue, err := strconv.ParseFloat(ls.Get(r.key), 64)
 		if err != nil {
+			glog.V(10).Infof("Parse float failed for value %+v in label %+v, %+v", ls.Get(r.key), ls, err)
 			return false
 		}
 
-		// there is only one strValue in r.strValues here, checked in NewRequirement()
+		// There should be only one strValue in r.strValues, and can be converted to a float number.
+		if len(r.strValues) != 1 {
+			glog.V(10).Infof("Invalid values count %+v of requirement %+v, for 'Gt', 'Lt' operators, exactly one value is required", len(r.strValues), r)
+			return false
+		}
+
 		var rValue float64
 		for strValue := range r.strValues {
-			// value is already checked in NewRequirement, not check again here.
-			rValue, _ = strconv.ParseFloat(strValue, 64)
+			rValue, err = strconv.ParseFloat(strValue, 64)
+			if err != nil {
+				glog.V(10).Infof("Parse float failed for value %+v in requirement %+v, for 'Gt', 'Lt' operators, the value must be a number", strValue, r)
+				return false
+			}
 		}
 		return (r.operator == GreaterThanOperator && lsValue > rValue) || (r.operator == LessThanOperator && lsValue < rValue)
 	default:

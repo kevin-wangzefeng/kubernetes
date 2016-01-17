@@ -59,7 +59,7 @@ func (s *NodeAffinity) CalculateNodeAffinityPriority(pod *api.Pod, machinesToPod
 
 			nodeSelector, err := api.NodeSelectorRequirementsAsSelector(softNodeAffinityTerm.MatchExpressions)
 			if err != nil {
-				continue
+				return nil, err
 			}
 
 			for _, node := range nodes.Items {

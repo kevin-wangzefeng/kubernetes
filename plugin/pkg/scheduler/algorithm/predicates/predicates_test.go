@@ -709,7 +709,7 @@ func TestPodFitsSelector(t *testing.T) {
 			labels: map[string]string{
 				"foo": "bar",
 			},
-			fits: true,
+			fits: false,
 			test: "same labels with Affinity with one more NodeSelectTerms but with nil MatchExpressions",
 		},
 		{
@@ -726,7 +726,7 @@ func TestPodFitsSelector(t *testing.T) {
 			labels: map[string]string{
 				"foo": "bar",
 			},
-			fits: true,
+			fits: false,
 			test: "same labels with Affinity with one more NodeSelectTerms but with empty MatchExpressions",
 		},
 	}

@@ -347,10 +347,7 @@ func NewSelectorMatchPredicate(info NodeInfo) algorithm.FitPredicate {
 	return selector.PodSelectorMatches
 }
 
-// New versions of the scheduler will apply their scheduling predicates
-// to both hardNodeAffinity and nodeSelector,
-// i.e. the pod can only schedule onto nodes that are in both sets.
-// We will not attempt to convert between hardNodeAffinity and nodeSelector.
+// The pod can only schedule onto nodes that satisfy both hardNodeAffinity and nodeSelector.
 func PodMatchesNodeLabels(pod *api.Pod, node *api.Node) bool {
 	if len(pod.Spec.NodeSelector) == 0 && (pod.Spec.Affinity == nil || pod.Spec.Affinity.HardNodeAffinity == nil) {
 		return true
@@ -363,6 +360,9 @@ func PodMatchesNodeLabels(pod *api.Pod, node *api.Node) bool {
 		selector := labels.SelectorFromSet(pod.Spec.NodeSelector)
 		nodeSelectorMatches = selector.Matches(labels.Set(node.Labels))
 	}
+	if !nodeSelectorMatches {
+		return false
+	}
 
 	// Set nodeAffinityMatches default to true to avoid changing the final match result,
 	// will be updated to exact match result if HardNodeAffinity is specified.
@@ -373,8 +373,8 @@ func PodMatchesNodeLabels(pod *api.Pod, node *api.Node) bool {
 	if pod.Spec.Affinity != nil && pod.Spec.Affinity.HardNodeAffinity != nil {
 		if len(pod.Spec.Affinity.HardNodeAffinity.NodeSelectorTerms) == 0 {
 			glog.V(10).Infof("No element in HardNodeAffinity.NodeSelectorTerms of Pod %+v, will match no labels of Node %+v.", podName(pod), node)
-			nodeAffinityMatches = labels.Nothing().Matches(labels.Set(node.Labels))
-			return nodeSelectorMatches && nodeAffinityMatches
+			// return false instead of matching, since labels.Nothing().Matches() always returns false.
+			return false
 		}
 
 		// Match node selector term by term.
@@ -390,7 +390,7 @@ func PodMatchesNodeLabels(pod *api.Pod, node *api.Node) bool {
 		}
 	}
 
-	return nodeSelectorMatches && nodeAffinityMatches
+	return nodeAffinityMatches
 }
 
 type NodeSelector struct {

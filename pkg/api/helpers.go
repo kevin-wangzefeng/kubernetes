@@ -268,8 +268,7 @@ func ParseRFC3339(s string, nowFn func() unversioned.Time) (unversioned.Time, er
 // labels.Selector
 func NodeSelectorRequirementsAsSelector(nsm []NodeSelectorRequirement) (labels.Selector, error) {
 	if nsm == nil || len(nsm) == 0 {
-		fmt.Printf("lables.Everything()\n")
-		return labels.Everything(), nil
+		return labels.Nothing(), nil
 	}
 	selector := labels.NewSelector()
 	for _, expr := range nsm {

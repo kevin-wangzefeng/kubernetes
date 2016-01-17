@@ -196,8 +196,8 @@ func TestNodeSelectorRequirementsAsSelector(t *testing.T) {
 		out       labels.Selector
 		expectErr bool
 	}{
-		{in: nil, out: labels.Everything()},
-		{in: []NodeSelectorRequirement{}, out: labels.Everything()},
+		{in: nil, out: labels.Nothing()},
+		{in: []NodeSelectorRequirement{}, out: labels.Nothing()},
 		{
 			in:  matchExpressions,
 			out: mustParse("foo in (baz,bar)"),

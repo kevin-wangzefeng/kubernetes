@@ -331,12 +331,66 @@ func NewSelectorMatchPredicate(info NodeInfo) algorithm.FitPredicate {
 	return selector.PodSelectorMatches
 }
 
+// The pod can only schedule onto nodes that satisfy both required requirements in NodeAffinity and nodeSelector.
 func PodMatchesNodeLabels(pod *api.Pod, node *api.Node) bool {
-	if len(pod.Spec.NodeSelector) == 0 {
-		return true
+	// Check if node.Labels match pod.Spec.NodeSelector.
+	nodeSelectorMatches := true
+	if len(pod.Spec.NodeSelector) > 0 {
+		selector := labels.SelectorFromSet(pod.Spec.NodeSelector)
+		nodeSelectorMatches = selector.Matches(labels.Set(node.Labels))
 	}
-	selector := labels.SelectorFromSet(pod.Spec.NodeSelector)
-	return selector.Matches(labels.Set(node.Labels))
+	if !nodeSelectorMatches {
+		return false
+	}
+
+	// Parse required node affinity scheduling requirements
+	// and check if the current node match the requirements.
+	affinity, err := api.GetAffinityFromPod(pod)
+	if err != nil {
+		glog.V(10).Infof("Failed to get Affinity from Pod %+v, err: %+v", podName(pod), err)
+		return false
+	}
+
+	// 1. nil NodeSelector matches all nodes (i.e. does not filter out any nodes)
+	// 2. nil []NodeSelectorTerm (equivalent to non-nil empty NodeSelector) matches no nodes
+	// 3. zero-length non-nil []NodeSelectorTerm we can say matches no nodes also, just for simplicity
+	// 4. nil []NodeSelectorRequirement (equivalent to non-nil empty NodeSelectorTerm) matches no nodes
+	// 5. zero-length non-nil []NodeSelectorRequirement we can say matches no nodes also, just for simplicity
+	// 6. non-nil empty NodeSelectorRequirement is not allowed
+	nodeAffinityMatches := true
+	if affinity.NodeAffinity != nil {
+		nodeAffinity := affinity.NodeAffinity
+		// if no required NodeAffinity requirements, will do no-op, means select all nodes.
+		if nodeAffinity.RequiredDuringSchedulingRequiredDuringExecution == nil && nodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution == nil {
+			return true
+		}
+
+		var nodeSelectorTerms []api.NodeSelectorTerm
+		if nodeAffinity.RequiredDuringSchedulingRequiredDuringExecution != nil {
+			nodeSelectorTerms = affinity.NodeAffinity.RequiredDuringSchedulingRequiredDuringExecution.NodeSelectorTerms
+		}
+		if nodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution != nil {
+			nodeSelectorTerms = append(nodeSelectorTerms, affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms...)
+		}
+
+		if len(nodeSelectorTerms) == 0 {
+			glog.V(10).Infof("No element in NodeSelectorTerms of Pod %+v, will match no labels of Node %+v.", podName(pod), node)
+			return false
+		}
+
+		// Match node selector term by term.
+		glog.V(10).Infof("Match for node selector terms %+v", nodeSelectorTerms)
+		nodeAffinityMatches = false
+		for _, req := range nodeSelectorTerms {
+			nodeSelector, err := api.NodeSelectorRequirementsAsSelector(req.MatchExpressions)
+			if err != nil {
+				glog.V(10).Infof("Failed to parse MatchExpressions: %+v, regarding as not match.", req.MatchExpressions)
+				return false
+			}
+			nodeAffinityMatches = nodeAffinityMatches || nodeSelector.Matches(labels.Set(node.Labels))
+		}
+	}
+	return nodeAffinityMatches
 }
 
 type NodeSelector struct {

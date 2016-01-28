@@ -288,7 +288,7 @@ func TestGetAffinityFromPod(t *testing.T) {
 	}
 
 	for i, tc := range testCases {
-		_, err := GetAffinityFromPod(tc.pod)
+		_, err := GetAffinityFromPodAnnotations(tc.pod.Annotations)
 		if err == nil && tc.expectErr {
 			t.Errorf("[%v]expected error but got none.", i)
 		}

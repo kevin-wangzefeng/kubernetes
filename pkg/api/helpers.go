@@ -268,7 +268,7 @@ func ParseRFC3339(s string, nowFn func() unversioned.Time) (unversioned.Time, er
 // NodeSelectorRequirementsAsSelector converts the []NodeSelectorRequirement api type into a struct that implements
 // labels.Selector
 func NodeSelectorRequirementsAsSelector(nsm []NodeSelectorRequirement) (labels.Selector, error) {
-	if nsm == nil || len(nsm) == 0 {
+	if len(nsm) == 0 {
 		return labels.Nothing(), nil
 	}
 	selector := labels.NewSelector()
@@ -299,12 +299,16 @@ func NodeSelectorRequirementsAsSelector(nsm []NodeSelectorRequirement) (labels.S
 	return selector, nil
 }
 
+// AffinityAnnotationKey represents the key of affinity data(json serialized)
+// in the Annotations of a Pod
+const AffinityAnnotationKey string = "scheduler.alpha.kubernetes.io/affinity"
+
 // GetAffinityFromPod gets the json serialized affinity data from Pod.Annotations
 // and converts it to the Affinity type in api.
-func GetAffinityFromPod(pod *Pod) (Affinity, error) {
+func GetAffinityFromPodAnnotations(annotations map[string]string) (Affinity, error) {
 	var affinity Affinity
-	if len(pod.Annotations) > 0 && len(pod.Annotations[AffinityAnnotationKey]) > 0 {
-		err := json.Unmarshal([]byte(pod.Annotations[AffinityAnnotationKey]), &affinity)
+	if len(annotations) > 0 && annotations[AffinityAnnotationKey] != "" {
+		err := json.Unmarshal([]byte(annotations[AffinityAnnotationKey]), &affinity)
 		if err != nil {
 			return affinity, err
 		}

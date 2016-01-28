@@ -50,7 +50,7 @@ func (s *NodeAffinity) CalculateNodeAffinityPriority(pod *api.Pod, machinesToPod
 		return nil, err
 	}
 
-	affinity, err := api.GetAffinityFromPod(pod)
+	affinity, err := api.GetAffinityFromPodAnnotations(pod.Annotations)
 	if err != nil {
 		return nil, err
 	}
@@ -84,14 +84,12 @@ func (s *NodeAffinity) CalculateNodeAffinityPriority(pod *api.Pod, machinesToPod
 
 	result := []schedulerapi.HostPriority{}
 	for _, node := range nodes.Items {
-		fScore := float32(0)
+		fScore := float64(0)
 		if maxCount > 0 {
-			fScore = 10 * (float32(counts[node.Name]) / float32(maxCount))
+			fScore = 10 * (float64(counts[node.Name]) / float64(maxCount))
 		}
 		result = append(result, schedulerapi.HostPriority{Host: node.Name, Score: int(fScore)})
-		glog.V(10).Infof(
-			"%v -> %v: NodeAffinityPriority, Score: (%d)", pod.Name, node.Name, int(fScore),
-		)
+		glog.V(10).Infof("%v -> %v: NodeAffinityPriority, Score: (%d)", pod.Name, node.Name, int(fScore))
 	}
 	return result, nil
 }

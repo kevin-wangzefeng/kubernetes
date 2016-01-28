@@ -1495,6 +1495,12 @@ func TestValidatePodSpec(t *testing.T) {
 			RestartPolicy: api.RestartPolicyAlways,
 			DNSPolicy:     api.DNSClusterFirst,
 		},
+		{ // Populate Affinity.
+			Volumes:       []api.Volume{{Name: "vol", VolumeSource: api.VolumeSource{EmptyDir: &api.EmptyDirVolumeSource{}}}},
+			Containers:    []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
+			RestartPolicy: api.RestartPolicyAlways,
+			DNSPolicy:     api.DNSClusterFirst,
+		},
 	}
 	for i := range successCases {
 		if errs := ValidatePodSpec(&successCases[i], field.NewPath("field")); len(errs) != 0 {
@@ -1657,6 +1663,50 @@ func TestValidatePod(t *testing.T) {
 				NodeName: "foobar",
 			},
 		},
+		{ // Serialized affinity requirements in annotations.
+			ObjectMeta: api.ObjectMeta{
+				Name:      "123",
+				Namespace: "ns",
+				Annotations: map[string]string{
+					api.AffinityAnnotationKey: `
+					{"nodeAffinity": {
+						"requiredDuringSchedulingRequiredDuringExecution": {
+							"nodeSelectorTerms": [{
+								"matchExpressions": [{
+									"key": "key1",
+									"operator": "Exists"
+								}]
+							}]
+						},
+						"requiredDuringSchedulingIgnoredDuringExecution": {
+							"nodeSelectorTerms": [{
+								"matchExpressions": [{
+									"key": "key2",
+									"operator": "In",
+									"values": ["value1", "value2"]
+								}]
+							}]
+						},
+						"preferredDuringSchedulingIgnoredDuringExecution": [
+							{
+								"weight": 10,
+								"matchExpressions": [
+									{
+										"key": "foo",
+										"operator": "In", "values": ["bar"]
+									}
+								]
+							}
+						]
+					}}`,
+				},
+			},
+			Spec: api.PodSpec{
+				Containers:    []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
+				RestartPolicy: api.RestartPolicyAlways,
+				DNSPolicy:     api.DNSClusterFirst,
+			},
+		},
 	}
 	for _, pod := range successCases {
 		if errs := ValidatePod(&pod); len(errs) != 0 {
@@ -1699,6 +1749,70 @@ func TestValidatePod(t *testing.T) {
 				RestartPolicy: api.RestartPolicyAlways,
 				DNSPolicy:     api.DNSClusterFirst,
 				Containers:    []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
+			},
+		},
+		"invalid json of affinity in pod annotations": {
+			ObjectMeta: api.ObjectMeta{
+				Name:      "123",
+				Namespace: "ns",
+				Annotations: map[string]string{
+					api.AffinityAnnotationKey: `
+					{"nodeAffinity": {
+						"requiredDuringSchedulingRequiredDuringExecution": {
+							"nodeSelectorTerms": [{
+					`,
+				},
+			},
+			Spec: api.PodSpec{
+				Containers:    []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
+				RestartPolicy: api.RestartPolicyAlways,
+				DNSPolicy:     api.DNSClusterFirst,
+			},
+		},
+		"invalid node selector requirement in affinity in pod annotations, operator can't be null": {
+			ObjectMeta: api.ObjectMeta{
+				Name:      "123",
+				Namespace: "ns",
+				Annotations: map[string]string{
+					api.AffinityAnnotationKey: `
+					{"nodeAffinity": {"requiredDuringSchedulingRequiredDuringExecution": {
+						"nodeSelectorTerms": [{
+							"matchExpressions": [{
+								"key": "key1",
+							}]
+						}]
+					}}}`,
+				},
+			},
+			Spec: api.PodSpec{
+				Containers:    []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
+				RestartPolicy: api.RestartPolicyAlways,
+				DNSPolicy:     api.DNSClusterFirst,
+			},
+		},
+		"invalid preferred node selector requirement in affinity in pod annotations, weight should be in range 1-100": {
+			ObjectMeta: api.ObjectMeta{
+				Name:      "123",
+				Namespace: "ns",
+				Annotations: map[string]string{
+					api.AffinityAnnotationKey: `
+					{"nodeAffinity": {"preferredDuringSchedulingIgnoredDuringExecution": [
+						{
+							"weight": 199,
+							"matchExpressions": [
+								{
+									"key": "foo",
+									"operator": "In", "values": ["bar"]
+								}
+							]
+						}
+					]}}`,
+				},
+			},
+			Spec: api.PodSpec{
+				Containers:    []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
+				RestartPolicy: api.RestartPolicyAlways,
+				DNSPolicy:     api.DNSClusterFirst,
 			},
 		},
 	}

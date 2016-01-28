@@ -590,10 +590,7 @@ var _ = Describe("SchedulerPredicates [Serial]", func() {
 									"key": "kubernetes.io/hostname",
 									"operator": "In",
 									"values": ["` + nodeName + `"]
-								}]
-							},
-							{
-								"matchExpressions": [{
+								},{
 									"key": "` + k + `",
 									"operator": "In",
 									"values": ["` + v + `"]

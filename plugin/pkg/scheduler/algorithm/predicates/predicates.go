@@ -331,21 +331,32 @@ func NewSelectorMatchPredicate(info NodeInfo) algorithm.FitPredicate {
 	return selector.PodSelectorMatches
 }
 
-// The pod can only schedule onto nodes that satisfy both required requirements in NodeAffinity and nodeSelector.
+func NodeMatchNodeSelectorTerms(node *api.Node, nodeSelectorTerms []api.NodeSelectorTerm) bool {
+	matches := false
+	for _, req := range nodeSelectorTerms {
+		nodeSelector, err := api.NodeSelectorRequirementsAsSelector(req.MatchExpressions)
+		if err != nil {
+			glog.V(10).Infof("Failed to parse MatchExpressions: %+v, regarding as not match.", req.MatchExpressions)
+			return false
+		}
+		matches = matches || nodeSelector.Matches(labels.Set(node.Labels))
+	}
+	return matches
+}
+
+// The pod can only schedule onto nodes that satisfy requirements in both NodeAffinity and nodeSelector.
 func PodMatchesNodeLabels(pod *api.Pod, node *api.Node) bool {
 	// Check if node.Labels match pod.Spec.NodeSelector.
-	nodeSelectorMatches := true
 	if len(pod.Spec.NodeSelector) > 0 {
 		selector := labels.SelectorFromSet(pod.Spec.NodeSelector)
-		nodeSelectorMatches = selector.Matches(labels.Set(node.Labels))
-	}
-	if !nodeSelectorMatches {
-		return false
+		if !selector.Matches(labels.Set(node.Labels)) {
+			return false
+		}
 	}
 
 	// Parse required node affinity scheduling requirements
 	// and check if the current node match the requirements.
-	affinity, err := api.GetAffinityFromPod(pod)
+	affinity, err := api.GetAffinityFromPodAnnotations(pod.Annotations)
 	if err != nil {
 		glog.V(10).Infof("Failed to get Affinity from Pod %+v, err: %+v", podName(pod), err)
 		return false
@@ -353,9 +364,9 @@ func PodMatchesNodeLabels(pod *api.Pod, node *api.Node) bool {
 
 	// 1. nil NodeSelector matches all nodes (i.e. does not filter out any nodes)
 	// 2. nil []NodeSelectorTerm (equivalent to non-nil empty NodeSelector) matches no nodes
-	// 3. zero-length non-nil []NodeSelectorTerm we can say matches no nodes also, just for simplicity
+	// 3. zero-length non-nil []NodeSelectorTerm matches no nodes also, just for simplicity
 	// 4. nil []NodeSelectorRequirement (equivalent to non-nil empty NodeSelectorTerm) matches no nodes
-	// 5. zero-length non-nil []NodeSelectorRequirement we can say matches no nodes also, just for simplicity
+	// 5. zero-length non-nil []NodeSelectorRequirement matches no nodes also, just for simplicity
 	// 6. non-nil empty NodeSelectorRequirement is not allowed
 	nodeAffinityMatches := true
 	if affinity.NodeAffinity != nil {
@@ -365,30 +376,20 @@ func PodMatchesNodeLabels(pod *api.Pod, node *api.Node) bool {
 			return true
 		}
 
-		var nodeSelectorTerms []api.NodeSelectorTerm
+		// Match node selector for requiredDuringSchedulingRequiredDuringExecution.
 		if nodeAffinity.RequiredDuringSchedulingRequiredDuringExecution != nil {
-			nodeSelectorTerms = affinity.NodeAffinity.RequiredDuringSchedulingRequiredDuringExecution.NodeSelectorTerms
+			nodeSelectorTerms := nodeAffinity.RequiredDuringSchedulingRequiredDuringExecution.NodeSelectorTerms
+			glog.V(10).Infof("Match for node selector terms %+v", nodeSelectorTerms)
+			nodeAffinityMatches = NodeMatchNodeSelectorTerms(node, nodeSelectorTerms)
 		}
+
+		// Match node selector for requiredDuringSchedulingRequiredDuringExecution.
 		if nodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution != nil {
-			nodeSelectorTerms = append(nodeSelectorTerms, affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms...)
+			nodeSelectorTerms := nodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms
+			glog.V(10).Infof("Match for node selector terms %+v", nodeSelectorTerms)
+			nodeAffinityMatches = nodeAffinityMatches && NodeMatchNodeSelectorTerms(node, nodeSelectorTerms)
 		}
 
-		if len(nodeSelectorTerms) == 0 {
-			glog.V(10).Infof("No element in NodeSelectorTerms of Pod %+v, will match no labels of Node %+v.", podName(pod), node)
-			return false
-		}
-
-		// Match node selector term by term.
-		glog.V(10).Infof("Match for node selector terms %+v", nodeSelectorTerms)
-		nodeAffinityMatches = false
-		for _, req := range nodeSelectorTerms {
-			nodeSelector, err := api.NodeSelectorRequirementsAsSelector(req.MatchExpressions)
-			if err != nil {
-				glog.V(10).Infof("Failed to parse MatchExpressions: %+v, regarding as not match.", req.MatchExpressions)
-				return false
-			}
-			nodeAffinityMatches = nodeAffinityMatches || nodeSelector.Matches(labels.Set(node.Labels))
-		}
 	}
 	return nodeAffinityMatches
 }

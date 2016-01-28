@@ -1273,27 +1273,27 @@ const (
 
 // A node selector represents the union of the results of one or more label queries
 // over a set of nodes; that is, it represents the OR of the selectors represented
-// by the nodeSelectorTerms.
+// by the node selector terms.
 type NodeSelector struct {
-	// nodeSelectorTerms is a list of node selector terms. The terms are ORed.
+	// A list of node selector terms. The terms are ORed.
 	NodeSelectorTerms []NodeSelectorTerm `json:"nodeSelectorTerms,omitempty"`
 }
 
 // A null or empty node selector term matches no objects.
 type NodeSelectorTerm struct {
-	// matchExpressions is a list of node selector requirements. The requirements are ANDed.
+	// A list of node selector requirements. The requirements are ANDed.
 	MatchExpressions []NodeSelectorRequirement `json:"matchExpressions,omitempty"`
 }
 
 // A node selector requirement is a selector that contains values, a key, and an operator
 // that relates the key and values.
 type NodeSelectorRequirement struct {
-	// key is the label key that the selector applies to.
+	// The label key that the selector applies to.
 	Key string `json:"key" patchStrategy:"merge" patchMergeKey:"key"`
-	// operator represents a key's relationship to a set of values.
+	// Represents a key's relationship to a set of values.
 	// Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt.
 	Operator NodeSelectorOperator `json:"operator"`
-	// values is an array of string values. If the operator is In or NotIn,
+	// An array of string values. If the operator is In or NotIn,
 	// the values array must be non-empty. If the operator is Exists or DoesNotExist,
 	// the values array must be empty. If the operator is Gt or Lt, the values
 	// array must have a single element, which will be interpreted as an integer.
@@ -1314,14 +1314,17 @@ const (
 	NodeSelectorOpLt           NodeSelectorOperator = "Lt"
 )
 
-// An Affinity is a group of affinity scheduling requirements,
+// Affinity is a group of affinity scheduling requirements,
 // including node affinity and inter pod affinity.
 type Affinity struct {
-	// NodeAffinity is a group of node affinity scheduling requirements.
+	// Describes node affinity scheduling requirements for the pod.
 	NodeAffinity *NodeAffinity `json:"nodeAffinity,omitempty"`
 }
 
-// An NodeAffinity is a group of node affinity scheduling requirements.
+// Node affinity is a group of node affinity scheduling requirements.
+// If RequiredDuringSchedulingRequiredDuringExecution and
+// RequiredDuringSchedulingIgnoredDuringExecution are both set,
+// then both node selectors must be satisfied.
 type NodeAffinity struct {
 	// If the affinity requirements specified by this field are not met at
 	// scheduling time, the pod will not be scheduled onto the node.
@@ -1340,19 +1343,19 @@ type NodeAffinity struct {
 	// a node that violates one or more of the expressions. The node that is
 	// most preferred is the one with the greatest sum of weights, i.e.
 	// for each node that meets all of the scheduling requirements (resource
-	// request, RequiredDuringScheduling affinity expressions, etc.),
+	// request, requiredDuringScheduling affinity expressions, etc.),
 	// compute a sum by iterating through the elements of this field and adding
-	// "weight" to the sum if the node matches the corresponding MatchExpressions; the
+	// "weight" to the sum if the node matches the corresponding matchExpressions; the
 	// node(s) with the highest sum are the most preferred.
 	PreferredDuringSchedulingIgnoredDuringExecution []PreferredSchedulingTerm `json:"preferredDuringSchedulingIgnoredDuringExecution,omitempty"`
 }
 
 // An empty preferred scheduling term matches all objects with implicit weight 0
-// (i.e. it's a no-op). A null preferred scheduling term matches no objects.
+// (i.e. it's a no-op). A null preferred scheduling term matches no objects (i.e. is also a no-op).
 type PreferredSchedulingTerm struct {
-	// weight is in the range 1-100
+	// Weight associated with matching the corresponding nodeSelectorTerm, in the range 1-100.
 	Weight int `json:"weight"`
-	// matchExpressions is a list of node selector requirements. The requirements are ANDed.
+	// A node selector term, associated with the corresponding weight.
 	MatchExpressions []NodeSelectorRequirement `json:"matchExpressions,omitempty"`
 }
 

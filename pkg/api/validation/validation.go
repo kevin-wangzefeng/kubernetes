@@ -1350,7 +1350,7 @@ func ValidatePodSpec(spec *api.PodSpec, fldPath *field.Path) field.ErrorList {
 	return allErrs
 }
 
-// ValidateNodeSelectorRequirement test that the specified NodeSelectorRequirement fields has valid data
+// ValidateNodeSelectorRequirement tests that the specified NodeSelectorRequirement fields has valid data
 func ValidateNodeSelectorRequirement(rq api.NodeSelectorRequirement, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	switch rq.Operator {
@@ -1374,35 +1374,50 @@ func ValidateNodeSelectorRequirement(rq api.NodeSelectorRequirement, fldPath *fi
 	return allErrs
 }
 
-// ValidateNodeSelector test that the specified nodeSelector fields has valid data
+// ValidateNodeSelectorTerm tests that the specified node selector term has valid data
+func ValidateNodeSelectorTerm(term api.NodeSelectorTerm, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	if len(term.MatchExpressions) == 0 {
+		return append(allErrs, field.Required(fldPath.Child("matchExpressions"), "must have at least one node selector requirement"))
+	}
+	for j, req := range term.MatchExpressions {
+		allErrs = append(allErrs, ValidateNodeSelectorRequirement(req, fldPath.Child("matchExpressions").Index(j))...)
+	}
+	return allErrs
+}
+
+// ValidateNodeSelector tests that the specified nodeSelector fields has valid data
 func ValidateNodeSelector(nodeSelector *api.NodeSelector, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	for _, nst := range nodeSelector.NodeSelectorTerms {
-		for j, nsr := range nst.MatchExpressions {
-			allErrs = append(allErrs, ValidateNodeSelectorRequirement(nsr, fldPath.Child("matchExpressions").Index(j))...)
-		}
+	termFldPath := fldPath.Child("nodeSelectorTerms")
+	if len(nodeSelector.NodeSelectorTerms) == 0 {
+		return append(allErrs, field.Required(termFldPath, "must have at least one node selector term"))
+	}
+
+	for i, term := range nodeSelector.NodeSelectorTerms {
+		allErrs = append(allErrs, ValidateNodeSelectorTerm(term, termFldPath.Index(i))...)
 	}
 
 	return allErrs
 }
 
-// ValidatePreferredSchedulingTerms test that the specified SoftNodeAffinity fields has valid data
+// ValidatePreferredSchedulingTerms tests that the specified SoftNodeAffinity fields has valid data
 func ValidatePreferredSchedulingTerms(terms []api.PreferredSchedulingTerm, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
-	for _, term := range terms {
+	for i, term := range terms {
 		if term.Weight <= 0 || term.Weight > 100 {
-			allErrs = append(allErrs, field.Invalid(fldPath.Child("weight"), term.Weight, "must be in the range 1-100"))
+			allErrs = append(allErrs, field.Invalid(fldPath.Index(i).Child("weight"), term.Weight, "must be in the range 1-100"))
 		}
-		for j, nsr := range term.MatchExpressions {
-			allErrs = append(allErrs, ValidateNodeSelectorRequirement(nsr, fldPath.Child("matchExpressions").Index(j))...)
-		}
+
+		allErrs = append(allErrs, ValidateNodeSelectorTerm(term.Preference, fldPath.Index(i).Child("preference"))...)
 	}
 	return allErrs
 }
 
-// ValidateAffinityInPodAnnotations test that the serialized Affinity in Pod.Annotations has valid data
+// ValidateAffinityInPodAnnotations tests that the serialized Affinity in Pod.Annotations has valid data
 func ValidateAffinityInPodAnnotations(annotations map[string]string, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 

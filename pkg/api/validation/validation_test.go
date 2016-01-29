@@ -1690,12 +1690,12 @@ func TestValidatePod(t *testing.T) {
 						"preferredDuringSchedulingIgnoredDuringExecution": [
 							{
 								"weight": 10,
-								"matchExpressions": [
+								"preference": {"matchExpressions": [
 									{
 										"key": "foo",
 										"operator": "In", "values": ["bar"]
 									}
-								]
+								]}
 							}
 						]
 					}}`,
@@ -1790,7 +1790,7 @@ func TestValidatePod(t *testing.T) {
 				DNSPolicy:     api.DNSClusterFirst,
 			},
 		},
-		"invalid preferred node selector requirement in affinity in pod annotations, weight should be in range 1-100": {
+		"invalid preferredSchedulingTerm in affinity in pod annotations, weight should be in range 1-100": {
 			ObjectMeta: api.ObjectMeta{
 				Name:      "123",
 				Namespace: "ns",
@@ -1799,14 +1799,55 @@ func TestValidatePod(t *testing.T) {
 					{"nodeAffinity": {"preferredDuringSchedulingIgnoredDuringExecution": [
 						{
 							"weight": 199,
-							"matchExpressions": [
+							"preference": {"matchExpressions": [
 								{
 									"key": "foo",
-									"operator": "In", "values": ["bar"]
+									"operator": "In",
+									"values": ["bar"]
 								}
-							]
+							]}
 						}
 					]}}`,
+				},
+			},
+			Spec: api.PodSpec{
+				Containers:    []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
+				RestartPolicy: api.RestartPolicyAlways,
+				DNSPolicy:     api.DNSClusterFirst,
+			},
+		},
+		"invalid requiredDuringSchedulingRequiredDuringExecution node selector, nodeSelectorTerms must have at least one term": {
+			ObjectMeta: api.ObjectMeta{
+				Name:      "123",
+				Namespace: "ns",
+				Annotations: map[string]string{
+					api.AffinityAnnotationKey: `
+					{"nodeAffinity": {
+						"requiredDuringSchedulingRequiredDuringExecution": {
+							"nodeSelectorTerms": []
+						},
+					}}`,
+				},
+			},
+			Spec: api.PodSpec{
+				Containers:    []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
+				RestartPolicy: api.RestartPolicyAlways,
+				DNSPolicy:     api.DNSClusterFirst,
+			},
+		},
+		"invalid requiredDuringSchedulingRequiredDuringExecution node selector term, matchExpressions must have at least one node selector requirement": {
+			ObjectMeta: api.ObjectMeta{
+				Name:      "123",
+				Namespace: "ns",
+				Annotations: map[string]string{
+					api.AffinityAnnotationKey: `
+					{"nodeAffinity": {
+						"requiredDuringSchedulingRequiredDuringExecution": {
+							"nodeSelectorTerms": [{
+								"matchExpressions": []
+							}]
+						},
+					}}`,
 				},
 			},
 			Spec: api.PodSpec{

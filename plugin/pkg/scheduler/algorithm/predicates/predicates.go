@@ -331,17 +331,20 @@ func NewSelectorMatchPredicate(info NodeInfo) algorithm.FitPredicate {
 	return selector.PodSelectorMatches
 }
 
-func NodeMatchNodeSelectorTerms(node *api.Node, nodeSelectorTerms []api.NodeSelectorTerm) bool {
-	matches := false
+// NodeMatchesNodeSelectorTerms checks if a node's labels satisfy a list of node selector terms,
+// terms are ORed, and an emtpy a list of terms will match nothing.
+func NodeMatchesNodeSelectorTerms(node *api.Node, nodeSelectorTerms []api.NodeSelectorTerm) bool {
 	for _, req := range nodeSelectorTerms {
 		nodeSelector, err := api.NodeSelectorRequirementsAsSelector(req.MatchExpressions)
 		if err != nil {
 			glog.V(10).Infof("Failed to parse MatchExpressions: %+v, regarding as not match.", req.MatchExpressions)
 			return false
 		}
-		matches = matches || nodeSelector.Matches(labels.Set(node.Labels))
+		if nodeSelector.Matches(labels.Set(node.Labels)) {
+			return true
+		}
 	}
-	return matches
+	return false
 }
 
 // The pod can only schedule onto nodes that satisfy requirements in both NodeAffinity and nodeSelector.
@@ -379,15 +382,15 @@ func PodMatchesNodeLabels(pod *api.Pod, node *api.Node) bool {
 		// Match node selector for requiredDuringSchedulingRequiredDuringExecution.
 		if nodeAffinity.RequiredDuringSchedulingRequiredDuringExecution != nil {
 			nodeSelectorTerms := nodeAffinity.RequiredDuringSchedulingRequiredDuringExecution.NodeSelectorTerms
-			glog.V(10).Infof("Match for node selector terms %+v", nodeSelectorTerms)
-			nodeAffinityMatches = NodeMatchNodeSelectorTerms(node, nodeSelectorTerms)
+			glog.V(10).Infof("Match for RequiredDuringSchedulingRequiredDuringExecution node selector terms %+v", nodeSelectorTerms)
+			nodeAffinityMatches = NodeMatchesNodeSelectorTerms(node, nodeSelectorTerms)
 		}
 
 		// Match node selector for requiredDuringSchedulingRequiredDuringExecution.
 		if nodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution != nil {
 			nodeSelectorTerms := nodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms
-			glog.V(10).Infof("Match for node selector terms %+v", nodeSelectorTerms)
-			nodeAffinityMatches = nodeAffinityMatches && NodeMatchNodeSelectorTerms(node, nodeSelectorTerms)
+			glog.V(10).Infof("Match for RequiredDuringSchedulingIgnoredDuringExecution node selector terms %+v", nodeSelectorTerms)
+			nodeAffinityMatches = nodeAffinityMatches && NodeMatchesNodeSelectorTerms(node, nodeSelectorTerms)
 		}
 
 	}

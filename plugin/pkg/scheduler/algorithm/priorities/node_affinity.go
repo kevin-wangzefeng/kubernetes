@@ -65,7 +65,7 @@ func (s *NodeAffinity) CalculateNodeAffinityPriority(pod *api.Pod, machinesToPod
 				continue
 			}
 
-			nodeSelector, err := api.NodeSelectorRequirementsAsSelector(preferredSchedulingTerm.MatchExpressions)
+			nodeSelector, err := api.NodeSelectorRequirementsAsSelector(preferredSchedulingTerm.Preference.MatchExpressions)
 			if err != nil {
 				return nil, err
 			}

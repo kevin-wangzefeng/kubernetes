@@ -754,7 +754,7 @@ func (NodeList) SwaggerDoc() map[string]string {
 
 var map_NodeSelector = map[string]string{
 	"":                  "A node selector represents the union of the results of one or more label queries over a set of nodes; that is, it represents the OR of the selectors represented by the node selector terms.",
-	"nodeSelectorTerms": "A list of node selector terms. The terms are ORed.",
+	"nodeSelectorTerms": "Required. A list of node selector terms. The terms are ORed.",
 }
 
 func (NodeSelector) SwaggerDoc() map[string]string {
@@ -774,7 +774,7 @@ func (NodeSelectorRequirement) SwaggerDoc() map[string]string {
 
 var map_NodeSelectorTerm = map[string]string{
 	"":                 "A null or empty node selector term matches no objects.",
-	"matchExpressions": "A list of node selector requirements. The requirements are ANDed.",
+	"matchExpressions": "Required. A list of node selector requirements. The requirements are ANDed.",
 }
 
 func (NodeSelectorTerm) SwaggerDoc() map[string]string {
@@ -1167,9 +1167,9 @@ func (PodTemplateSpec) SwaggerDoc() map[string]string {
 }
 
 var map_PreferredSchedulingTerm = map[string]string{
-	"":                 "An empty preferred scheduling term matches all objects with implicit weight 0 (i.e. it's a no-op). A null preferred scheduling term matches no objects (i.e. is also a no-op).",
-	"weight":           "Weight associated with matching the corresponding nodeSelectorTerm, in the range 1-100.",
-	"matchExpressions": "A node selector term, associated with the corresponding weight.",
+	"":           "An empty preferred scheduling term matches all objects with implicit weight 0 (i.e. it's a no-op). A null preferred scheduling term matches no objects (i.e. is also a no-op).",
+	"weight":     "Weight associated with matching the corresponding nodeSelectorTerm, in the range 1-100.",
+	"preference": "A node selector term, associated with the corresponding weight.",
 }
 
 func (PreferredSchedulingTerm) SwaggerDoc() map[string]string {

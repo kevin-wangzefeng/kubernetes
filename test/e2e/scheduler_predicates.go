@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/api/errors"
 	"k8s.io/kubernetes/pkg/api/resource"
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
@@ -30,6 +31,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	_ "github.com/stretchr/testify/assert"
 )
 
 // Returns a number of currently scheduled and not scheduled Pods.
@@ -390,6 +392,49 @@ var _ = Describe("SchedulerPredicates [Serial]", func() {
 		time.Sleep(10 * time.Second)
 
 		verifyResult(c, podName, ns)
+		cleanupPods(c, ns)
+	})
+
+	It("validates that a pod with an invalid Affinity is rejected [Conformance]", func() {
+
+		By("Trying to launch a pod with an invalid Affinity data.")
+		podName := "without-label"
+		_, err := c.Pods(ns).Create(&api.Pod{
+			TypeMeta: unversioned.TypeMeta{
+				Kind: "Pod",
+			},
+			ObjectMeta: api.ObjectMeta{
+				Name: podName,
+				Annotations: map[string]string{
+					api.AffinityAnnotationKey: `
+					{"nodeAffinity": {
+						"requiredDuringSchedulingRequiredDuringExecution": {
+							"nodeSelectorTerms": [{
+								"matchExpressions": []
+							}]
+						},
+					}}`,
+				},
+			},
+			Spec: api.PodSpec{
+				Containers: []api.Container{
+					{
+						Name:  podName,
+						Image: "gcr.io/google_containers/pause:2.0",
+					},
+				},
+			},
+		})
+
+		if err == nil || !errors.IsInvalid(err) {
+			Failf("Expect error of invalid, got : %v", err)
+		}
+
+		// Wait a bit to allow scheduler to do its thing if the pod is not rejected.
+		// TODO: this is brittle; there's no guarantee the scheduler will have run in 10 seconds.
+		Logf("Sleeping 10 seconds and crossing our fingers that scheduler will run in that time.")
+		time.Sleep(10 * time.Second)
+
 		cleanupPods(c, ns)
 	})
 

@@ -1045,14 +1045,14 @@ const (
 // over a set of nodes; that is, it represents the OR of the selectors represented
 // by the node selector terms.
 type NodeSelector struct {
-	// A list of node selector terms. The terms are ORed.
-	NodeSelectorTerms []NodeSelectorTerm `json:"nodeSelectorTerms,omitempty"`
+	//Required. A list of node selector terms. The terms are ORed.
+	NodeSelectorTerms []NodeSelectorTerm `json:"nodeSelectorTerms"`
 }
 
 // A null or empty node selector term matches no objects.
 type NodeSelectorTerm struct {
-	// A list of node selector requirements. The requirements are ANDed.
-	MatchExpressions []NodeSelectorRequirement `json:"matchExpressions,omitempty"`
+	//Required. A list of node selector requirements. The requirements are ANDed.
+	MatchExpressions []NodeSelectorRequirement `json:"matchExpressions"`
 }
 
 // A node selector requirement is a selector that contains values, a key, and an operator
@@ -1125,7 +1125,7 @@ type PreferredSchedulingTerm struct {
 	// Weight associated with matching the corresponding nodeSelectorTerm, in the range 1-100.
 	Weight int `json:"weight"`
 	// A node selector term, associated with the corresponding weight.
-	MatchExpressions []NodeSelectorRequirement `json:"matchExpressions,omitempty"`
+	Preference NodeSelectorTerm `json:"preference"`
 }
 
 // PodSpec is a description of a pod

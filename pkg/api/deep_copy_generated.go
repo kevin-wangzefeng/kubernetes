@@ -2172,16 +2172,8 @@ func deepCopy_api_PodTemplateSpec(in PodTemplateSpec, out *PodTemplateSpec, c *c
 
 func deepCopy_api_PreferredSchedulingTerm(in PreferredSchedulingTerm, out *PreferredSchedulingTerm, c *conversion.Cloner) error {
 	out.Weight = in.Weight
-	if in.MatchExpressions != nil {
-		in, out := in.MatchExpressions, &out.MatchExpressions
-		*out = make([]NodeSelectorRequirement, len(in))
-		for i := range in {
-			if err := deepCopy_api_NodeSelectorRequirement(in[i], &(*out)[i], c); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.MatchExpressions = nil
+	if err := deepCopy_api_NodeSelectorTerm(in.Preference, &out.Preference, c); err != nil {
+		return err
 	}
 	return nil
 }

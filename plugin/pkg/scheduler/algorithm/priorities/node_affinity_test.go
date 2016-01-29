@@ -34,43 +34,45 @@ func TestNodeAffinityPriority(t *testing.T) {
 
 	affinity1 := map[string]string{
 		api.AffinityAnnotationKey: `
-		{"nodeAffinity": {"PreferredDuringSchedulingIgnoredDuringExecution": [
+		{"nodeAffinity": {"preferredDuringSchedulingIgnoredDuringExecution": [
 			{
 				"weight": 2,
-				"matchExpressions": [
-					{
-						"key": "foo",
-						"operator": "In", "values": ["bar"]
-					}
-				]
+				"preference": {
+					"matchExpressions": [
+						{
+							"key": "foo",
+							"operator": "In", "values": ["bar"]
+						}
+					]
+				}
 			}
 		]}}`,
 	}
 
 	affinity2 := map[string]string{
 		api.AffinityAnnotationKey: `
-		{"nodeAffinity": {"PreferredDuringSchedulingIgnoredDuringExecution": [
+		{"nodeAffinity": {"preferredDuringSchedulingIgnoredDuringExecution": [
 			{
 				"weight": 2,
-				"matchExpressions": [
+				"preference": {"matchExpressions": [
 					{
 						"key": "foo",
 						"operator": "In", "values": ["bar"]
 					}
-				]
+				]}
 			},
 			{
 				"weight": 4,
-				"matchExpressions": [
+				"preference": {"matchExpressions": [
 					{
 						"key": "key",
 						"operator": "In", "values": ["value"]
 					}
-				]
+				]}
 			},
 			{
 				"weight": 5,
-				"matchExpressions": [
+				"preference": {"matchExpressions": [
 					{
 						"key": "foo",
 						"operator": "In", "values": ["bar"]
@@ -83,7 +85,7 @@ func TestNodeAffinityPriority(t *testing.T) {
 						"key": "az",
 						"operator": "In", "values": ["az1"]
 					}
-				]
+				]}
 			}
 		]}}`,
 	}

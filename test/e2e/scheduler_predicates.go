@@ -726,4 +726,623 @@ var _ = KubeDescribe("SchedulerPredicates [Serial]", func() {
 		expectNoError(err)
 		Expect(labelPod.Spec.NodeName).To(Equal(nodeName))
 	})
+
+	// test cases related to the Inter pod affinity & anti affinity topology feature.
+	// weight is zero in preferredDuringSchedulingIgnoredDuringExecution part of podAffinity,so validation fails.
+	It("validates that a pod with an invalid podAffinity is rejected because weight is given zero [Feature:InterPodAffinity]", func() {
+		By("Trying to launch a pod with an invalid pod Affinity data.")
+		podName := "without-label"
+		_, err := c.Pods(ns).Create(&api.Pod{
+			TypeMeta: unversioned.TypeMeta{
+				Kind: "Pod",
+			},
+			ObjectMeta: api.ObjectMeta{
+				Name:   podName,
+				Labels: map[string]string{"name": "without-label"},
+				Annotations: map[string]string{
+					"scheduler.alpha.kubernetes.io/affinity": `
+					{"podAffinity": {
+						"preferredDuringSchedulingIgnoredDuringExecution": [{
+							"weight": 0,
+							"podAffinityTerm": {
+								"labelSelector": {
+									"matchExpressions": [{
+										"key": "service",
+										"operator": "In",
+										"values":["securityscan"]
+									}]
+								},
+								"namespaces":[{}],
+								"topologyKey": "kubernetes.io/hostname"
+							}
+						}]
+					 }}`,
+				},
+			},
+			Spec: api.PodSpec{
+				Containers: []api.Container{
+					{
+						Name:  podName,
+						Image: "gcr.io/google_containers/pause:2.0",
+					},
+				},
+			},
+		})
+
+		if err == nil || !errors.IsInvalid(err) {
+			Failf("Expect error of invalid, got : %v", err)
+		}
+
+		// Wait a bit to allow scheduler to do its thing if the pod is not rejected.
+		// TODO: this is brittle; there's no guarantee the scheduler will have run in 10 seconds.
+		Logf("Sleeping 10 seconds and crossing our fingers that scheduler will run in that time.")
+		time.Sleep(10 * time.Second)
+
+		cleanupPods(c, ns)
+	})
+	// labelSelector Operator is DoesNotExist but values are there in preferredDuringSchedulingIgnoredDuringExecution
+	// part of podAffinity,so validation fails.
+	It("validates that a pod with an invalid podAffinity is rejected because of the LabelSelectorRequirement is invalid [Feature:InterPodAffinity]", func() {
+		By("Trying to launch a pod with an invalid pod Affinity data.")
+		podName := "without-label"
+		_, err := c.Pods(ns).Create(&api.Pod{
+			TypeMeta: unversioned.TypeMeta{
+				Kind: "Pod",
+			},
+			ObjectMeta: api.ObjectMeta{
+				Name:   podName,
+				Labels: map[string]string{"name": "without-label"},
+				Annotations: map[string]string{
+					"scheduler.alpha.kubernetes.io/affinity": `
+					{"podAffinity": {
+						"preferredDuringSchedulingIgnoredDuringExecution": [{
+							"weight": 0,
+							"podAffinityTerm": {
+								"labelSelector": {
+									"matchExpressions": [{
+										"key": "service",
+										"operator": "DoesNotExist",
+										"values":["securityscan"]
+									}]
+								},
+								"namespaces":[{}],
+								"topologyKey": "kubernetes.io/hostname"
+							}
+						}]
+					 }}`,
+				},
+			},
+			Spec: api.PodSpec{
+				Containers: []api.Container{
+					{
+						Name:  podName,
+						Image: "gcr.io/google_containers/pause:2.0",
+					},
+				},
+			},
+		})
+
+		if err == nil || !errors.IsInvalid(err) {
+			Failf("Expect error of invalid, got : %v", err)
+		}
+
+		// Wait a bit to allow scheduler to do its thing if the pod is not rejected.
+		// TODO: this is brittle; there's no guarantee the scheduler will have run in 10 seconds.
+		Logf("Sleeping 10 seconds and crossing our fingers that scheduler will run in that time.")
+		time.Sleep(10 * time.Second)
+
+		cleanupPods(c, ns)
+	})
+
+	// Test Nodes does not have any pod, hence it should be impossible to schedule a Pod with pod affinity.
+	It("validates that Inter-pod-Affinity is respected if not matching [Feature:InterPodAffinity]", func() {
+		By("Trying to schedule Pod with nonempty Pod Affinity.")
+		podName := "without-label"
+
+		waitForStableCluster(c)
+
+		_, err := c.Pods(ns).Create(&api.Pod{
+			TypeMeta: unversioned.TypeMeta{
+				Kind: "Pod",
+			},
+			ObjectMeta: api.ObjectMeta{
+				Name: podName,
+				Annotations: map[string]string{
+					"scheduler.alpha.kubernetes.io/affinity": `
+						{"podAffinity": {
+							"requiredDuringSchedulingIgnoredDuringExecution": [{
+							"labelSelector":{
+								"matchExpressions": [{
+									"key": "service",
+									"operator": "In",
+									"values": ["securityscan", "value2"]
+								}]
+							},
+							"topologyKey": "kubernetes.io/hostname"
+						}]
+				 }}`,
+				},
+			},
+			Spec: api.PodSpec{
+				Containers: []api.Container{
+					{
+						Name:  podName,
+						Image: "gcr.io/google_containers/pause:2.0",
+					},
+				},
+			},
+		})
+		expectNoError(err)
+		// Wait a bit to allow scheduler to do its thing
+		// TODO: this is brittle; there's no guarantee the scheduler will have run in 10 seconds.
+		Logf("Sleeping 10 seconds and crossing our fingers that scheduler will run in that time.")
+		time.Sleep(10 * time.Second)
+
+		verifyResult(c, podName, ns)
+		cleanupPods(c, ns)
+	})
+
+	// test the pod affinity successful matching scenario.
+	It("validates that InterPodAffinity is respected if matching [Feature:InterPodAffinity]", func() {
+		// launch a pod to find a node which can launch a pod. We intentionally do
+		// not just take the node list and choose the first of them. Depending on the
+		// cluster and the scheduler it might be that a "normal" pod cannot be
+		// scheduled onto it.
+		By("Trying to launch a pod with a label to get a node which can launch it.")
+		podName := "with-label"
+		_, err := c.Pods(ns).Create(&api.Pod{
+			TypeMeta: unversioned.TypeMeta{
+				Kind: "Pod",
+			},
+			ObjectMeta: api.ObjectMeta{
+				Name:   podName,
+				Labels: map[string]string{"security": "S1"},
+			},
+			Spec: api.PodSpec{
+				Containers: []api.Container{
+					{
+						Name:  podName,
+						Image: "gcr.io/google_containers/pause:2.0",
+					},
+				},
+			},
+		})
+		expectNoError(err)
+		expectNoError(waitForPodRunningInNamespace(c, podName, ns))
+		pod, err := c.Pods(ns).Get(podName)
+		expectNoError(err)
+
+		nodeName := pod.Spec.NodeName
+		defer c.Pods(ns).Delete(podName, api.NewDeleteOptions(0))
+
+		By("Trying to apply a random label on the found node.")
+		k := "kubernetes.io/hostname"
+		v := "china-e2etest"
+		patch := fmt.Sprintf(`{"metadata":{"labels":{"%s":"%s"}}}`, k, v)
+		err = c.Patch(api.MergePatchType).Resource("nodes").Name(nodeName).Body([]byte(patch)).Do().Error()
+		expectNoError(err)
+
+		node, err := c.Nodes().Get(nodeName)
+		expectNoError(err)
+		Expect(node.Labels[k]).To(Equal(v))
+
+		By("Trying to launch the pod, now with podAffinity.")
+		labelPodName := "with-podaffinity"
+		_, err = c.Pods(ns).Create(&api.Pod{
+			TypeMeta: unversioned.TypeMeta{
+				Kind: "Pod",
+			},
+			ObjectMeta: api.ObjectMeta{
+				Name: labelPodName,
+				Annotations: map[string]string{
+					"scheduler.alpha.kubernetes.io/affinity": `
+						{"podAffinity": {
+							"requiredDuringSchedulingIgnoredDuringExecution": [{
+							"labelSelector":{
+								"matchExpressions": [{
+									"key": "security",
+									"operator": "In",
+									"values": ["S1", "value2"]
+								}]
+							},
+							"topologyKey": "` + k + `",
+							"namespaces":[{
+								"metadata": {
+									"name": "` + ns + `"
+								}
+							}]
+						}]
+					 }}`,
+				},
+			},
+			Spec: api.PodSpec{
+				Containers: []api.Container{
+					{
+						Name:  labelPodName,
+						Image: "gcr.io/google_containers/pause:2.0",
+					},
+				},
+			},
+		})
+		expectNoError(err)
+		defer c.Pods(ns).Delete(labelPodName, api.NewDeleteOptions(0))
+
+		// check that pod got scheduled. We intentionally DO NOT check that the
+		// pod is running because this will create a race condition with the
+		// kubelet and the scheduler: the scheduler might have scheduled a pod
+		// already when the kubelet does not know about its new label yet. The
+		// kubelet will then refuse to launch the pod.
+		expectNoError(waitForPodNotPending(c, ns, labelPodName))
+		labelPod, err := c.Pods(ns).Get(labelPodName)
+		expectNoError(err)
+		Expect(labelPod.Spec.NodeName).To(Equal(nodeName))
+
+	})
+
+	// test the pod affinity successful matching scenario with diff labels.
+	It("validates that InterPodAffinity with diff Labels and macthing Pod [Feature:InterPodAffinity]", func() {
+		// launch a pod to find a node which can launch a pod. We intentionally do
+		// not just take the node list and choose the first of them. Depending on the
+		// cluster and the scheduler it might be that a "normal" pod cannot be
+		// scheduled onto it.
+		By("Trying to launch a pod with a label to get a node which can launch it.")
+		podName := "with-label"
+		_, err := c.Pods(ns).Create(&api.Pod{
+			TypeMeta: unversioned.TypeMeta{
+				Kind: "Pod",
+			},
+			ObjectMeta: api.ObjectMeta{
+				Name:   podName,
+				Labels: map[string]string{"service": "S1"},
+			},
+			Spec: api.PodSpec{
+				Containers: []api.Container{
+					{
+						Name:  podName,
+						Image: "gcr.io/google_containers/pause:2.0",
+					},
+				},
+			},
+		})
+		expectNoError(err)
+		expectNoError(waitForPodRunningInNamespace(c, podName, ns))
+		pod, err := c.Pods(ns).Get(podName)
+		expectNoError(err)
+
+		nodeName := pod.Spec.NodeName
+		defer c.Pods(ns).Delete(podName, api.NewDeleteOptions(0))
+
+		By("Trying to apply a random label on the found node.")
+		k := "kubernetes.io/hostname"
+		v := "china-e2etest"
+		patch := fmt.Sprintf(`{"metadata":{"labels":{"%s":"%s"}}}`, k, v)
+		err = c.Patch(api.MergePatchType).Resource("nodes").Name(nodeName).Body([]byte(patch)).Do().Error()
+		expectNoError(err)
+
+		node, err := c.Nodes().Get(nodeName)
+		expectNoError(err)
+		Expect(node.Labels[k]).To(Equal(v))
+
+		By("Trying to launch the pod, now with podAffinity with same Labels.")
+		labelPodName := "with-podaffinity"
+		_, err = c.Pods(ns).Create(&api.Pod{
+			TypeMeta: unversioned.TypeMeta{
+				Kind: "Pod",
+			},
+			ObjectMeta: api.ObjectMeta{
+				Name:   labelPodName,
+				Labels: map[string]string{"service": "Diff"},
+				Annotations: map[string]string{
+					"scheduler.alpha.kubernetes.io/affinity": `
+						{"podAffinity": {
+							"requiredDuringSchedulingIgnoredDuringExecution": [{
+								"labelSelector":{
+									"matchExpressions": [{
+										"key": "service",
+										"operator": "In",
+										"values": ["S1", "value2"]
+									}]
+								},
+								"topologyKey": "` + k + `",
+								"namespaces":[{
+									"metadata":
+									{
+										"name": "` + ns + `"
+									}
+								}]
+							}]
+						}}`,
+				},
+			},
+			Spec: api.PodSpec{
+				Containers: []api.Container{
+					{
+						Name:  labelPodName,
+						Image: "gcr.io/google_containers/pause:2.0",
+					},
+				},
+			},
+		})
+		expectNoError(err)
+		defer c.Pods(ns).Delete(labelPodName, api.NewDeleteOptions(0))
+
+		// check that pod got scheduled. We intentionally DO NOT check that the
+		// pod is running because this will create a race condition with the
+		// kubelet and the scheduler: the scheduler might have scheduled a pod
+		// already when the kubelet does not know about its new label yet. The
+		// kubelet will then refuse to launch the pod.
+		expectNoError(waitForPodNotPending(c, ns, labelPodName))
+		labelPod, err := c.Pods(ns).Get(labelPodName)
+		expectNoError(err)
+		Expect(labelPod.Spec.NodeName).To(Equal(nodeName))
+	})
+
+	// test the pod affinity successful matching scenario with multiple Label Operators.
+	It("validates that InterPodAffinity is respected if matching with multiple Affinities [Feature:InterPodAffinity]", func() {
+		// launch a pod to find a node which can launch a pod. We intentionally do
+		// not just take the node list and choose the first of them. Depending on the
+		// cluster and the scheduler it might be that a "normal" pod cannot be
+		// scheduled onto it.
+		By("Trying to launch a pod with a label to get a node which can launch it.")
+		podName := "with-label"
+		_, err := c.Pods(ns).Create(&api.Pod{
+			TypeMeta: unversioned.TypeMeta{
+				Kind: "Pod",
+			},
+			ObjectMeta: api.ObjectMeta{
+				Name:   podName,
+				Labels: map[string]string{"security": "S1"},
+			},
+			Spec: api.PodSpec{
+				Containers: []api.Container{
+					{
+						Name:  podName,
+						Image: "gcr.io/google_containers/pause:2.0",
+					},
+				},
+			},
+		})
+		expectNoError(err)
+		expectNoError(waitForPodRunningInNamespace(c, podName, ns))
+		pod, err := c.Pods(ns).Get(podName)
+		expectNoError(err)
+
+		nodeName := pod.Spec.NodeName
+		defer c.Pods(ns).Delete(podName, api.NewDeleteOptions(0))
+
+		By("Trying to apply a random label on the found node.")
+		k := "kubernetes.io/hostname"
+		v := "kubernetes-e2e"
+		patch := fmt.Sprintf(`{"metadata":{"labels":{"%s":"%s"}}}`, k, v)
+		err = c.Patch(api.MergePatchType).Resource("nodes").Name(nodeName).Body([]byte(patch)).Do().Error()
+		expectNoError(err)
+
+		node, err := c.Nodes().Get(nodeName)
+		expectNoError(err)
+		Expect(node.Labels[k]).To(Equal(v))
+
+		By("Trying to launch the pod, now with multiple pod affinities with diff LabelOperators.")
+		labelPodName := "with-podaffinity"
+		_, err = c.Pods(ns).Create(&api.Pod{
+			TypeMeta: unversioned.TypeMeta{
+				Kind: "Pod",
+			},
+			ObjectMeta: api.ObjectMeta{
+				Name: labelPodName,
+				Annotations: map[string]string{
+					"scheduler.alpha.kubernetes.io/affinity": `
+						{"podAffinity": {
+							"requiredDuringSchedulingIgnoredDuringExecution": [{
+								"labelSelector":{
+									"matchExpressions": [{
+										"key": "security",
+										"operator": "In",
+										"values": ["S1", "value2"]
+									},
+									{
+										"key": "security",
+										"operator": "NotIn",
+										"values": ["S2"]
+									},
+									{
+										"key": "wrongkey",
+										"operator":"DoesNotExist"
+									},
+									{
+										"key": "security",
+										"operator":"Exists"
+									}]
+								},
+								"topologyKey": "` + k + `"
+							}]
+					 }}`,
+				},
+			},
+			Spec: api.PodSpec{
+				Containers: []api.Container{
+					{
+						Name:  labelPodName,
+						Image: "gcr.io/google_containers/pause:2.0",
+					},
+				},
+			},
+		})
+		expectNoError(err)
+		defer c.Pods(ns).Delete(labelPodName, api.NewDeleteOptions(0))
+
+		// check that pod got scheduled. We intentionally DO NOT check that the
+		// pod is running because this will create a race condition with the
+		// kubelet and the scheduler: the scheduler might have scheduled a pod
+		// already when the kubelet does not know about its new label yet. The
+		// kubelet will then refuse to launch the pod.
+		expectNoError(waitForPodNotPending(c, ns, labelPodName))
+		labelPod, err := c.Pods(ns).Get(labelPodName)
+		expectNoError(err)
+		Expect(labelPod.Spec.NodeName).To(Equal(nodeName))
+	})
+
+	// test the pod affinity and anti affinity successful matching scenario.
+	It("validates that InterPod Affinity and AntiAffinity is respected if matching [Feature:InterPodAffinity]", func() {
+		// launch a pod to find a node which can launch a pod. We intentionally do
+		// not just take the node list and choose the first of them. Depending on the
+		// cluster and the scheduler it might be that a "normal" pod cannot be
+		// scheduled onto it.
+		By("Trying to launch a pod with a label to get a node which can launch it.")
+		podName := "with-label"
+		_, err := c.Pods(ns).Create(&api.Pod{
+			TypeMeta: unversioned.TypeMeta{
+				Kind: "Pod",
+			},
+			ObjectMeta: api.ObjectMeta{
+				Name:   podName,
+				Labels: map[string]string{"security": "S1"},
+			},
+			Spec: api.PodSpec{
+				Containers: []api.Container{
+					{
+						Name:  podName,
+						Image: "gcr.io/google_containers/pause:2.0",
+					},
+				},
+			},
+		})
+		expectNoError(err)
+		expectNoError(waitForPodRunningInNamespace(c, podName, ns))
+		pod, err := c.Pods(ns).Get(podName)
+		expectNoError(err)
+
+		nodeName := pod.Spec.NodeName
+		defer c.Pods(ns).Delete(podName, api.NewDeleteOptions(0))
+
+		By("Trying to apply a random label on the found node.")
+		k := "kubernetes.io/hostname"
+		v := "e2e-testing"
+		patch := fmt.Sprintf(`{"metadata":{"labels":{"%s":"%s"}}}`, k, v)
+		err = c.Patch(api.MergePatchType).Resource("nodes").Name(nodeName).Body([]byte(patch)).Do().Error()
+		expectNoError(err)
+
+		node, err := c.Nodes().Get(nodeName)
+		expectNoError(err)
+		Expect(node.Labels[k]).To(Equal(v))
+
+		By("Trying to launch the pod, now with Pod affinity and anti affinity.")
+		labelPodName := "with-podantiaffinity"
+		_, err = c.Pods(ns).Create(&api.Pod{
+			TypeMeta: unversioned.TypeMeta{
+				Kind: "Pod",
+			},
+			ObjectMeta: api.ObjectMeta{
+				Name: labelPodName,
+				Annotations: map[string]string{
+					"scheduler.alpha.kubernetes.io/affinity": `
+					{"podAffinity": {
+						"requiredDuringSchedulingIgnoredDuringExecution": [{
+							"labelSelector": {
+								"matchExpressions": [{
+									"key": "security",
+									"operator": "In",
+									"values":["S1"]
+								}]
+							},
+							"topologyKey": "` + k + `"
+						}]
+					},
+					"podAntiAffinity": {
+						"requiredDuringSchedulingIgnoredDuringExecution": [{
+							"labelSelector": {
+								"matchExpressions": [{
+									"key": "security",
+									"operator": "In",
+									"values":["S2"]
+								}]
+							},
+							"topologyKey": "kubernetes.io/hostname"
+						}]
+					}}`,
+				},
+			},
+			Spec: api.PodSpec{
+				Containers: []api.Container{
+					{
+						Name:  labelPodName,
+						Image: "gcr.io/google_containers/pause:2.0",
+					},
+				},
+			},
+		})
+		expectNoError(err)
+		defer c.Pods(ns).Delete(labelPodName, api.NewDeleteOptions(0))
+
+		// check that pod got scheduled. We intentionally DO NOT check that the
+		// pod is running because this will create a race condition with the
+		// kubelet and the scheduler: the scheduler might have scheduled a pod
+		// already when the kubelet does not know about its new label yet. The
+		// kubelet will then refuse to launch the pod.
+		expectNoError(waitForPodNotPending(c, ns, labelPodName))
+		labelPod, err := c.Pods(ns).Get(labelPodName)
+		expectNoError(err)
+		Expect(labelPod.Spec.NodeName).To(Equal(nodeName))
+	})
+
+	// Verify that an escaped JSON string of pod affinity and pod anti affinity in a YAML PodSpec works.
+	It("validates that embedding the JSON PodAffinity and PodAntiAffinity setting as a string in the annotation value work [[Feature:InterPodAffinity]]", func() {
+		// launch a pod to find a node which can launch a pod. We intentionally do
+		// not just take the node list and choose the first of them. Depending on the
+		// cluster and the scheduler it might be that a "normal" pod cannot be
+		// scheduled onto it.
+		By("Trying to launch a pod with label to get a node which can launch it.")
+		podName := "with-label"
+		_, err := c.Pods(ns).Create(&api.Pod{
+			TypeMeta: unversioned.TypeMeta{
+				Kind: "Pod",
+			},
+			ObjectMeta: api.ObjectMeta{
+				Name:   podName,
+				Labels: map[string]string{"security": "S1"},
+			},
+			Spec: api.PodSpec{
+				Containers: []api.Container{
+					{
+						Name:  podName,
+						Image: "gcr.io/google_containers/pause:2.0",
+					},
+				},
+			},
+		})
+		expectNoError(err)
+		expectNoError(waitForPodRunningInNamespace(c, podName, ns))
+		pod, err := c.Pods(ns).Get(podName)
+		expectNoError(err)
+
+		nodeName := pod.Spec.NodeName
+		defer c.Pods(ns).Delete(podName, api.NewDeleteOptions(0))
+
+		By("Trying to apply a label with fake az info on the found node.")
+		k := "kubernetes.io/hostname"
+		v := "e2e-az1"
+		patch := fmt.Sprintf(`{"metadata":{"labels":{"%s":"%s"}}}`, k, v)
+		err = c.Patch(api.MergePatchType).Resource("nodes").Name(nodeName).Body([]byte(patch)).Do().Error()
+		expectNoError(err)
+
+		node, err := c.Nodes().Get(nodeName)
+		expectNoError(err)
+		Expect(node.Labels[k]).To(Equal(v))
+
+		By("Trying to launch a pod that with PodAffinity & PodAntiAffinity setting as embedded JSON string in the annotation value.")
+		labelPodName := "with-newlabels"
+		nodeSelectionRoot := filepath.Join(testContext.RepoRoot, "docs/user-guide/node-selection")
+		testPodPath := filepath.Join(nodeSelectionRoot, "pod-with-pod-affinity.yaml")
+		runKubectlOrDie("create", "-f", testPodPath, fmt.Sprintf("--namespace=%v", ns))
+		defer c.Pods(ns).Delete(labelPodName, api.NewDeleteOptions(0))
+
+		// check that pod got scheduled. We intentionally DO NOT check that the
+		// pod is running because this will create a race condition with the
+		// kubelet and the scheduler: the scheduler might have scheduled a pod
+		// already when the kubelet does not know about its new label yet. The
+		// kubelet will then refuse to launch the pod.
+		expectNoError(waitForPodNotPending(c, ns, labelPodName))
+		labelPod, err := c.Pods(ns).Get(labelPodName)
+		expectNoError(err)
+		Expect(labelPod.Spec.NodeName).To(Equal(nodeName))
+	})
 })

@@ -126,6 +126,9 @@ func init() {
 		DeepCopy_api_PersistentVolumeSpec,
 		DeepCopy_api_PersistentVolumeStatus,
 		DeepCopy_api_Pod,
+		DeepCopy_api_PodAffinity,
+		DeepCopy_api_PodAffinityTerm,
+		DeepCopy_api_PodAntiAffinity,
 		DeepCopy_api_PodAttachOptions,
 		DeepCopy_api_PodCondition,
 		DeepCopy_api_PodExecOptions,
@@ -171,6 +174,7 @@ func init() {
 		DeepCopy_api_Volume,
 		DeepCopy_api_VolumeMount,
 		DeepCopy_api_VolumeSource,
+		DeepCopy_api_WeightedPodAffinityTerm,
 		DeepCopy_conversion_Meta,
 		DeepCopy_intstr_IntOrString,
 		DeepCopy_sets_Empty,
@@ -179,6 +183,8 @@ func init() {
 		DeepCopy_unversioned_GroupVersion,
 		DeepCopy_unversioned_GroupVersionKind,
 		DeepCopy_unversioned_GroupVersionResource,
+		DeepCopy_unversioned_LabelSelector,
+		DeepCopy_unversioned_LabelSelectorRequirement,
 		DeepCopy_unversioned_ListMeta,
 		DeepCopy_unversioned_TypeMeta,
 	); err != nil {
@@ -204,6 +210,24 @@ func DeepCopy_api_Affinity(in Affinity, out *Affinity, c *conversion.Cloner) err
 		}
 	} else {
 		out.NodeAffinity = nil
+	}
+	if in.PodAffinity != nil {
+		in, out := in.PodAffinity, &out.PodAffinity
+		*out = new(PodAffinity)
+		if err := DeepCopy_api_PodAffinity(*in, *out, c); err != nil {
+			return err
+		}
+	} else {
+		out.PodAffinity = nil
+	}
+	if in.PodAntiAffinity != nil {
+		in, out := in.PodAntiAffinity, &out.PodAntiAffinity
+		*out = new(PodAntiAffinity)
+		if err := DeepCopy_api_PodAntiAffinity(*in, *out, c); err != nil {
+			return err
+		}
+	} else {
+		out.PodAntiAffinity = nil
 	}
 	return nil
 }
@@ -1937,6 +1961,83 @@ func DeepCopy_api_Pod(in Pod, out *Pod, c *conversion.Cloner) error {
 	return nil
 }
 
+func DeepCopy_api_PodAffinity(in PodAffinity, out *PodAffinity, c *conversion.Cloner) error {
+	if in.RequiredDuringSchedulingIgnoredDuringExecution != nil {
+		in, out := in.RequiredDuringSchedulingIgnoredDuringExecution, &out.RequiredDuringSchedulingIgnoredDuringExecution
+		*out = make([]PodAffinityTerm, len(in))
+		for i := range in {
+			if err := DeepCopy_api_PodAffinityTerm(in[i], &(*out)[i], c); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.RequiredDuringSchedulingIgnoredDuringExecution = nil
+	}
+	if in.PreferredDuringSchedulingIgnoredDuringExecution != nil {
+		in, out := in.PreferredDuringSchedulingIgnoredDuringExecution, &out.PreferredDuringSchedulingIgnoredDuringExecution
+		*out = make([]WeightedPodAffinityTerm, len(in))
+		for i := range in {
+			if err := DeepCopy_api_WeightedPodAffinityTerm(in[i], &(*out)[i], c); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.PreferredDuringSchedulingIgnoredDuringExecution = nil
+	}
+	return nil
+}
+
+func DeepCopy_api_PodAffinityTerm(in PodAffinityTerm, out *PodAffinityTerm, c *conversion.Cloner) error {
+	if in.LabelSelector != nil {
+		in, out := in.LabelSelector, &out.LabelSelector
+		*out = new(unversioned.LabelSelector)
+		if err := DeepCopy_unversioned_LabelSelector(*in, *out, c); err != nil {
+			return err
+		}
+	} else {
+		out.LabelSelector = nil
+	}
+	if in.Namespaces != nil {
+		in, out := in.Namespaces, &out.Namespaces
+		*out = make([]Namespace, len(in))
+		for i := range in {
+			if err := DeepCopy_api_Namespace(in[i], &(*out)[i], c); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.Namespaces = nil
+	}
+	out.TopologyKey = in.TopologyKey
+	return nil
+}
+
+func DeepCopy_api_PodAntiAffinity(in PodAntiAffinity, out *PodAntiAffinity, c *conversion.Cloner) error {
+	if in.RequiredDuringSchedulingIgnoredDuringExecution != nil {
+		in, out := in.RequiredDuringSchedulingIgnoredDuringExecution, &out.RequiredDuringSchedulingIgnoredDuringExecution
+		*out = make([]PodAffinityTerm, len(in))
+		for i := range in {
+			if err := DeepCopy_api_PodAffinityTerm(in[i], &(*out)[i], c); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.RequiredDuringSchedulingIgnoredDuringExecution = nil
+	}
+	if in.PreferredDuringSchedulingIgnoredDuringExecution != nil {
+		in, out := in.PreferredDuringSchedulingIgnoredDuringExecution, &out.PreferredDuringSchedulingIgnoredDuringExecution
+		*out = make([]WeightedPodAffinityTerm, len(in))
+		for i := range in {
+			if err := DeepCopy_api_WeightedPodAffinityTerm(in[i], &(*out)[i], c); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.PreferredDuringSchedulingIgnoredDuringExecution = nil
+	}
+	return nil
+}
+
 func DeepCopy_api_PodAttachOptions(in PodAttachOptions, out *PodAttachOptions, c *conversion.Cloner) error {
 	if err := DeepCopy_unversioned_TypeMeta(in.TypeMeta, &out.TypeMeta, c); err != nil {
 		return err
@@ -3002,6 +3103,14 @@ func DeepCopy_api_VolumeSource(in VolumeSource, out *VolumeSource, c *conversion
 	return nil
 }
 
+func DeepCopy_api_WeightedPodAffinityTerm(in WeightedPodAffinityTerm, out *WeightedPodAffinityTerm, c *conversion.Cloner) error {
+	out.Weight = in.Weight
+	if err := DeepCopy_api_PodAffinityTerm(in.PodAffinityTerm, &out.PodAffinityTerm, c); err != nil {
+		return err
+	}
+	return nil
+}
+
 func DeepCopy_conversion_Meta(in conversion.Meta, out *conversion.Meta, c *conversion.Cloner) error {
 	out.SrcVersion = in.SrcVersion
 	out.DestVersion = in.DestVersion
@@ -3053,6 +3162,43 @@ func DeepCopy_unversioned_GroupVersionResource(in unversioned.GroupVersionResour
 	out.Group = in.Group
 	out.Version = in.Version
 	out.Resource = in.Resource
+	return nil
+}
+
+func DeepCopy_unversioned_LabelSelector(in unversioned.LabelSelector, out *unversioned.LabelSelector, c *conversion.Cloner) error {
+	if in.MatchLabels != nil {
+		in, out := in.MatchLabels, &out.MatchLabels
+		*out = make(map[string]string)
+		for key, val := range in {
+			(*out)[key] = val
+		}
+	} else {
+		out.MatchLabels = nil
+	}
+	if in.MatchExpressions != nil {
+		in, out := in.MatchExpressions, &out.MatchExpressions
+		*out = make([]unversioned.LabelSelectorRequirement, len(in))
+		for i := range in {
+			if err := DeepCopy_unversioned_LabelSelectorRequirement(in[i], &(*out)[i], c); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.MatchExpressions = nil
+	}
+	return nil
+}
+
+func DeepCopy_unversioned_LabelSelectorRequirement(in unversioned.LabelSelectorRequirement, out *unversioned.LabelSelectorRequirement, c *conversion.Cloner) error {
+	out.Key = in.Key
+	out.Operator = in.Operator
+	if in.Values != nil {
+		in, out := in.Values, &out.Values
+		*out = make([]string, len(in))
+		copy(*out, in)
+	} else {
+		out.Values = nil
+	}
 	return nil
 }
 

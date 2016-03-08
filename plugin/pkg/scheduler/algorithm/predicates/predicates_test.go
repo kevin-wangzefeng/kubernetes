@@ -1559,3 +1559,522 @@ func TestRunGeneralPredicates(t *testing.T) {
 		}
 	}
 }
+
+func TestInterPodAffinity(t *testing.T) {
+	podlabel := map[string]string{"service": "securityscan"}
+	labels1 := map[string]string{
+		"region": "r1",
+		"zone":   "z11",
+	}
+	podlabel2 := map[string]string{"security": "S1"}
+	node1 := api.Node{ObjectMeta: api.ObjectMeta{Name: "machine1", Labels: labels1}}
+	tests := []struct {
+		pod  *api.Pod
+		pods []*api.Pod
+		node api.Node
+		fits bool
+		test string
+	}{
+		{
+			pod:  new(api.Pod),
+			node: node1,
+			fits: true,
+			test: "A pod that has no required pod affinity scheduling requirements can schedule onto a node with no existing pods",
+		},
+		{
+			pod: &api.Pod{
+				ObjectMeta: api.ObjectMeta{
+					Labels: podlabel2,
+					Annotations: map[string]string{
+						api.AffinityAnnotationKey: `
+						{"podAffinity": {
+							"requiredDuringSchedulingIgnoredDuringExecution": [
+							{
+								"labelSelector":
+								{
+									"matchExpressions": [{
+										"key": "service",
+										"operator": "In",
+										"values": ["securityscan", "value2"]
+										}]
+									},
+								"topologyKey": "region"
+								}
+							]
+						}}`,
+					},
+				},
+			},
+			pods: []*api.Pod{{Spec: api.PodSpec{NodeName: "machine1"}, ObjectMeta: api.ObjectMeta{Labels: podlabel}}},
+			node: node1,
+			fits: true,
+			test: "satisfies with requiredDuringSchedulingIgnoredDuringExecution in PodAffinity using In operator that matches the existing pod",
+		},
+		{
+			pod: &api.Pod{
+				ObjectMeta: api.ObjectMeta{
+					Labels: podlabel2,
+					Annotations: map[string]string{
+						api.AffinityAnnotationKey: `
+						{"podAffinity": {
+							"requiredDuringSchedulingIgnoredDuringExecution": [
+							{
+								"labelSelector":
+								{
+									"matchExpressions": [{
+										"key": "service",
+										"operator": "In",
+										"values": ["securityscan", "value2"]
+									}]
+								},
+								"topologyKey": ""
+								}
+							]
+						}}`,
+					},
+				},
+			},
+			pods: []*api.Pod{{Spec: api.PodSpec{NodeName: "machine1"}, ObjectMeta: api.ObjectMeta{Labels: podlabel}}},
+			node: node1,
+			fits: true,
+			test: "satisfies the pod with requiredDuringSchedulingIgnoredDuringExecution in PodAffinity using empty topologyKey in labelSelector that matches the existing pod",
+		},
+		{
+			pod: &api.Pod{
+				ObjectMeta: api.ObjectMeta{
+					Labels: podlabel2,
+					Annotations: map[string]string{
+						api.AffinityAnnotationKey: `
+						{"podAffinity": {
+							"requiredDuringSchedulingIgnoredDuringExecution": [
+							{
+								"labelSelector":
+								{
+									"matchExpressions": [{
+										"key": "service",
+										"operator": "In",
+										"values": ["securityscan", "value2"]
+									}]
+								},
+								"topologyKey": "wrongtopologykey"
+								}
+							]
+						}}`,
+					},
+				},
+			},
+			pods: []*api.Pod{{Spec: api.PodSpec{NodeName: "machine1"}, ObjectMeta: api.ObjectMeta{Labels: podlabel}}},
+			node: node1,
+			fits: false,
+			test: "Does not satisfy the PodAffinity with labelSelector because the node doesn't have corresponding topology key",
+		},
+		{
+			pod: &api.Pod{
+				ObjectMeta: api.ObjectMeta{
+					Labels: podlabel2,
+					Annotations: map[string]string{
+						api.AffinityAnnotationKey: `
+						{"podAffinity": {
+							"requiredDuringSchedulingIgnoredDuringExecution": [
+							{
+								"labelSelector":
+								{
+									"matchExpressions": [{
+										"key": "service",
+										"operator": "In",
+										"values": ["securityscan", "value2"]
+									}]
+								},
+								"namespaces":[
+								{
+									"metadata":{"name": "DiffNameSpace"}
+								}]
+								}
+							]
+						}}`,
+					},
+				},
+			},
+			pods: []*api.Pod{{Spec: api.PodSpec{NodeName: "machine1"}, ObjectMeta: api.ObjectMeta{Labels: podlabel, Namespace: "ns"}}},
+			node: node1,
+			fits: false,
+			test: "Does not satisfy the PodAffinity with labelSelector because of diff Namespace",
+		},
+		{
+			pod: &api.Pod{
+				ObjectMeta: api.ObjectMeta{
+					Labels: podlabel,
+					Annotations: map[string]string{
+						api.AffinityAnnotationKey: `
+						{"podAffinity": {
+							"requiredDuringSchedulingIgnoredDuringExecution": [
+							{
+								"labelSelector":
+								{
+									"matchExpressions": [{
+										"key": "service",
+										"operator": "In",
+										"values": ["antivirusscan", "value2"]
+									}]
+								}
+							}]
+						}}`,
+					},
+				},
+			},
+			pods: []*api.Pod{{Spec: api.PodSpec{NodeName: "machine1"}, ObjectMeta: api.ObjectMeta{Labels: podlabel}}},
+			node: node1,
+			fits: false,
+			test: "Doesn't satisfy the PodAffinity because of unmatching labelSelector with the existing pod",
+		},
+		{
+			pod: &api.Pod{
+				ObjectMeta: api.ObjectMeta{
+					Labels: podlabel2,
+					Annotations: map[string]string{
+						api.AffinityAnnotationKey: `
+						{"podAffinity": {
+							"requiredDuringSchedulingIgnoredDuringExecution": [
+							{
+								"labelSelector":
+								{
+									"matchExpressions": [{
+										"key": "service",
+										"operator": "Exists"
+									},
+									{
+										"key": "wrongkey",
+										"operator": "DoesNotExist"
+									}]
+								},
+								"topologyKey": "region"
+							},
+							{
+								"labelSelector":
+								{
+									"matchExpressions": [{
+										"key": "service",
+										"operator": "In",
+										"values": ["securityscan"]
+									},
+									{
+										"key": "service",
+										"operator": "NotIn",
+										"values": ["WrongValue"]
+									}]
+								},
+								"topologyKey": "region"
+							}
+							]
+						}}`,
+					},
+				},
+			},
+			pods: []*api.Pod{{Spec: api.PodSpec{NodeName: "machine1"}, ObjectMeta: api.ObjectMeta{Labels: podlabel}}},
+			node: node1,
+			fits: true,
+			test: "satisfies the PodAffinity with different label Operators in multiple RequiredDuringSchedulingIgnoredDuringExecution ",
+		},
+		{
+			pod: &api.Pod{
+				ObjectMeta: api.ObjectMeta{
+					Labels: podlabel2,
+					Annotations: map[string]string{
+						api.AffinityAnnotationKey: `
+						{"podAffinity": {
+							"requiredDuringSchedulingIgnoredDuringExecution": [
+							{
+								"labelSelector":
+								{
+									"matchExpressions": [{
+										"key": "service",
+										"operator": "In",
+										"values": ["securityscan", "value2"]
+									}]
+								},
+								"topologyKey": "region"
+							}]
+						},
+						"podAntiAffinity": {
+							"requiredDuringSchedulingIgnoredDuringExecution": [
+							{
+								"labelSelector":
+								{
+									"matchExpressions": [{
+										"key": "service",
+										"operator": "In",
+										"values": ["antivirusscan", "value2"]
+									}]
+								},
+								"topologyKey": "node"
+							}]
+						}}`,
+					},
+				},
+			},
+			pods: []*api.Pod{{Spec: api.PodSpec{NodeName: "machine1"}, ObjectMeta: api.ObjectMeta{Labels: podlabel}}},
+			node: node1,
+			fits: true,
+			test: "satisfies the PodAffinity and PodAntiAffinity with the existing pod",
+		},
+		// TODO: Uncomment this block when implement RequiredDuringSchedulingRequiredDuringExecution.
+		//{
+		//	 pod: &api.Pod{
+		//		ObjectMeta: api.ObjectMeta{
+		//			Labels: podlabel2,
+		//			Annotations: map[string]string{
+		//				api.AffinityAnnotationKey: `
+		//				{"podAffinity": {
+		//					"requiredDuringSchedulingRequiredDuringExecution": [
+		//							{
+		//								"labelSelector":
+		//									{
+		//										"matchExpressions": [{
+		//											"key": "service",
+		//											"operator": "Exists"
+		//										},
+		//										{
+		//											"key": "wrongkey",
+		//											"operator": "DoesNotExist"
+		//										}]
+		//									},
+		//								"topologyKey": "region"
+		//							},
+		//							{
+		//								"labelSelector":
+		//									{
+		//										"matchExpressions": [{
+		//											"key": "service",
+		//											"operator": "In",
+		//											"values": ["securityscan"]
+		//										},
+		//										{
+		//											"key": "service",
+		//											"operator": "NotIn",
+		//											"values": ["WrongValue"]
+		//										}]
+		//									},
+		//								"topologyKey": "region"
+		//							}
+		//					]
+		//				}}`,
+		//			},
+		//		},
+		//	},
+		//	pods: []*api.Pod{{Spec: api.PodSpec{NodeName: "machine1"}, ObjectMeta: api.ObjectMeta{Labels: podlabel}}},
+		//	node: node1,
+		//	fits: true,
+		//	test: "satisfies the PodAffinity with different Label Operators in multiple RequiredDuringSchedulingRequiredDuringExecution ",
+		//},
+		{
+			pod: &api.Pod{
+				ObjectMeta: api.ObjectMeta{
+					Labels: podlabel2,
+					Annotations: map[string]string{
+						api.AffinityAnnotationKey: `
+						{"podAffinity": {
+							"requiredDuringSchedulingIgnoredDuringExecution": [
+							{
+								"labelSelector":
+								{
+									"matchExpressions": [{
+										"key": "service",
+										"operator": "In",
+										"values": ["securityscan", "value2"]
+									}]
+								},
+							"topologyKey": "region"
+							}]
+						},
+						"podAntiAffinity": {
+							"requiredDuringSchedulingIgnoredDuringExecution": [
+							{
+								"labelSelector":
+								{
+									"matchExpressions": [{
+										"key": "service",
+										"operator": "In",
+										"values": ["antivirusscan", "value2"]
+									}]
+								},
+								"topologyKey": "node"
+							}]
+						}}`,
+					},
+				},
+			},
+			pods: []*api.Pod{{Spec: api.PodSpec{NodeName: "machine1"},
+				ObjectMeta: api.ObjectMeta{Labels: podlabel,
+					Annotations: map[string]string{
+						api.AffinityAnnotationKey: `
+						{"PodAntiAffinity": {
+							"requiredDuringSchedulingIgnoredDuringExecution": [
+							{
+								"labelSelector":
+								{
+									"matchExpressions": [{
+										"key": "service",
+										"operator": "In",
+										"values": ["antivirusscan", "value2"]
+									}]
+								},
+								"topologyKey": "node"
+							}]
+						}}`,
+					}},
+			}},
+			node: node1,
+			fits: true,
+			test: "satisfies the PodAffinity and PodAntiAffinity and PodAntiAffinity symmetry with the existing pod",
+		},
+		{
+			pod: &api.Pod{
+				ObjectMeta: api.ObjectMeta{
+					Labels: podlabel2,
+					Annotations: map[string]string{
+						api.AffinityAnnotationKey: `
+						{"podAffinity": {
+							"requiredDuringSchedulingIgnoredDuringExecution": [
+							{
+								"labelSelector":
+								{
+									"matchExpressions": [{
+										"key": "service",
+										"operator": "In",
+										"values": ["securityscan", "value2"]
+									}]
+								},
+								"topologyKey": "region"
+							}]
+						},
+						"podAntiAffinity": {
+							"requiredDuringSchedulingIgnoredDuringExecution": [
+							{
+								"labelSelector":
+								{
+									"matchExpressions": [{
+										"key": "service",
+										"operator": "In",
+										"values": ["securityscan", "value2"]
+									}]
+								},
+								"topologyKey": ""
+							}]
+						}}`,
+					},
+				},
+			},
+			pods: []*api.Pod{{Spec: api.PodSpec{NodeName: "machine1"}, ObjectMeta: api.ObjectMeta{Labels: podlabel}}},
+			node: node1,
+			fits: false,
+			test: "satisfies the PodAffinity but doesn't satisfies the PodAntiAffinity with the existing pod",
+		},
+		{
+			pod: &api.Pod{
+				ObjectMeta: api.ObjectMeta{
+					Labels: podlabel,
+					Annotations: map[string]string{
+						api.AffinityAnnotationKey: `
+						{"podAffinity": {
+							"requiredDuringSchedulingIgnoredDuringExecution": [
+							{
+								"labelSelector":
+								{
+									"matchExpressions": [{
+										"key": "service",
+										"operator": "In",
+										"values": ["securityscan", "value2"]
+									}]
+								},
+								"topologyKey": "region"
+							}]
+						},
+						"podAntiAffinity": {
+							"requiredDuringSchedulingIgnoredDuringExecution": [
+							{
+								"labelSelector":
+								{
+									"matchExpressions": [{
+										"key": "service",
+										"operator": "In",
+										"values": ["antivirusscan", "value2"]
+									}]
+								},
+								"topologyKey": "node"
+							}]
+						}}`,
+					},
+				},
+			},
+			pods: []*api.Pod{{Spec: api.PodSpec{NodeName: "machine1"},
+				ObjectMeta: api.ObjectMeta{Labels: podlabel,
+					Annotations: map[string]string{
+						api.AffinityAnnotationKey: `
+						{"PodAntiAffinity": {
+							"requiredDuringSchedulingIgnoredDuringExecution": [
+							{
+								"labelSelector":
+								{
+									"matchExpressions": [{
+										"key": "service",
+										"operator": "In",
+										"values": ["securityscan", "value2"]
+									}]
+								},
+								"topologyKey": ""
+							}]
+						}}`,
+					}},
+			}},
+			node: node1,
+			fits: false,
+			test: "satisfies the PodAffinity and PodAntiAffinity but doesn't satisfies PodAntiAffinity symmetry with the existing pod",
+		},
+		{
+			pod: &api.Pod{
+				ObjectMeta: api.ObjectMeta{
+					Labels: podlabel,
+					Annotations: map[string]string{
+						api.AffinityAnnotationKey: `
+						{"podAffinity": {
+							"requiredDuringSchedulingIgnoredDuringExecution": [
+							{
+								"labelSelector":
+								{
+									"matchExpressions": [{
+										"key": "service",
+										"operator": "In",
+										"values": ["securityscan", "value2"]
+									}]
+								},
+								"topologyKey": "region"
+							}]
+						}}`,
+					},
+				},
+			},
+			pods: []*api.Pod{{Spec: api.PodSpec{NodeName: "machine2"}, ObjectMeta: api.ObjectMeta{Labels: podlabel}}},
+			node: node1,
+			fits: false,
+			test: "pod matches its own Label in PodAffinity and that matches the existing pod Labels",
+		},
+	}
+	for _, test := range tests {
+		node := test.node
+		var podsOnNode []*api.Pod
+		for _, pod := range test.pods {
+			if pod.Spec.NodeName == node.Name {
+				podsOnNode = append(podsOnNode, pod)
+			}
+		}
+
+		fit := PodAffinityChecker{FakeNodeInfo(node), algorithm.FakePodLister(test.pods)}
+		fits, err := fit.InterPodAffinityMatches(test.pod, test.node.Name, schedulercache.NewNodeInfo(podsOnNode...))
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+		if fits != test.fits {
+			t.Errorf("%s: expected: %v got %v", test.test, test.fits, fits)
+		}
+	}
+}

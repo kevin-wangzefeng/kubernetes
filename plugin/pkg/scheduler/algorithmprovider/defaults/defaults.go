@@ -140,6 +140,13 @@ func defaultPredicates() sets.String {
 				return predicates.GeneralPredicates(args.NodeInfo)
 			},
 		),
+		// Fit is determined by inter-pod affinity.
+		factory.RegisterFitPredicateFactory(
+			"MatchInterPodAffinity",
+			func(args factory.PluginFactoryArgs) algorithm.FitPredicate {
+				return predicates.NewPodAffinityPredicate(args.NodeInfo, args.PodLister)
+			},
+		),
 	)
 }
 

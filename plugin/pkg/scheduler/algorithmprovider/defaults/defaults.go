@@ -125,6 +125,13 @@ func defaultPredicates() sets.String {
 		// GeneralPredicates are the predicates that are enforced by all Kubernetes components
 		// (e.g. kubelet and all schedulers)
 		factory.RegisterFitPredicate("GeneralPredicates", predicates.GeneralPredicates),
+		// Fit is determined by inter-pod affinity.
+		factory.RegisterFitPredicateFactory(
+			"MatchInterPodAffinity",
+			func(args factory.PluginFactoryArgs) algorithm.FitPredicate {
+				return predicates.NewPodAffinityPredicate(args.NodeInfo, args.PodLister)
+			},
+		),
 	)
 }
 

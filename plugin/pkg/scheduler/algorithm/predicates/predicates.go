@@ -788,32 +788,28 @@ func checkNodeMatchesHardPodAffinity(pod *api.Pod, existingPods []*api.Pod, node
 			return false
 		}
 
-		if podAffinityTermMatches == false {
+		if !podAffinityTermMatches {
 			// Check if it is in special case that the requiredDuringScheduling affinity requirement can be disregarded.
 			// If the requiredDuringScheduling affinity requirement matches a pod's own labels, and there are no other such pods
 			// anywhere, then disregard the requirement.
 			labelSelector, err := unversioned.LabelSelectorAsSelector(podAffinityTerm.LabelSelector)
-			if err != nil {
-				glog.V(10).Infof("LabelSelectorAsSelector is Failed for podAffinityTerm %+v, err: %+v", podAffinityTerm, err)
+			if err != nil || !labelSelector.Matches(labels.Set(pod.Labels)) {
+				glog.V(10).Infof("Cannot schedule pod %+v onto node %v, because not all the existing pods on this node satisfy the PodAffinityTerm %v, err: %+v",
+					podName(pod), node.Name, podAffinityTerm, err)
 				return false
 			}
+
 			// the affinity is to put the pod together with other pods from its same service or RC
-			if labelSelector.Matches(labels.Set(pod.Labels)) {
-				names := priorityutil.GetNamespacesFromPodAffinityTerm(pod, podAffinityTerm)
-				filteredPods := priorityutil.FilterPodsByNameSpaces(names, allPods)
-				for _, filteredPod := range filteredPods {
-					// if found an existing pod from same service or RC,
-					// the affinity scheduling rules cannot be disregarded.
-					if labelSelector.Matches(labels.Set(filteredPod.Labels)) {
-						glog.V(10).Infof("Cannot schedule pod %+v onto node %v, because not all the existing pods on this node satisfy the PodAffinityTerm %v",
-							podName(pod), node.Name, podAffinityTerm)
-						return false
-					}
+			names := priorityutil.GetNamespacesFromPodAffinityTerm(pod, podAffinityTerm)
+			filteredPods := priorityutil.FilterPodsByNameSpaces(names, allPods)
+			for _, filteredPod := range filteredPods {
+				// if found an existing pod from same service or RC,
+				// the affinity scheduling rules cannot be disregarded.
+				if labelSelector.Matches(labels.Set(filteredPod.Labels)) {
+					glog.V(10).Infof("Cannot schedule pod %+v onto node %v, because not all the existing pods on this node satisfy the PodAffinityTerm %v",
+						podName(pod), node.Name, podAffinityTerm)
+					return false
 				}
-			} else {
-				glog.V(10).Infof("Cannot schedule pod %+v onto node %v, because not all the existing pods on this node satisfy the PodAffinityTerm %v",
-					podName(pod), node.Name, podAffinityTerm)
-				return false
 			}
 		}
 	}

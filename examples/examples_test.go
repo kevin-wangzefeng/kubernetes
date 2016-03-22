@@ -333,6 +333,8 @@ func TestExampleObjectSchemas(t *testing.T) {
 		},
 		"../docs/user-guide/node-selection": {
 			"pod": &api.Pod{},
+		},
+		"../examples/node-selection": {
 			"pod-with-node-affinity": &api.Pod{},
 			"pod-with-pod-affinity":  &api.Pod{},
 		},

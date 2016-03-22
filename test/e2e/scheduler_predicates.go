@@ -711,7 +711,7 @@ var _ = KubeDescribe("SchedulerPredicates [Serial]", func() {
 
 		By("Trying to launch a pod that with NodeAffinity setting as embedded JSON string in the annotation value.")
 		labelPodName := "with-labels"
-		nodeSelectionRoot := filepath.Join(testContext.RepoRoot, "docs/user-guide/node-selection")
+		nodeSelectionRoot := filepath.Join(testContext.RepoRoot, "examples/node-selection")
 		testPodPath := filepath.Join(nodeSelectionRoot, "pod-with-node-affinity.yaml")
 		runKubectlOrDie("create", "-f", testPodPath, fmt.Sprintf("--namespace=%v", ns))
 		defer c.Pods(ns).Delete(labelPodName, api.NewDeleteOptions(0))
@@ -1330,7 +1330,7 @@ var _ = KubeDescribe("SchedulerPredicates [Serial]", func() {
 
 		By("Trying to launch a pod that with PodAffinity & PodAntiAffinity setting as embedded JSON string in the annotation value.")
 		labelPodName := "with-newlabels"
-		nodeSelectionRoot := filepath.Join(testContext.RepoRoot, "docs/user-guide/node-selection")
+		nodeSelectionRoot := filepath.Join(testContext.RepoRoot, "examples/node-selection")
 		testPodPath := filepath.Join(nodeSelectionRoot, "pod-with-pod-affinity.yaml")
 		runKubectlOrDie("create", "-f", testPodPath, fmt.Sprintf("--namespace=%v", ns))
 		defer c.Pods(ns).Delete(labelPodName, api.NewDeleteOptions(0))

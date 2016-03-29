@@ -40,10 +40,10 @@ func (AWSElasticBlockStoreVolumeSource) SwaggerDoc() map[string]string {
 }
 
 var map_Affinity = map[string]string{
-	"":                "Affinity is a group of affinity scheduling rules, currently includes node affinity,pod affinity & pod anti affinity.",
+	"":                "Affinity is a group of affinity scheduling rules.",
 	"nodeAffinity":    "Describes node affinity scheduling rules for the pod.",
-	"podAffinity":     "Describes pod affinity scheduling rules for the pod.",
-	"podAntiAffinity": "Describes pod anti affinity scheduling rules for the pod.",
+	"podAffinity":     "Describes pod affinity scheduling rules (e.g. co-locate this pod in the same node, zone, etc. as some other pod(s)).",
+	"podAntiAffinity": "Describes pod anti-affinity scheduling rules (e.g. avoid putting this pod in the same node, zone, etc. as some other pod(s)).",
 }
 
 func (Affinity) SwaggerDoc() map[string]string {
@@ -1083,9 +1083,9 @@ func (PodAffinity) SwaggerDoc() map[string]string {
 }
 
 var map_PodAffinityTerm = map[string]string{
-	"":              "podAffinityTerm contains LabelSelector,Namespaces & topology key",
-	"labelSelector": "A label selector is a label query over a set of resources.",
-	"namespaces":    "namespaces specifies which namespaces the LabelSelector applies to (matches against); nil list means \"this pod's namespace,\" empty list means \"all namespaces\" The json tag here is not \"omitempty\" since we need to distinguish nil and empty. See https://golang.org/pkg/encoding/json/#Marshal for more details.",
+	"":              "Defines a set of pods (namely those matching the labelSelector relative to the given namespace(s)) that this pod should be co-located (affinity) or not co-located (anti-affinity) with, where co-located is defined as running on a node whose value of the label with key <topologyKey> tches that of any node on which a pod of the set of pods is running",
+	"labelSelector": "A label selector is a label query over a set of resources, in this case .",
+	"namespaces":    "namespaces specifies which namespaces the labelSelector applies to (matches against); nil list means \"this pod's namespace,\" empty list means \"all namespaces\" The json tag here is not \"omitempty\" since we need to distinguish nil and empty. See https://golang.org/pkg/encoding/json/#Marshal for more details.",
 	"topologyKey":   "empty topology key is interpreted by the scheduler as \"all topologies\"",
 }
 
@@ -1644,7 +1644,7 @@ func (VolumeSource) SwaggerDoc() map[string]string {
 }
 
 var map_WeightedPodAffinityTerm = map[string]string{
-	"":                "The weights of all of the matched WeightedPodAffinityTerms fields are added per-node to find the most preferred node(s)",
+	"":                "The weights of all of the matched WeightedPodAffinityTerm fields are added per-node to find the most preferred node(s)",
 	"weight":          "weight associated with matching the corresponding podAffinityTerm, in the range 1-100\"",
 	"podAffinityTerm": "a pod affinity term, associated with the corresponding weight",
 }

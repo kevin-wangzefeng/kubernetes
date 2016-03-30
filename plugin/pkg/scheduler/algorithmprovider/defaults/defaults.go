@@ -80,6 +80,13 @@ func defaultPredicates() sets.String {
 		),
 		// Fit is determined by the presence of the Host parameter and a string match
 		factory.RegisterFitPredicate("HostName", predicates.PodFitsHost),
+		// Fit is determined based on whether a pod can tolerate all of the node's taints
+		factory.RegisterFitPredicateFactory(
+			"PodToleratesNodesTaints",
+			func(args factory.PluginFactoryArgs) algorithm.FitPredicate {
+				return predicates.NewTolerationMatchPredicate(args.NodeInfo)
+			},
+		),
 	)
 }
 

@@ -771,3 +771,64 @@ func TestServiceAffinity(t *testing.T) {
 		}
 	}
 }
+
+func TestPodToleratesTaints(t *testing.T) {
+	podTolerateTaintsTests := []struct {
+		pod       *api.Pod
+		scheduled bool
+		test      string
+	}{
+		{
+			pod: &api.Pod{
+				ObjectMeta: api.ObjectMeta{Name: "pod0"},
+				Spec: api.PodSpec{
+					Containers:  []api.Container{{Image: "pod0:V1"}},
+					Tolerations: []api.Toleration{},
+				},
+			},
+			scheduled: false,
+			test:      "a pod having no tolerations can be scheduled",
+		},
+		{
+			pod: &api.Pod{
+				ObjectMeta: api.ObjectMeta{Name: "pod1"},
+				Spec: api.PodSpec{
+					Containers:  []api.Container{{Image: "pod1:V1"}},
+					Tolerations: []api.Toleration{{Key: "dedicated", Value: "user1", Effect: api.TaintEffectNoSchedule}},
+				},
+			},
+			scheduled: true,
+			test:      "a pod which can be scheduled on a dedicated node assgined to user1 with effect NoSchedule",
+		},
+		{
+			pod: &api.Pod{
+				ObjectMeta: api.ObjectMeta{Name: "pod2"},
+				Spec: api.PodSpec{
+					Containers:  []api.Container{{Image: "pod2:V1"}},
+					Tolerations: []api.Toleration{{Key: "dedicated", Value: "user2", Effect: api.TaintEffectNoSchedule}},
+				},
+			},
+			scheduled: false,
+			test:      "a pod which can be scheduled on a dedicated node assgined to user2 with effect NoSchedule",
+		},
+	}
+	for _, test := range podTolerateTaintsTests {
+		node := api.Node{
+			Spec: api.NodeSpec{
+				ExternalID: "external",
+				Taints:     []api.Taint{{Key: "dedicated", Value: "user1", Effect: api.TaintEffectNoSchedule}},
+			},
+			Status: api.NodeStatus{
+				Taints: []api.Taint{{Key: "dedicated", Value: "user1", Effect: api.TaintEffectNoSchedule}},
+			},
+		}
+		tolerationMatch := TolerationMatch{FakeNodeInfo(node)}
+		scheduled, err := tolerationMatch.PodToleratesTaints(test.pod, nil, "machine")
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+		if scheduled != test.scheduled {
+			t.Errorf("%s: expected: %v got %v", test.test, test.scheduled, scheduled)
+		}
+	}
+}

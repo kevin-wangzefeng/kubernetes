@@ -251,6 +251,10 @@ type ResourceFit struct {
 	info NodeInfo
 }
 
+type TolerationMatch struct {
+	info NodeInfo
+}
+
 type resourceRequest struct {
 	milliCPU int64
 	memory   int64
@@ -347,6 +351,13 @@ func NewSelectorMatchPredicate(info NodeInfo) algorithm.FitPredicate {
 	return selector.PodSelectorMatches
 }
 
+func NewTolerationMatchPredicate(info NodeInfo) algorithm.FitPredicate {
+	tolerationMatch := &TolerationMatch{
+		info: info,
+	}
+	return tolerationMatch.PodToleratesTaints
+}
+
 func PodMatchesNodeLabels(pod *api.Pod, node *api.Node) bool {
 	if len(pod.Spec.NodeSelector) == 0 {
 		return true
@@ -365,6 +376,80 @@ func (n *NodeSelector) PodSelectorMatches(pod *api.Pod, existingPods []*api.Pod,
 		return false, err
 	}
 	return PodMatchesNodeLabels(pod, node), nil
+}
+
+// PodToleratesTaints matches pod's tolerations against node's taints if the effect is one of the following
+// 1. NoSchedule
+// 2. NoScheduleNoAdmit
+// 3. NoScheduleNoAdmitNoExecute
+// If the effect is PreferNoSchedule , then it's skipped.
+// If all of a node's taints are tolerated by atleast one of the pod's tolerations ,this node is a candidate for scheduling
+// the pod.
+func (t *TolerationMatch) PodToleratesTaints(pod *api.Pod, existingPods []*api.Pod, nodeID string) (bool, error) {
+	node, err := t.info.GetNodeInfo(nodeID)
+	if err != nil {
+		return false, err
+	}
+	return PodTolerationsMatchNodeTaints(pod, node), nil
+}
+
+func PodTolerationsMatchNodeTaints(pod *api.Pod, node *api.Node) bool {
+	// If the pod doesn't specify any tolerations, need to the check the node for the following
+	// two cases.
+
+	// If the node had taints then this pod cannot fit in this node
+	// If the node has no taints then it can fit any pod.
+	if len(pod.Spec.Tolerations) == 0 {
+		nodeTaintsLen := len(node.Status.Taints)
+		if nodeTaintsLen == 0 {
+			//Node also has no taints so this can fit any pod
+			return true
+		} else if nodeTaintsLen > 0 {
+			//Node has some taints but the pod has no matching toleration
+			//so this pod cant fit this node
+			return false
+		}
+
+		return true
+	}
+	// If the node doesn't have any taints applied , we don't need to process the pod's tolerations
+	// as this pod can be scheduled on to the node, so return true
+	if node.Status.Taints == nil || len(node.Status.Taints) == 0 {
+		return true
+	}
+taintLoop:
+	for _, currTaint := range node.Status.Taints {
+		if currTaint.Effect == api.TaintEffectNoSchedule ||
+			currTaint.Effect == api.TaintEffectNoScheduleNoAdmit ||
+			currTaint.Effect == api.TaintEffectNoScheduleNoAdmitNoExecute {
+			for _, toleration := range pod.Spec.Tolerations {
+				// If the toleration operator is "Equal" , then the triple <key , value , effect>                       		     // needs to be matched. If no operator is specified , it defaults to "Equal" ,
+				// so perform the same check in this case as well
+				if toleration.Operator == api.TolerationOpEqual || toleration.Operator == "" {
+					if toleration.Key == currTaint.Key &&
+						toleration.Value == currTaint.Value &&
+						toleration.Effect == currTaint.Effect {
+						continue taintLoop
+					}
+				} else if toleration.Operator == api.TolerationOpExists {
+					// If the toleration operator is "Exists" , then we need to match
+					// only the key and the effect. The value can be ignored.
+					if toleration.Key == currTaint.Key && toleration.Effect == currTaint.Effect {
+						continue taintLoop
+					}
+				}
+			}
+			// We reached here which indicates that this taint couldn't match
+			// the toleration on the pod. This means that this pod cannot tolerate ALL of the taints.
+			// So we need to return a false value here , indicating that this node isn't a fit for this pod.
+			return false
+		} else if currTaint.Effect == api.TaintEffectPreferNoSchedule {
+			continue taintLoop
+		}
+	}
+	// All of the node's taints are now processed and we found that all of the taints are tolerated by the pod
+	// So this node is a probable candidate for scheduling the node
+	return true
 }
 
 func PodFitsHost(pod *api.Pod, existingPods []*api.Pod, node string) (bool, error) {

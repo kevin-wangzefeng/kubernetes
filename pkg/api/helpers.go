@@ -263,3 +263,62 @@ func ParseRFC3339(s string, nowFn func() unversioned.Time) (unversioned.Time, er
 	}
 	return unversioned.Time{t}, nil
 }
+
+// TolerationsMatchTaints checks if a pod can tolerate a node's taints.
+func TolerationsMatchTaints(tolerations []Toleration, taints []Taint) bool {
+
+	// If the pod doesn't specify any tolerations, need to the check the node for the following
+	// two cases.
+
+	// If the node had taints then this pod cannot fit in this node.
+	// If the node has no taints then it can fit any pod.
+	nodeTaintsLen := len(taints)
+	if len(tolerations) == 0 {
+		if nodeTaintsLen == 0 {
+			//Node also has no taints so this can fit any pod
+			return true
+		} else if nodeTaintsLen > 0 {
+			//Node has some taints but the pod has no matching toleration
+			//so this pod can't fit this node
+			return false
+		}
+	} else {
+		// If the node doesn't have any taints applied, we don't need to process the pod's tolerations
+		// as this pod can be scheduled on to the node, so return true
+		if nodeTaintsLen == 0 {
+			return true
+		}
+	}
+taintLoop:
+	for _, currTaint := range taints {
+		if currTaint.Effect == TaintEffectNoSchedule {
+			// || currTaint.Effect == TaintEffectNoScheduleNoAdmit
+			// || currTaint.Effect == TaintEffectNoScheduleNoAdmitNoExecute
+			for _, toleration := range tolerations {
+				// If the toleration operator is "Equal" , then the triple <key , value , effect>                                            // needs to be matched. If no operator is specified, it defaults to "Equal",
+				// so perform the same check in this case as well
+				if toleration.Operator == TolerationOpEqual || toleration.Operator == "" {
+					if toleration.Key == currTaint.Key &&
+						toleration.Value == currTaint.Value &&
+						toleration.Effect == currTaint.Effect {
+						continue taintLoop
+					}
+				} else if toleration.Operator == TolerationOpExists {
+					// If the toleration operator is "Exists", then we need to match
+					// only the key and the effect. The value can be ignored.
+					if toleration.Key == currTaint.Key && toleration.Effect == currTaint.Effect {
+						continue taintLoop
+					}
+				}
+			}
+			// We reached here which indicates that no tolerations on the pod tolerates this taint.
+			// So we need to return a false value here, indicating that this node isn't a fit for this pod.
+			return false
+		} else if currTaint.Effect == TaintEffectPreferNoSchedule {
+			continue taintLoop
+		}
+	}
+	// All of the node's taints are now processed and we found that all of the taints are tolerated by the pod
+	// So this node is a probable candidate for scheduling the pod.
+	return true
+}

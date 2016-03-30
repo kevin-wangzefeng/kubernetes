@@ -775,6 +775,7 @@ func TestServiceAffinity(t *testing.T) {
 func TestPodToleratesTaints(t *testing.T) {
 	podTolerateTaintsTests := []struct {
 		pod       *api.Pod
+		node      api.Node
 		scheduled bool
 		test      string
 	}{
@@ -786,44 +787,336 @@ func TestPodToleratesTaints(t *testing.T) {
 					Tolerations: []api.Toleration{},
 				},
 			},
-			scheduled: false,
-			test:      "a pod having no tolerations can be scheduled",
-		},
-		{
-			pod: &api.Pod{
-				ObjectMeta: api.ObjectMeta{Name: "pod1"},
-				Spec: api.PodSpec{
-					Containers:  []api.Container{{Image: "pod1:V1"}},
-					Tolerations: []api.Toleration{{Key: "dedicated", Value: "user1", Effect: api.TaintEffectNoSchedule}},
+			node: api.Node{
+				Spec: api.NodeSpec{
+					ExternalID: "external",
+					Taints:     []api.Taint{},
+				},
+				Status: api.NodeStatus{
+					Taints: []api.Taint{},
 				},
 			},
 			scheduled: true,
-			test:      "a pod which can be scheduled on a dedicated node assgined to user1 with effect NoSchedule",
+			test: "a pod having no tolerations can be scheduled onto a node" +
+				"with no taints",
 		},
 		{
 			pod: &api.Pod{
-				ObjectMeta: api.ObjectMeta{Name: "pod2"},
+				ObjectMeta: api.ObjectMeta{Name: "pod0"},
 				Spec: api.PodSpec{
-					Containers:  []api.Container{{Image: "pod2:V1"}},
-					Tolerations: []api.Toleration{{Key: "dedicated", Value: "user2", Effect: api.TaintEffectNoSchedule}},
+					Containers: []api.Container{{Image: "pod0:V1"}},
+					Tolerations: []api.Toleration{{
+						Key:      "dedicated",
+						Operator: api.TolerationOpEqual,
+						Value:    "user1",
+						Effect:   api.TaintEffectNoSchedule}},
+				},
+			},
+			node: api.Node{
+				Spec: api.NodeSpec{
+					ExternalID: "external",
+					Taints:     []api.Taint{},
+				},
+				Status: api.NodeStatus{
+					Taints: []api.Taint{},
+				},
+			},
+			scheduled: true,
+			test: "a pod having a toleration can be scheduled onto a" +
+				"node with no taints",
+		},
+		{
+			pod: &api.Pod{
+				ObjectMeta: api.ObjectMeta{Name: "pod0"},
+				Spec: api.PodSpec{
+					Containers: []api.Container{{Image: "pod0:V1"}},
+					Tolerations: []api.Toleration{{
+						Key:      "dedicated",
+						Operator: api.TolerationOpEqual,
+						Value:    "user1",
+						Effect:   api.TaintEffectNoSchedule}},
+				},
+			},
+			node: api.Node{
+				Spec: api.NodeSpec{
+					ExternalID: "external",
+					Taints: []api.Taint{{
+						Key: "dedicated", Value: "user1",
+						Effect: api.TaintEffectNoSchedule}},
+				},
+				Status: api.NodeStatus{
+					Taints: []api.Taint{{
+						Key: "dedicated", Value: "user1",
+						Effect: api.TaintEffectNoSchedule}},
+				},
+			},
+			scheduled: true,
+			test: "a pod with dedicated=user1=NoSchedule can fit on a node" +
+				"with dedicated=user1=NoSchedule",
+		},
+		{
+			pod: &api.Pod{
+				ObjectMeta: api.ObjectMeta{Name: "pod0"},
+				Spec: api.PodSpec{
+					Containers: []api.Container{{Image: "pod0:V1"}},
+					Tolerations: []api.Toleration{{
+						Key:      "dedicated",
+						Operator: api.TolerationOpEqual,
+						Value:    "user1",
+						Effect:   api.TaintEffectNoSchedule}},
+				},
+			},
+			node: api.Node{
+				Spec: api.NodeSpec{
+					ExternalID: "external",
+					Taints: []api.Taint{{
+						Key: "dedicated", Value: "user2",
+						Effect: api.TaintEffectNoSchedule}},
+				},
+				Status: api.NodeStatus{
+					Taints: []api.Taint{{
+						Key:    "dedicated",
+						Value:  "user2",
+						Effect: api.TaintEffectNoSchedule}},
 				},
 			},
 			scheduled: false,
-			test:      "a pod which can be scheduled on a dedicated node assgined to user2 with effect NoSchedule",
+			test: "a pod with dedicated=user1=NoSchedule can't fit on a node" +
+				"with dedicated=user2=NoSchedule",
+		},
+		{
+			pod: &api.Pod{
+				ObjectMeta: api.ObjectMeta{Name: "pod0"},
+				Spec: api.PodSpec{
+					Containers: []api.Container{{Image: "pod0:V1"}},
+					Tolerations: []api.Toleration{{
+						Key:      "dedicated",
+						Operator: api.TolerationOpExists,
+						Value:    "",
+						Effect:   api.TaintEffectNoSchedule}},
+				},
+			},
+			node: api.Node{
+				Spec: api.NodeSpec{
+					ExternalID: "external",
+					Taints: []api.Taint{{
+						Key: "dedicated", Value: "user1",
+						Effect: api.TaintEffectNoSchedule}},
+				},
+				Status: api.NodeStatus{
+					Taints: []api.Taint{{
+						Key: "dedicated", Value: "user1",
+						Effect: api.TaintEffectNoSchedule}},
+				},
+			},
+			scheduled: true,
+			test: "a pod which can tolerate all taints of type dedicated" +
+				"with effect NoSchedule can fit on a dedicated node" +
+				"with NoSchedule",
+		},
+		{
+			pod: &api.Pod{
+				ObjectMeta: api.ObjectMeta{Name: "pod0"},
+				Spec: api.PodSpec{
+					Containers: []api.Container{{Image: "pod0:V1"}},
+					Tolerations: []api.Toleration{{
+						Key:      "dedicated",
+						Operator: api.TolerationOpExists, Value: "",
+						Effect: api.TaintEffectNoSchedule}},
+				},
+			},
+			node: api.Node{
+				Spec: api.NodeSpec{
+					ExternalID: "external",
+					Taints: []api.Taint{{Key: "dedicated", Value: "user1",
+						Effect: api.TaintEffectPreferNoSchedule}},
+				},
+				Status: api.NodeStatus{
+					Taints: []api.Taint{{
+						Key: "dedicated", Value: "user1",
+						Effect: api.TaintEffectPreferNoSchedule}},
+				},
+			},
+			scheduled: true,
+			test:      "a node with PreferNoSchedule effect is skipped so return true",
+		},
+		{
+			pod: &api.Pod{
+				ObjectMeta: api.ObjectMeta{Name: "pod0"},
+				Spec: api.PodSpec{
+					Containers: []api.Container{{Image: "pod0:V1"}},
+					Tolerations: []api.Toleration{{
+						Key:      "dedicated",
+						Operator: api.TolerationOpExists,
+						Value:    "",
+						Effect:   api.TaintEffectPreferNoSchedule}},
+				},
+			},
+			node: api.Node{
+				Spec: api.NodeSpec{
+					ExternalID: "external",
+					Taints: []api.Taint{{
+						Key: "dedicated", Value: "user1",
+						Effect: api.TaintEffectNoSchedule}},
+				},
+				Status: api.NodeStatus{
+					Taints: []api.Taint{{
+						Key: "dedicated", Value: "user1",
+						Effect: api.TaintEffectNoSchedule}},
+				},
+			},
+			scheduled: false,
+			test: "A pod which can tolerate all dedicated nodes with" +
+				"PreferNoSchedule effect can't fit on a dedicated node with" +
+				"NoSchedule effect",
+		},
+		{
+			pod: &api.Pod{
+				ObjectMeta: api.ObjectMeta{Name: "pod0"},
+				Spec: api.PodSpec{
+					Containers: []api.Container{{Image: "pod0:V1"}},
+					Tolerations: []api.Toleration{{
+						Key:      "dedicated",
+						Operator: api.TolerationOpEqual,
+						Value:    "user1",
+						Effect:   api.TaintEffectNoSchedule}},
+				},
+			},
+			node: api.Node{
+				Spec: api.NodeSpec{
+					ExternalID: "external",
+					Taints: []api.Taint{{
+						Key: "dedicated", Value: "user1",
+						Effect: api.TaintEffectNoSchedule}, {
+						Key: "GPU", Value: "true",
+						Effect: api.TaintEffectNoSchedule},
+					},
+				},
+				Status: api.NodeStatus{
+					Taints: []api.Taint{{
+						Key: "dedicated", Value: "user1",
+						Effect: api.TaintEffectNoSchedule}, {
+						Key: "GPU", Value: "true",
+						Effect: api.TaintEffectNoSchedule},
+					},
+				},
+			},
+			scheduled: false,
+			test:      "A pod with one toleration can't fit on a node with two taints",
+		},
+		{
+			pod: &api.Pod{
+				ObjectMeta: api.ObjectMeta{Name: "pod0"},
+				Spec: api.PodSpec{
+					Containers: []api.Container{{Image: "pod0:V1"}},
+					Tolerations: []api.Toleration{{
+						Key:      "dedicated",
+						Operator: api.TolerationOpEqual,
+						Value:    "user1",
+						Effect:   api.TaintEffectNoSchedule}, {
+						Key:      "GPU",
+						Operator: api.TolerationOpEqual,
+						Value:    "true",
+						Effect:   api.TaintEffectNoSchedule},
+					},
+				},
+			},
+			node: api.Node{
+				Spec: api.NodeSpec{
+					ExternalID: "external",
+					Taints: []api.Taint{{
+						Key: "dedicated", Value: "user1",
+						Effect: api.TaintEffectNoSchedule}, {
+						Key: "GPU", Value: "true",
+						Effect: api.TaintEffectNoSchedule},
+					},
+				},
+				Status: api.NodeStatus{
+					Taints: []api.Taint{{
+						Key: "dedicated", Value: "user1",
+						Effect: api.TaintEffectNoSchedule}, {
+						Key: "GPU", Value: "true",
+						Effect: api.TaintEffectNoSchedule},
+					},
+				},
+			},
+			scheduled: true,
+			test: "A pod with two tolerations <dedicated=user1=NoSchedule> &" +
+				"<GPU=true=NoSchedule> can fit on a node with similar taints",
+		},
+		{
+			pod: &api.Pod{
+				ObjectMeta: api.ObjectMeta{Name: "pod0"},
+				Spec: api.PodSpec{
+					Containers: []api.Container{{Image: "pod0:V1"}},
+					Tolerations: []api.Toleration{{
+						Key:      "dedicated",
+						Operator: api.TolerationOpEqual,
+						Value:    "user1",
+						Effect:   api.TaintEffectNoSchedule}, {
+						Key:      "GPU",
+						Operator: api.TolerationOpEqual,
+						Value:    "true",
+						Effect:   api.TaintEffectNoSchedule},
+					},
+				},
+			},
+			node: api.Node{
+				Spec: api.NodeSpec{
+					ExternalID: "external",
+					Taints: []api.Taint{{
+						Key: "dedicated", Value: "user1",
+						Effect: api.TaintEffectNoSchedule}},
+				},
+				Status: api.NodeStatus{
+					Taints: []api.Taint{{
+						Key: "dedicated", Value: "user1",
+						Effect: api.TaintEffectNoSchedule}},
+				},
+			},
+			scheduled: true,
+			test: "A pod with two tolerations <dedicated=user1=NoSchedule>" +
+				"and <GPU=true=NoSchedule> can fit onto a node with a" +
+				"taint <dedicated-user1=NoSchedule>",
+		},
+		{
+			pod: &api.Pod{
+				ObjectMeta: api.ObjectMeta{Name: "pod0"},
+				Spec: api.PodSpec{
+					Containers: []api.Container{{Image: "pod0:V1"}},
+					Tolerations: []api.Toleration{{
+						Key:      "dedicated",
+						Operator: api.TolerationOpEqual,
+						Value:    "user2",
+						Effect:   api.TaintEffectNoSchedule}, {
+						Key: "GPU", Operator: api.TolerationOpEqual,
+						Value:  "true",
+						Effect: api.TaintEffectNoSchedule},
+					},
+				},
+			},
+			node: api.Node{
+				Spec: api.NodeSpec{
+					ExternalID: "external",
+					Taints: []api.Taint{{
+						Key: "dedicated", Value: "user1",
+						Effect: api.TaintEffectNoSchedule}},
+				},
+				Status: api.NodeStatus{
+					Taints: []api.Taint{{
+						Key: "dedicated", Value: "user1",
+						Effect: api.TaintEffectNoSchedule}},
+				},
+			},
+			scheduled: false,
+			test: "A pod with two tolerations <dedicated=user1=NoSchedule>" +
+				"and <GPU=true=NoSchedule> can fit onto a node with" +
+				"a taint <dedicated-user2=NoSchedule>",
 		},
 	}
 	for _, test := range podTolerateTaintsTests {
-		node := api.Node{
-			Spec: api.NodeSpec{
-				ExternalID: "external",
-				Taints:     []api.Taint{{Key: "dedicated", Value: "user1", Effect: api.TaintEffectNoSchedule}},
-			},
-			Status: api.NodeStatus{
-				Taints: []api.Taint{{Key: "dedicated", Value: "user1", Effect: api.TaintEffectNoSchedule}},
-			},
-		}
-		tolerationMatch := TolerationMatch{FakeNodeInfo(node)}
-		scheduled, err := tolerationMatch.PodToleratesTaints(test.pod, nil, "machine")
+		tolerationMatch := TolerationMatch{FakeNodeInfo(test.node)}
+		scheduled, err := tolerationMatch.PodToleratesNodeTaints(test.pod, nil, "machine")
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}

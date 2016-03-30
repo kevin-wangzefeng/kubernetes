@@ -13497,6 +13497,35 @@
      "unschedulable": {
       "type": "boolean",
       "description": "Unschedulable controls node schedulability of new pods. By default, node is schedulable. More info: http://releases.k8s.io/HEAD/docs/admin/node.md#manual-node-administration\"`"
+     },
+     "taints": {
+      "type": "array",
+      "items": {
+       "$ref": "v1.Taint"
+      },
+      "description": "Taints is a list of taints applied to the node. Pod that wants to run on the node, should tolerate all the taints of it. Multiple taints with the same key are not allowed."
+     }
+    }
+   },
+   "v1.Taint": {
+    "id": "v1.Taint",
+    "description": "The node this Taint is attached to has the effect \"effect\" on any pod that that does not tolerate the Taint.",
+    "required": [
+     "key",
+     "effect"
+    ],
+    "properties": {
+     "key": {
+      "type": "string",
+      "description": "Required. The taint key to be applied to a node ."
+     },
+     "value": {
+      "type": "string",
+      "description": "Required. Value is the taint value the toleration matches to."
+     },
+     "effect": {
+      "type": "string",
+      "description": "Required. The effect of the taint, ref TaintEffect."
      }
     }
    },
@@ -13547,6 +13576,13 @@
        "$ref": "v1.ContainerImage"
       },
       "description": "List of container images on this node"
+     },
+     "taints": {
+      "type": "array",
+      "items": {
+       "$ref": "v1.Taint"
+      },
+      "description": "Taints is the union of the taints specified by various sources. Multiple taints with the same key are not allowed."
      }
     }
    },
@@ -14418,6 +14454,13 @@
        "$ref": "v1.LocalObjectReference"
       },
       "description": "ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images used by this PodSpec. If specified, these secrets will be passed to individual puller implementations for them to use. For example, in the case of docker, only DockerConfig type secrets are honored. More info: http://releases.k8s.io/HEAD/docs/user-guide/images.md#specifying-imagepullsecrets-on-a-pod"
+     },
+     "tolerations": {
+      "type": "array",
+      "items": {
+       "$ref": "v1.Toleration"
+      },
+      "description": "Multiple tolerations with the same key are allowed."
      }
     }
    },
@@ -15027,6 +15070,33 @@
    "integer": {
     "id": "integer",
     "properties": {}
+   },
+   "v1.Toleration": {
+    "id": "v1.Toleration",
+    "description": "The pod this Toleration is attached to tolerates any taint that matches the triple \u003ckey,value,effect\u003e using the matching operator \u003coperator\u003e.",
+    "required": [
+     "key",
+     "operator",
+     "effect"
+    ],
+    "properties": {
+     "key": {
+      "type": "string",
+      "description": "Required. Key is the taint key that the toleration applies to."
+     },
+     "operator": {
+      "type": "string",
+      "description": "operator represents a key's relationship to the value. Valid operators are Exists and Equal. Defaults to Equal. Exists is equivalent to wildcard for value, so that a pod can tolerate all taints of a particular category."
+     },
+     "value": {
+      "type": "string",
+      "description": "Optional: Value is the taint value the toleration matches to. If the operator is Exists, the value should be empty, otherwise just a regular string."
+     },
+     "effect": {
+      "type": "string",
+      "description": "Required. Effect indicates the taint effect to match."
+     }
+    }
    },
    "v1.PodStatus": {
     "id": "v1.PodStatus",

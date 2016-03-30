@@ -1458,6 +1458,16 @@ func autoConvert_api_NodeSpec_To_v1_NodeSpec(in *api.NodeSpec, out *NodeSpec, s 
 	out.ExternalID = in.ExternalID
 	out.ProviderID = in.ProviderID
 	out.Unschedulable = in.Unschedulable
+	if in.Taints != nil {
+		out.Taints = make([]Taint, len(in.Taints))
+		for i := range in.Taints {
+			if err := Convert_api_Taint_To_v1_Taint(&in.Taints[i], &out.Taints[i], s); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.Taints = nil
+	}
 	return nil
 }
 
@@ -1529,6 +1539,16 @@ func autoConvert_api_NodeStatus_To_v1_NodeStatus(in *api.NodeStatus, out *NodeSt
 		}
 	} else {
 		out.Images = nil
+	}
+	if in.Taints != nil {
+		out.Taints = make([]Taint, len(in.Taints))
+		for i := range in.Taints {
+			if err := Convert_api_Taint_To_v1_Taint(&in.Taints[i], &out.Taints[i], s); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.Taints = nil
 	}
 	return nil
 }
@@ -2222,6 +2242,16 @@ func autoConvert_api_PodSpec_To_v1_PodSpec(in *api.PodSpec, out *PodSpec, s conv
 		}
 	} else {
 		out.ImagePullSecrets = nil
+	}
+	if in.Tolerations != nil {
+		out.Tolerations = make([]Toleration, len(in.Tolerations))
+		for i := range in.Tolerations {
+			if err := s.Convert(&in.Tolerations[i], &out.Tolerations[i], 0); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.Tolerations = nil
 	}
 	return nil
 }
@@ -3005,6 +3035,20 @@ func autoConvert_api_TCPSocketAction_To_v1_TCPSocketAction(in *api.TCPSocketActi
 
 func Convert_api_TCPSocketAction_To_v1_TCPSocketAction(in *api.TCPSocketAction, out *TCPSocketAction, s conversion.Scope) error {
 	return autoConvert_api_TCPSocketAction_To_v1_TCPSocketAction(in, out, s)
+}
+
+func autoConvert_api_Taint_To_v1_Taint(in *api.Taint, out *Taint, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*api.Taint))(in)
+	}
+	out.Key = in.Key
+	out.Value = in.Value
+	out.Effect = TaintEffect(in.Effect)
+	return nil
+}
+
+func Convert_api_Taint_To_v1_Taint(in *api.Taint, out *Taint, s conversion.Scope) error {
+	return autoConvert_api_Taint_To_v1_Taint(in, out, s)
 }
 
 func autoConvert_api_Volume_To_v1_Volume(in *api.Volume, out *Volume, s conversion.Scope) error {
@@ -4618,6 +4662,16 @@ func autoConvert_v1_NodeSpec_To_api_NodeSpec(in *NodeSpec, out *api.NodeSpec, s 
 	out.ExternalID = in.ExternalID
 	out.ProviderID = in.ProviderID
 	out.Unschedulable = in.Unschedulable
+	if in.Taints != nil {
+		out.Taints = make([]api.Taint, len(in.Taints))
+		for i := range in.Taints {
+			if err := Convert_v1_Taint_To_api_Taint(&in.Taints[i], &out.Taints[i], s); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.Taints = nil
+	}
 	return nil
 }
 
@@ -4671,6 +4725,16 @@ func autoConvert_v1_NodeStatus_To_api_NodeStatus(in *NodeStatus, out *api.NodeSt
 		}
 	} else {
 		out.Images = nil
+	}
+	if in.Taints != nil {
+		out.Taints = make([]api.Taint, len(in.Taints))
+		for i := range in.Taints {
+			if err := Convert_v1_Taint_To_api_Taint(&in.Taints[i], &out.Taints[i], s); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.Taints = nil
 	}
 	return nil
 }
@@ -5350,6 +5414,16 @@ func autoConvert_v1_PodSpec_To_api_PodSpec(in *PodSpec, out *api.PodSpec, s conv
 		}
 	} else {
 		out.ImagePullSecrets = nil
+	}
+	if in.Tolerations != nil {
+		out.Tolerations = make([]api.Toleration, len(in.Tolerations))
+		for i := range in.Tolerations {
+			if err := s.Convert(&in.Tolerations[i], &out.Tolerations[i], 0); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.Tolerations = nil
 	}
 	return nil
 }
@@ -6089,6 +6163,20 @@ func Convert_v1_TCPSocketAction_To_api_TCPSocketAction(in *TCPSocketAction, out 
 	return autoConvert_v1_TCPSocketAction_To_api_TCPSocketAction(in, out, s)
 }
 
+func autoConvert_v1_Taint_To_api_Taint(in *Taint, out *api.Taint, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*Taint))(in)
+	}
+	out.Key = in.Key
+	out.Value = in.Value
+	out.Effect = api.TaintEffect(in.Effect)
+	return nil
+}
+
+func Convert_v1_Taint_To_api_Taint(in *Taint, out *api.Taint, s conversion.Scope) error {
+	return autoConvert_v1_Taint_To_api_Taint(in, out, s)
+}
+
 func autoConvert_v1_Volume_To_api_Volume(in *Volume, out *api.Volume, s conversion.Scope) error {
 	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
 		defaulting.(func(*Volume))(in)
@@ -6401,6 +6489,7 @@ func init() {
 		autoConvert_api_ServiceStatus_To_v1_ServiceStatus,
 		autoConvert_api_Service_To_v1_Service,
 		autoConvert_api_TCPSocketAction_To_v1_TCPSocketAction,
+		autoConvert_api_Taint_To_v1_Taint,
 		autoConvert_api_VolumeMount_To_v1_VolumeMount,
 		autoConvert_api_VolumeSource_To_v1_VolumeSource,
 		autoConvert_api_Volume_To_v1_Volume,
@@ -6523,6 +6612,7 @@ func init() {
 		autoConvert_v1_ServiceStatus_To_api_ServiceStatus,
 		autoConvert_v1_Service_To_api_Service,
 		autoConvert_v1_TCPSocketAction_To_api_TCPSocketAction,
+		autoConvert_v1_Taint_To_api_Taint,
 		autoConvert_v1_VolumeMount_To_api_VolumeMount,
 		autoConvert_v1_VolumeSource_To_api_VolumeSource,
 		autoConvert_v1_Volume_To_api_Volume,

@@ -152,6 +152,8 @@ func init() {
 		deepCopy_api_ServiceSpec,
 		deepCopy_api_ServiceStatus,
 		deepCopy_api_TCPSocketAction,
+		deepCopy_api_Taint,
+		deepCopy_api_Toleration,
 		deepCopy_api_Volume,
 		deepCopy_api_VolumeMount,
 		deepCopy_api_VolumeSource,
@@ -1258,6 +1260,17 @@ func deepCopy_api_NodeSpec(in NodeSpec, out *NodeSpec, c *conversion.Cloner) err
 	out.ExternalID = in.ExternalID
 	out.ProviderID = in.ProviderID
 	out.Unschedulable = in.Unschedulable
+	if in.Taints != nil {
+		in, out := in.Taints, &out.Taints
+		*out = make([]Taint, len(in))
+		for i := range in {
+			if err := deepCopy_api_Taint(in[i], &(*out)[i], c); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.Taints = nil
+	}
 	return nil
 }
 
@@ -1327,6 +1340,17 @@ func deepCopy_api_NodeStatus(in NodeStatus, out *NodeStatus, c *conversion.Clone
 		}
 	} else {
 		out.Images = nil
+	}
+	if in.Taints != nil {
+		in, out := in.Taints, &out.Taints
+		*out = make([]Taint, len(in))
+		for i := range in {
+			if err := deepCopy_api_Taint(in[i], &(*out)[i], c); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.Taints = nil
 	}
 	return nil
 }
@@ -1945,6 +1969,17 @@ func deepCopy_api_PodSpec(in PodSpec, out *PodSpec, c *conversion.Cloner) error 
 	} else {
 		out.ImagePullSecrets = nil
 	}
+	if in.Tolerations != nil {
+		in, out := in.Tolerations, &out.Tolerations
+		*out = make([]Toleration, len(in))
+		for i := range in {
+			if err := deepCopy_api_Toleration(in[i], &(*out)[i], c); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.Tolerations = nil
+	}
 	return nil
 }
 
@@ -2541,6 +2576,21 @@ func deepCopy_api_TCPSocketAction(in TCPSocketAction, out *TCPSocketAction, c *c
 	if err := deepCopy_intstr_IntOrString(in.Port, &out.Port, c); err != nil {
 		return err
 	}
+	return nil
+}
+
+func deepCopy_api_Taint(in Taint, out *Taint, c *conversion.Cloner) error {
+	out.Key = in.Key
+	out.Value = in.Value
+	out.Effect = in.Effect
+	return nil
+}
+
+func deepCopy_api_Toleration(in Toleration, out *Toleration, c *conversion.Cloner) error {
+	out.Key = in.Key
+	out.Operator = in.Operator
+	out.Value = in.Value
+	out.Effect = in.Effect
 	return nil
 }
 

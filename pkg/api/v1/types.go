@@ -1424,6 +1424,70 @@ type PreferredSchedulingTerm struct {
 	Preference NodeSelectorTerm `json:"preference"`
 }
 
+// The node this Taint is attached to has the effect "effect" on
+// any pod that that does not tolerate the Taint.
+type Taint struct {
+	// Required. The taint key to be applied to a node .
+	Key string `json:"key" patchStrategy:"merge" patchMergeKey:"key"`
+	// Required. Value is the taint value the toleration matches to.
+	Value string `json:"value,omitempty"`
+	//Required. The effect of the taint, ref TaintEffect.
+	Effect TaintEffect `json:"effect"`
+}
+
+type TaintEffect string
+
+const (
+	// Do not allow new pods to schedule unless they tolerate the taint,
+	// but allow all pods submitted to Kubelet without going through the scheduler
+	// to start, and allow all already-running pods to continue running.
+	// Enforced by the scheduler.
+	TaintEffectNoSchedule TaintEffect = "NoSchedule"
+	// Like TaintEffectNoSchedule, but the scheduler tries not to schedule
+	// new pods onto the node, rather than prohibiting new pods from scheduling
+	// onto the node. Enforced by the scheduler.
+	TaintEffectPreferNoSchedule TaintEffect = "PreferNoSchedule"
+	// NOT YET IMPLEMENTED. TODO: Uncomment field once it is implemented.
+	// Do not allow new pods to schedule unless they tolerate the taint,
+	// do not allow pods to start on Kubelet unless they tolerate the taint,
+	// but allow all already-running pods to continue running.
+	// Enforced by the scheduler and Kubelet.
+	// TaintEffectNoScheduleNoAdmit TaintEffect = "NoScheduleNoAdmit"
+	// NOT YET IMPLEMENTED. TODO: Uncomment field once it is implemented.
+	// Do not allow new pods to schedule unless they tolerate the taint,
+	// do not allow pods to start on Kubelet unless they tolerate the taint,
+	// and evict any already-running pods that do not tolerate the taint.
+	// Enforced by the scheduler and Kubelet.
+	// TaintEffectNoScheduleNoAdmitNoExecute = "NoScheduleNoAdmitNoExecute"
+)
+
+// The pod this Toleration is attached to tolerates any taint that matches
+// the triple <key,value,effect> using the matching operator <operator>.
+type Toleration struct {
+	// Required. Key is the taint key that the toleration applies to.
+	Key string `json:"key" patchStrategy:"merge" patchMergeKey:"key"`
+	// operator represents a key's relationship to the value.
+	// Valid operators are Exists and Equal. Defaults to Equal.
+	// Exists is equivalent to wildcard for value, so that a pod can
+	// tolerate all taints of a particular category.
+	Operator TolerationOperator `json:"operator"`
+	// Optional: Value is the taint value the toleration matches to.
+	// If the operator is Exists, the value should be empty, otherwise just a regular string.
+	Value string `json:"value,omitempty"`
+	// Required. Effect indicates the taint effect to match.
+	Effect TaintEffect `json:"effect"`
+	// TODO: For forgiveness (#1574), we'd eventually add at least a grace period
+	// here, and possibly an occurrence threshold and period.
+}
+
+// A toleration operator is the set of operators that can be used in a toleration.
+type TolerationOperator string
+
+const (
+	TolerationOpExists TolerationOperator = "Exists"
+	TolerationOpEqual  TolerationOperator = "Equal"
+)
+
 // PodSpec is a description of a pod.
 type PodSpec struct {
 	// List of volumes that can be mounted by containers belonging to the pod.
@@ -1490,6 +1554,8 @@ type PodSpec struct {
 	// in the case of docker, only DockerConfig type secrets are honored.
 	// More info: http://releases.k8s.io/HEAD/docs/user-guide/images.md#specifying-imagepullsecrets-on-a-pod
 	ImagePullSecrets []LocalObjectReference `json:"imagePullSecrets,omitempty" patchStrategy:"merge" patchMergeKey:"name"`
+	// Multiple tolerations with the same key are allowed.
+	Tolerations []Toleration `json:"tolerations,omitempty"`
 }
 
 // PodSecurityContext holds pod-level security attributes and common container settings.
@@ -2044,6 +2110,10 @@ type NodeSpec struct {
 	// Unschedulable controls node schedulability of new pods. By default, node is schedulable.
 	// More info: http://releases.k8s.io/HEAD/docs/admin/node.md#manual-node-administration"`
 	Unschedulable bool `json:"unschedulable,omitempty"`
+	// Taints is a list of taints applied to the node.
+	// Pod that wants to run on the node, should tolerate all the taints of it.
+	// Multiple taints with the same key are not allowed.
+	Taints []Taint `json:"taints,omitempty"`
 }
 
 // DaemonEndpoint contains information about a single Daemon endpoint.
@@ -2109,6 +2179,9 @@ type NodeStatus struct {
 	NodeInfo NodeSystemInfo `json:"nodeInfo,omitempty"`
 	// List of container images on this node
 	Images []ContainerImage `json:"images,omitempty"`
+	// Taints is the union of the taints specified by various sources.
+	// Multiple taints with the same key are not allowed.
+	Taints []Taint `json:"taints,omitempty"`
 }
 
 // Describe a container image

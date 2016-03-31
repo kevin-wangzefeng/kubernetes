@@ -128,6 +128,14 @@ func defaultPredicates() sets.String {
 				return predicates.NewMaxPDVolumeCountPredicate(predicates.GCEPDVolumeFilter, maxVols, args.PVInfo, args.PVCInfo)
 			},
 		),
+
+		// Fit is determined based on whether a pod can tolerate all of the node's taints
+		factory.RegisterFitPredicateFactory(
+			"PodToleratesNodesTaints",
+			func(args factory.PluginFactoryArgs) algorithm.FitPredicate {
+				return predicates.NewTolerationMatchPredicate(args.NodeInfo)
+			},
+		),
 	)
 }
 

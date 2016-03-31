@@ -1433,6 +1433,56 @@ func validateImagePullSecrets(imagePullSecrets []api.LocalObjectReference, fldPa
 	return allErrors
 }
 
+func validateTaintEffect(effect *api.TaintEffect, fldPath *field.Path) field.ErrorList {
+	allErrors := field.ErrorList{}
+	switch *effect {
+	// TODO: Replace next line with subsequent commented-out line when implement TaintEffectNoScheduleNoAdmit, TaintEffectNoScheduleNoAdmitNoExecute.
+	case api.TaintEffectNoSchedule, api.TaintEffectPreferNoSchedule:
+		// case api.TaintEffectNoSchedule, api.TaintEffectPreferNoSchedule, api.TaintEffectNoScheduleNoAdmit, api.TaintEffectNoScheduleNoAdmitNoExecute:
+	case "":
+		allErrors = append(allErrors, field.Required(fldPath, ""))
+	default:
+		validValues := []string{
+			string(api.TaintEffectNoSchedule),
+			string(api.TaintEffectPreferNoSchedule),
+			// TODO: Uncomment this block when implement TaintEffectNoScheduleNoAdmit, TaintEffectNoScheduleNoAdmitNoExecute.
+			// string(api.TaintEffectNoScheduleNoAdmit),
+			// string(api.TaintEffectNoScheduleNoAdmitNoExecute),
+		}
+		allErrors = append(allErrors, field.NotSupported(fldPath, effect, validValues))
+	}
+	return allErrors
+}
+
+// validateTolerations tests if given tolerations have valid data.
+func validateTolerations(tolerations []api.Toleration, fldPath *field.Path) field.ErrorList {
+	allErrors := field.ErrorList{}
+	for i, toleration := range tolerations {
+		idxPath := fldPath.Index(i)
+		// validate the toleration key
+		allErrors = append(allErrors, unversionedvalidation.ValidateLabelName(toleration.Key, idxPath.Child("key"))...)
+
+		// validate toleration operator and value
+		switch toleration.Operator {
+		case api.TolerationOpEqual, "":
+			if !validation.IsValidLabelValue(toleration.Value) {
+				allErrors = append(allErrors, field.Invalid(idxPath.Child("operator"), toleration.Value, labelValueErrorMsg))
+			}
+		case api.TolerationOpExists:
+			if len(toleration.Value) > 0 {
+				allErrors = append(allErrors, field.Invalid(idxPath.Child("operator"), toleration, "value must be empty when `operator` is 'Exists'"))
+			}
+		default:
+			validValues := []string{string(api.TolerationOpEqual), string(api.TolerationOpExists)}
+			allErrors = append(allErrors, field.NotSupported(idxPath.Child("operator"), toleration.Operator, validValues))
+		}
+
+		// validate toleration effect
+		allErrors = append(allErrors, validateTaintEffect(&toleration.Effect, idxPath.Child("effect"))...)
+	}
+	return allErrors
+}
+
 // ValidatePod tests if required fields in the pod are set.
 func ValidatePod(pod *api.Pod) field.ErrorList {
 	fldPath := field.NewPath("metadata")
@@ -1457,6 +1507,7 @@ func ValidatePodSpec(spec *api.PodSpec, fldPath *field.Path) field.ErrorList {
 	allErrs = append(allErrs, unversionedvalidation.ValidateLabels(spec.NodeSelector, fldPath.Child("nodeSelector"))...)
 	allErrs = append(allErrs, ValidatePodSecurityContext(spec.SecurityContext, spec, fldPath, fldPath.Child("securityContext"))...)
 	allErrs = append(allErrs, validateImagePullSecrets(spec.ImagePullSecrets, fldPath.Child("imagePullSecrets"))...)
+	allErrs = append(allErrs, validateTolerations(spec.Tolerations, fldPath.Child("tolerations"))...)
 	if len(spec.ServiceAccountName) > 0 {
 		if ok, msg := ValidateServiceAccountName(spec.ServiceAccountName, false); !ok {
 			allErrs = append(allErrs, field.Invalid(fldPath.Child("serviceAccountName"), spec.ServiceAccountName, msg))
@@ -2083,6 +2134,23 @@ func ValidateReadOnlyPersistentDisks(volumes []api.Volume, fldPath *field.Path) 
 	return allErrs
 }
 
+// validateTaints tests if given taints have valid data.
+func validateTaints(taints []api.Taint, fldPath *field.Path) field.ErrorList {
+	allErrors := field.ErrorList{}
+	for i, currTaint := range taints {
+		idxPath := fldPath.Index(i)
+		// validate the taint key
+		allErrors = append(allErrors, unversionedvalidation.ValidateLabelName(currTaint.Key, idxPath.Child("key"))...)
+		// validate the taint value
+		if !validation.IsValidLabelValue(currTaint.Value) {
+			allErrors = append(allErrors, field.Invalid(idxPath.Child("value"), currTaint.Value, labelValueErrorMsg))
+		}
+		// validate the taint effect
+		allErrors = append(allErrors, validateTaintEffect(&currTaint.Effect, idxPath.Child("effect"))...)
+	}
+	return allErrors
+}
+
 // ValidateNode tests if required fields in the node are set.
 func ValidateNode(node *api.Node) field.ErrorList {
 	allErrs := ValidateObjectMeta(&node.ObjectMeta, false, ValidateNodeName, field.NewPath("metadata"))
@@ -2093,6 +2161,8 @@ func ValidateNode(node *api.Node) field.ErrorList {
 	if len(node.Spec.ExternalID) == 0 {
 		allErrs = append(allErrs, field.Required(field.NewPath("spec", "externalID"), ""))
 	}
+	// If any taints are specified as a part of the NodeSpec , validate those
+	allErrs = append(allErrs, validateTaints(node.Spec.Taints, field.NewPath("spec", "taints"))...)
 
 	// TODO(rjnagal): Ignore PodCIDR till its completely implemented.
 	return allErrs

@@ -1754,6 +1754,30 @@ func TestValidatePodSpec(t *testing.T) {
 			RestartPolicy: api.RestartPolicyAlways,
 			DNSPolicy:     api.DNSClusterFirst,
 		},
+		{ // Populate Toleration with Equals operator
+			Volumes:       []api.Volume{{Name: "vol", VolumeSource: api.VolumeSource{EmptyDir: &api.EmptyDirVolumeSource{}}}},
+			Containers:    []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
+			RestartPolicy: api.RestartPolicyAlways,
+			DNSPolicy:     api.DNSClusterFirst,
+			Tolerations: []api.Toleration{{
+				Key:      "GPU",
+				Operator: api.TolerationOpEqual,
+				Value:    "grid",
+				Effect:   api.TaintEffectNoSchedule,
+			}},
+		},
+		{ // Populate Toleration with Exists operator
+			Volumes:       []api.Volume{{Name: "vol", VolumeSource: api.VolumeSource{EmptyDir: &api.EmptyDirVolumeSource{}}}},
+			Containers:    []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
+			RestartPolicy: api.RestartPolicyAlways,
+			DNSPolicy:     api.DNSClusterFirst,
+			Tolerations: []api.Toleration{{
+				Key:      "GPU",
+				Operator: api.TolerationOpExists,
+				Value:    "",
+				Effect:   api.TaintEffectNoSchedule,
+			}},
+		},
 	}
 	for i := range successCases {
 		if errs := ValidatePodSpec(&successCases[i], field.NewPath("field")); len(errs) != 0 {
@@ -1881,6 +1905,66 @@ func TestValidatePodSpec(t *testing.T) {
 			Containers:    []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
 			RestartPolicy: api.RestartPolicyAlways,
 			DNSPolicy:     api.DNSClusterFirst,
+		},
+		"bad toleration key": {
+			Containers: []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
+			SecurityContext: &api.PodSecurityContext{
+				HostNetwork: false,
+				FSGroup:     &minID,
+			},
+			RestartPolicy: api.RestartPolicyAlways,
+			DNSPolicy:     api.DNSClusterFirst,
+			Tolerations: []api.Toleration{{
+				Key:      "nospecialchars^=@",
+				Operator: api.TolerationOpExists,
+				Value:    "",
+				Effect:   api.TaintEffectNoSchedule,
+			}},
+		},
+		"bad toleration operator": {
+			Containers: []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
+			SecurityContext: &api.PodSecurityContext{
+				HostNetwork: false,
+				FSGroup:     &minID,
+			},
+			RestartPolicy: api.RestartPolicyAlways,
+			DNSPolicy:     api.DNSClusterFirst,
+			Tolerations: []api.Toleration{{
+				Key:      "GPU",
+				Operator: "LessThanOperator",
+				Value:    "",
+				Effect:   api.TaintEffectNoSchedule,
+			}},
+		},
+		"bad toleration value": {
+			Containers: []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
+			SecurityContext: &api.PodSecurityContext{
+				HostNetwork: false,
+				FSGroup:     &minID,
+			},
+			RestartPolicy: api.RestartPolicyAlways,
+			DNSPolicy:     api.DNSClusterFirst,
+			Tolerations: []api.Toleration{{
+				Key:      "GPU",
+				Operator: api.TolerationOpExists,
+				Value:    "foo",
+				Effect:   api.TaintEffectNoSchedule,
+			}},
+		},
+		"bad toleration effect": {
+			Containers: []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
+			SecurityContext: &api.PodSecurityContext{
+				HostNetwork: false,
+				FSGroup:     &minID,
+			},
+			RestartPolicy: api.RestartPolicyAlways,
+			DNSPolicy:     api.DNSClusterFirst,
+			Tolerations: []api.Toleration{{
+				Key:      "GPU",
+				Operator: api.TolerationOpEqual,
+				Value:    "bar",
+				Effect:   "",
+			}},
 		},
 	}
 	for k, v := range failureCases {
@@ -3847,6 +3931,29 @@ func TestValidateNode(t *testing.T) {
 				ExternalID: "external",
 			},
 		},
+		{
+			ObjectMeta: api.ObjectMeta{
+				Name: "dedicated-node1",
+			},
+			Status: api.NodeStatus{
+				Addresses: []api.NodeAddress{
+					{Type: api.NodeLegacyHostIP, Address: "something"},
+				},
+				Capacity: api.ResourceList{
+					api.ResourceName(api.ResourceCPU):    resource.MustParse("10"),
+					api.ResourceName(api.ResourceMemory): resource.MustParse("0"),
+				},
+			},
+			// Add a valid taint to a node
+			Spec: api.NodeSpec{
+				ExternalID: "external",
+				Taints: []api.Taint{{
+					Key:    "GPU",
+					Value:  "true",
+					Effect: api.TaintEffectNoSchedule,
+				}},
+			},
+		},
 	}
 	for _, successCase := range successCases {
 		if errs := ValidateNode(&successCase); len(errs) != 0 {
@@ -3898,6 +4005,80 @@ func TestValidateNode(t *testing.T) {
 				},
 			},
 		},
+		"missing-taint-key": {
+
+			ObjectMeta: api.ObjectMeta{
+				Name: "dedicated-node1",
+			},
+			// Add a taint with an empty key to a node
+			Spec: api.NodeSpec{
+				ExternalID: "external",
+				Taints: []api.Taint{{
+					Key:    "",
+					Value:  "special-user-1",
+					Effect: api.TaintEffectNoSchedule,
+				}},
+			},
+		},
+		"bad-taint-key": {
+
+			ObjectMeta: api.ObjectMeta{
+				Name: "dedicated-node1",
+			},
+			// Add a taint with an empty key to a node
+			Spec: api.NodeSpec{
+				ExternalID: "external",
+				Taints: []api.Taint{{
+					Key:    "NoUppercaseOrSpecialCharsLike=Equals",
+					Value:  "special-user-1",
+					Effect: api.TaintEffectNoSchedule,
+				}},
+			},
+		},
+		"bad-taint-value": {
+			ObjectMeta: api.ObjectMeta{
+				Name: "dedicated-node2",
+			},
+			Status: api.NodeStatus{
+				Addresses: []api.NodeAddress{
+					{Type: api.NodeLegacyHostIP, Address: "something"},
+				},
+				Capacity: api.ResourceList{
+					api.ResourceName(api.ResourceCPU):    resource.MustParse("10"),
+					api.ResourceName(api.ResourceMemory): resource.MustParse("0"),
+				},
+			},
+			// Add a taint with an empty value to a node
+			Spec: api.NodeSpec{
+				ExternalID: "external",
+				Taints: []api.Taint{{
+					Key:    "dedicated",
+					Value:  "some\\bad\\value",
+					Effect: api.TaintEffectNoSchedule,
+				}},
+			},
+		},
+		"missing-taint-effect": {
+			ObjectMeta: api.ObjectMeta{
+				Name: "dedicated-node3",
+			},
+			Status: api.NodeStatus{
+				Addresses: []api.NodeAddress{
+					{Type: api.NodeLegacyHostIP, Address: "something"},
+				},
+				Capacity: api.ResourceList{
+					api.ResourceName(api.ResourceCPU):    resource.MustParse("10"),
+					api.ResourceName(api.ResourceMemory): resource.MustParse("0"),
+				},
+			},
+			// Add a taint with an empty effect to a node
+			Spec: api.NodeSpec{
+				ExternalID: "external",
+				Taints: []api.Taint{
+					{Key: "dedicated", Value: "special-user-3", Effect: ""},
+				},
+			},
+		},
 	}
 	for k, v := range errorCases {
 		errs := ValidateNode(&v)
@@ -3907,14 +4088,19 @@ func TestValidateNode(t *testing.T) {
 		for i := range errs {
 			field := errs[i].Field
 			expectedFields := map[string]bool{
-				"metadata.name":        true,
-				"metadata.labels":      true,
-				"metadata.annotations": true,
-				"metadata.namespace":   true,
-				"spec.externalID":      true,
+				"metadata.name":         true,
+				"metadata.labels":       true,
+				"metadata.annotations":  true,
+				"metadata.namespace":    true,
+				"spec.externalID":       true,
+				"spec.taints[0].key":    true,
+				"spec.taints[0].value":  true,
+				"spec.taints[0].effect": true,
 			}
-			if expectedFields[field] == false {
-				t.Errorf("%s: missing prefix for: %v", k, errs[i])
+			if val, ok := expectedFields[field]; ok {
+				if !val {
+					t.Errorf("%s: missing prefix for: %v", k, errs[i])
+				}
 			}
 		}
 	}

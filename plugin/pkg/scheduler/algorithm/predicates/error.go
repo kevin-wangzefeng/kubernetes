@@ -31,6 +31,7 @@ var (
 	ErrVolumeZoneConflict        = newPredicateFailureError("NoVolumeZoneConflict")
 	ErrNodeSelectorNotMatch      = newPredicateFailureError("MatchNodeSelector")
 	ErrPodAffinityNotMatch       = newPredicateFailureError("MatchInterPodAffinity")
+	ErrTaintsTolerationsNotMatch = newPredicateFailureError("PodToleratesNodeTaints")
 	ErrPodNotMatchHostName       = newPredicateFailureError("HostName")
 	ErrPodNotFitsHostPorts       = newPredicateFailureError("PodFitsHostPorts")
 	ErrNodeLabelPresenceViolated = newPredicateFailureError("CheckNodeLabelPresence")

@@ -918,3 +918,61 @@ func (checker *PodAffinityChecker) NodeMatchPodAffinityAntiAffinity(pod *api.Pod
 	}
 	return true
 }
+
+type TolerationMatch struct {
+	info NodeInfo
+}
+
+func NewTolerationMatchPredicate(info NodeInfo) algorithm.FitPredicate {
+	tolerationMatch := &TolerationMatch{
+		info: info,
+	}
+	return tolerationMatch.PodToleratesNodeTaints
+}
+
+func (t *TolerationMatch) PodToleratesNodeTaints(pod *api.Pod, nodeInfo *schedulercache.NodeInfo) (bool, error) {
+	node := nodeInfo.Node()
+
+	if tolerationsToleratesTaints(pod.Spec.Tolerations, node.Status.Taints) {
+		return true, nil
+	}
+	return false, ErrTaintsTolerationsNotMatch
+}
+
+func tolerationsToleratesTaints(tolerations []api.Toleration, taints []api.Taint) bool {
+	// If the taint list is nil/empty, it is tolerated by all tolerations by default.
+	if len(taints) == 0 {
+		return true
+	}
+
+	// The taint list isn't nil/empty, a nil/empty toleration list can't tolerate them.
+	if len(tolerations) == 0 {
+		return false
+	}
+
+	for _, toleration := range tolerations {
+		if toleration.Effect == api.TaintEffectNoSchedule {
+			// if toleration.Effect == api.TaintEffectNoSchedule || toleration.Effect == api.TaintEffectNoScheduleNoAdmit || toleration.Effect == api.TaintEffectNoScheduleNoAdmitNoExecute {
+			if match := tolerationMatchTaints(toleration, taints); !match {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func tolerationMatchTaints(toleration api.Toleration, taints []api.Taint) bool {
+	for _, taint := range taints {
+		if toleration.Effect == taint.Effect && toleration.Key == taint.Key {
+			switch toleration.Operator {
+			case "", api.TolerationOpEqual:
+				if toleration.Value == taint.Value {
+					return true
+				}
+			case api.TolerationOpExists:
+				return true
+			}
+		}
+	}
+	return false
+}

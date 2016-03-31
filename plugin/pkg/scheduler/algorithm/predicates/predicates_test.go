@@ -2259,3 +2259,67 @@ func TestInterPodAffinityWithMultipleNodes(t *testing.T) {
 		}
 	}
 }
+
+func TestPodToleratesTaints(t *testing.T) {
+	podTolerateTaintsTests := []struct {
+		pod  *api.Pod
+		fits bool
+		test string
+	}{
+		{
+			pod: &api.Pod{
+				ObjectMeta: api.ObjectMeta{Name: "pod0"},
+				Spec: api.PodSpec{
+					Containers:  []api.Container{{Image: "pod0:V1"}},
+					Tolerations: []api.Toleration{},
+				},
+			},
+			fits: false,
+			test: "a pod having no tolerations can be scheduled",
+		},
+		{
+			pod: &api.Pod{
+				ObjectMeta: api.ObjectMeta{Name: "pod1"},
+				Spec: api.PodSpec{
+					Containers:  []api.Container{{Image: "pod1:V1"}},
+					Tolerations: []api.Toleration{{Key: "dedicated", Value: "user1", Effect: api.TaintEffectNoSchedule}},
+				},
+			},
+			fits: true,
+			test: "a pod which can be scheduled on a dedicated node assgined to user1 with effect NoSchedule",
+		},
+		{
+			pod: &api.Pod{
+				ObjectMeta: api.ObjectMeta{Name: "pod2"},
+				Spec: api.PodSpec{
+					Containers:  []api.Container{{Image: "pod2:V1"}},
+					Tolerations: []api.Toleration{{Key: "dedicated", Value: "user2", Effect: api.TaintEffectNoSchedule}},
+				},
+			},
+			fits: false,
+			test: "a pod which can be scheduled on a dedicated node assgined to user2 with effect NoSchedule",
+		},
+	}
+
+	for _, test := range podTolerateTaintsTests {
+		node := api.Node{
+			Spec: api.NodeSpec{
+				ExternalID: "external",
+				Taints:     []api.Taint{{Key: "dedicated", Value: "user1", Effect: api.TaintEffectNoSchedule}},
+			},
+			Status: api.NodeStatus{
+				Taints: []api.Taint{{Key: "dedicated", Value: "user1", Effect: api.TaintEffectNoSchedule}},
+			},
+		}
+		tolerationMatch := TolerationMatch{FakeNodeInfo(node)}
+		nodeInfo := schedulercache.NewNodeInfo()
+		nodeInfo.SetNode(&node)
+		fits, err := tolerationMatch.PodToleratesNodeTaints(test.pod, nodeInfo)
+		if fits == false && !reflect.DeepEqual(err, ErrTaintsTolerationsNotMatch) {
+			t.Errorf("unexpected error: %v", err)
+		}
+		if fits != test.fits {
+			t.Errorf("%s: expected: %v got %v", test.test, test.fits, fits)
+		}
+	}
+}

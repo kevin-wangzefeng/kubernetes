@@ -164,5 +164,14 @@ func defaultPriorities() sets.String {
 				Weight: 1,
 			},
 		),
+		factory.RegisterPriorityConfigFactory(
+			"TaintTolerationPriority",
+			factory.PriorityConfigFactory{
+				Function: func(args factory.PluginFactoryArgs) algorithm.PriorityFunction {
+					return priorities.NewTaintTolerationPriority(args.NodeLister)
+				},
+				Weight: 1,
+			},
+		),
 	)
 }

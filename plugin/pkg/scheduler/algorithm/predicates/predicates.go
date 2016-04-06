@@ -758,11 +758,11 @@ func (checker *PodAffinityChecker) InterPodAffinityMatches(pod *api.Pod, nodeNam
 	if err != nil {
 		return false, err
 	}
-	return nodeMatchPodAffinityAntiAffinity(checker, pod, nodeInfo.Pods(), node, allPods), nil
+	return checker.NodeMatchPodAffinityAntiAffinity(pod, nodeInfo.Pods(), node, allPods), nil
 }
 
-// checkIfAnyPodThatMatchPodAffinityTerm checks if any of existing pods on the node can match the specific podAffinityTerm.
-func checkIfAnyPodThatMatchPodAffinityTerm(checker *PodAffinityChecker, pod *api.Pod, allPods []*api.Pod, node *api.Node, podAffinityTerm api.PodAffinityTerm) (bool, error) {
+// CheckIfAnyPodThatMatchPodAffinityTerm checks if any of existing pods on the node can match the specific podAffinityTerm.
+func (checker *PodAffinityChecker) CheckIfAnyPodThatMatchPodAffinityTerm(pod *api.Pod, allPods []*api.Pod, node *api.Node, podAffinityTerm api.PodAffinityTerm) (bool, error) {
 	// TODO kevin-wangzefeng: update comments
 	labelSelector, err := unversioned.LabelSelectorAsSelector(podAffinityTerm.LabelSelector)
 	if err != nil {
@@ -787,7 +787,7 @@ func checkIfAnyPodThatMatchPodAffinityTerm(checker *PodAffinityChecker, pod *api
 
 // Checks whether the given node has pods which satisfy all the required pod affinity scheduling rules.
 // If node has pods which satisfy all the required pod affinity scheduling rules then return true.
-func checkNodeMatchesHardPodAffinity(checker *PodAffinityChecker, pod *api.Pod, existingPods []*api.Pod, node *api.Node, allPods []*api.Pod, podAffinity *api.PodAffinity) bool {
+func (checker *PodAffinityChecker) CheckNodeMatchesHardPodAffinity(pod *api.Pod, existingPods []*api.Pod, node *api.Node, allPods []*api.Pod, podAffinity *api.PodAffinity) bool {
 	var podAffinityTerms []api.PodAffinityTerm
 	if len(podAffinity.RequiredDuringSchedulingIgnoredDuringExecution) != 0 {
 		podAffinityTerms = podAffinity.RequiredDuringSchedulingIgnoredDuringExecution
@@ -798,7 +798,7 @@ func checkNodeMatchesHardPodAffinity(checker *PodAffinityChecker, pod *api.Pod, 
 	//}
 
 	for _, podAffinityTerm := range podAffinityTerms {
-		podAffinityTermMatches, err := checkIfAnyPodThatMatchPodAffinityTerm(checker, pod, allPods, node, podAffinityTerm)
+		podAffinityTermMatches, err := checker.CheckIfAnyPodThatMatchPodAffinityTerm(pod, allPods, node, podAffinityTerm)
 		// if err or podAffinityTerm match failed then return false otherwise continue
 		if err != nil {
 			glog.V(10).Infof("Cannot schedule pod %+v onto node %v, an error ocurred when checking existing pods on the node for PodAffinityTerm %v err: %v",
@@ -844,7 +844,7 @@ func checkNodeMatchesHardPodAffinity(checker *PodAffinityChecker, pod *api.Pod, 
 // If node has pods which satisfy all the required pod anti-affinity
 // scheduling rules and scheduling the pod onto the node won't
 // break any existing pods' anti-affinity rules, then return true.
-func checkNodeMatchesHardPodAntiAffinity(checker *PodAffinityChecker, pod *api.Pod, allPods []*api.Pod, node *api.Node, podAntiAffinity *api.PodAntiAffinity) bool {
+func (checker *PodAffinityChecker) CheckNodeMatchesHardPodAntiAffinity(pod *api.Pod, allPods []*api.Pod, node *api.Node, podAntiAffinity *api.PodAntiAffinity) bool {
 	var podAntiAffinityTerms []api.PodAffinityTerm
 	if len(podAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution) != 0 {
 		podAntiAffinityTerms = podAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution
@@ -858,7 +858,7 @@ func checkNodeMatchesHardPodAntiAffinity(checker *PodAffinityChecker, pod *api.P
 	// if the pod matches the term (breaks the anti-affinity),
 	// don't schedule the pod onto this node.
 	for _, podAntiAffinityTerm := range podAntiAffinityTerms {
-		podAntiAffinityTermMatches, err := checkIfAnyPodThatMatchPodAffinityTerm(checker, pod, allPods, node, podAntiAffinityTerm)
+		podAntiAffinityTermMatches, err := checker.CheckIfAnyPodThatMatchPodAffinityTerm(pod, allPods, node, podAntiAffinityTerm)
 		if err != nil || podAntiAffinityTermMatches == true {
 			glog.V(10).Infof("Cannot schedule pod %+v onto node %v, because not all the existing pods on this node satisfy the PodAntiAffinityTerm %v, err: %v",
 				podName(pod), node.Name, podAntiAffinityTerm, err)
@@ -910,9 +910,9 @@ func checkNodeMatchesHardPodAntiAffinity(checker *PodAffinityChecker, pod *api.P
 	return true
 }
 
-// nodeMatchPodAffinityAntiAffinity checks if the node matches
+// NodeMatchPodAffinityAntiAffinity checks if the node matches
 // the requiredDuringScheduling affinity/anti-affinity rules indicated by the pod.
-func nodeMatchPodAffinityAntiAffinity(checker *PodAffinityChecker, pod *api.Pod, existingPods []*api.Pod, node *api.Node, allPods []*api.Pod) bool {
+func (checker *PodAffinityChecker) NodeMatchPodAffinityAntiAffinity(pod *api.Pod, existingPods []*api.Pod, node *api.Node, allPods []*api.Pod) bool {
 	// Parse required affinity scheduling rules.
 	affinity, err := api.GetAffinityFromPodAnnotations(pod.Annotations)
 	if err != nil {
@@ -922,14 +922,14 @@ func nodeMatchPodAffinityAntiAffinity(checker *PodAffinityChecker, pod *api.Pod,
 
 	// check if the current node match the inter-pod affinity scheduling rules.
 	if affinity.PodAffinity != nil {
-		if !checkNodeMatchesHardPodAffinity(checker, pod, existingPods, node, allPods, affinity.PodAffinity) {
+		if !checker.CheckNodeMatchesHardPodAffinity(pod, existingPods, node, allPods, affinity.PodAffinity) {
 			return false
 		}
 	}
 
 	// check if the current node match the inter-pod anti-affinity scheduling rules.
 	if affinity.PodAntiAffinity != nil {
-		if !checkNodeMatchesHardPodAntiAffinity(checker, pod, allPods, node, affinity.PodAntiAffinity) {
+		if !checker.CheckNodeMatchesHardPodAntiAffinity(pod, allPods, node, affinity.PodAntiAffinity) {
 			return false
 		}
 	}

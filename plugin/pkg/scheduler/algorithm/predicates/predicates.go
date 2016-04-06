@@ -758,7 +758,7 @@ func (checker *PodAffinityChecker) InterPodAffinityMatches(pod *api.Pod, nodeNam
 	if err != nil {
 		return false, err
 	}
-	return checker.NodeMatchPodAffinityAntiAffinity(pod, nodeInfo.Pods(), node, allPods), nil
+	return checker.NodeMatchPodAffinityAntiAffinity(pod, allPods, node), nil
 }
 
 // CheckIfAnyPodThatMatchPodAffinityTerm checks if any of existing pods on the node can match the specific podAffinityTerm.
@@ -787,7 +787,7 @@ func (checker *PodAffinityChecker) CheckIfAnyPodThatMatchPodAffinityTerm(pod *ap
 
 // Checks whether the given node has pods which satisfy all the required pod affinity scheduling rules.
 // If node has pods which satisfy all the required pod affinity scheduling rules then return true.
-func (checker *PodAffinityChecker) CheckNodeMatchesHardPodAffinity(pod *api.Pod, existingPods []*api.Pod, node *api.Node, allPods []*api.Pod, podAffinity *api.PodAffinity) bool {
+func (checker *PodAffinityChecker) CheckNodeMatchesHardPodAffinity(pod *api.Pod, allPods []*api.Pod, node *api.Node, podAffinity *api.PodAffinity) bool {
 	var podAffinityTerms []api.PodAffinityTerm
 	if len(podAffinity.RequiredDuringSchedulingIgnoredDuringExecution) != 0 {
 		podAffinityTerms = podAffinity.RequiredDuringSchedulingIgnoredDuringExecution
@@ -912,7 +912,7 @@ func (checker *PodAffinityChecker) CheckNodeMatchesHardPodAntiAffinity(pod *api.
 
 // NodeMatchPodAffinityAntiAffinity checks if the node matches
 // the requiredDuringScheduling affinity/anti-affinity rules indicated by the pod.
-func (checker *PodAffinityChecker) NodeMatchPodAffinityAntiAffinity(pod *api.Pod, existingPods []*api.Pod, node *api.Node, allPods []*api.Pod) bool {
+func (checker *PodAffinityChecker) NodeMatchPodAffinityAntiAffinity(pod *api.Pod, allPods []*api.Pod, node *api.Node) bool {
 	// Parse required affinity scheduling rules.
 	affinity, err := api.GetAffinityFromPodAnnotations(pod.Annotations)
 	if err != nil {
@@ -922,7 +922,7 @@ func (checker *PodAffinityChecker) NodeMatchPodAffinityAntiAffinity(pod *api.Pod
 
 	// check if the current node match the inter-pod affinity scheduling rules.
 	if affinity.PodAffinity != nil {
-		if !checker.CheckNodeMatchesHardPodAffinity(pod, existingPods, node, allPods, affinity.PodAffinity) {
+		if !checker.CheckNodeMatchesHardPodAffinity(pod, allPods, node, affinity.PodAffinity) {
 			return false
 		}
 	}

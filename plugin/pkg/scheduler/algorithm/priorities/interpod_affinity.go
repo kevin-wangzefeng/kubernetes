@@ -17,8 +17,6 @@ limitations under the License.
 package priorities
 
 import (
-	"fmt"
-
 	"github.com/golang/glog"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/unversioned"
@@ -74,41 +72,14 @@ func countPodsThatMatchPodAffinityTerm(nodeInfo predicates.NodeInfo, pod *api.Po
 	return matchedCount, nil
 }
 
-type TopologyCounts map[string]int
-
-func (tc TopologyCounts) GetIndex(topologyKey, topologyValue string) string {
-	return fmt.Sprintf("%s, %s", topologyKey, topologyValue)
-}
-
-// if the topology key is empty, count weight for each node label value as index,
-// otherwise only count weight for node.Labels[topologyKey] as index.
-func (tc TopologyCounts) CountWeightByTopologykey(node *api.Node, weight int, topologyKey string) {
-	if len(topologyKey) == 0 && node.Labels != nil {
-		for k, v := range node.Labels {
-			index := tc.GetIndex(k, v)
-			tc[index] += weight
-		}
-	} else if len(topologyKey) > 0 && node.Labels != nil && len(node.Labels[topologyKey]) > 0 {
-		index := tc.GetIndex(topologyKey, node.Labels[topologyKey])
-		tc[index] += weight
-	}
-	return
-}
-
 // CountWeightByPodMatchAffinityTerm counts the weight to topologyCounts for all the given pods that match the podAffinityTerm.
-func (tc TopologyCounts) CountWeightByPodMatchAffinityTerm(nodeInfo predicates.NodeInfo, pod *api.Pod, podsForMatching []*api.Pod, weight int, podAffinityTerm api.PodAffinityTerm, node *api.Node) error {
+func countWeightByPodMatchAffinityTerm(nodeInfo predicates.NodeInfo, pod *api.Pod, podsForMatching []*api.Pod, weight int, podAffinityTerm api.PodAffinityTerm, node *api.Node) (int, error) {
 	if weight == 0 {
-		return nil
+		return 0, nil
 	}
 	// get the pods which are there in that particular node
 	podsMatchedCount, err := countPodsThatMatchPodAffinityTerm(nodeInfo, pod, podsForMatching, node, podAffinityTerm)
-	if err != nil {
-		return err
-	}
-	if podsMatchedCount > 0 {
-		tc.CountWeightByTopologykey(node, weight*podsMatchedCount, podAffinityTerm.TopologyKey)
-	}
-	return nil
+	return weight * podsMatchedCount, err
 }
 
 // compute a sum by iterating through the elements of weightedPodAffinityTerm and adding
@@ -129,25 +100,33 @@ func (ipa *InterPodAffinity) CalculateInterPodAffinityPriority(pod *api.Pod, nod
 	if err != nil {
 		return nil, err
 	}
-	topologyCounts := TopologyCounts{}
+
+	// convert the topology key based weights to the node name based weights
+	var maxCount int
+	var minCount int
+	counts := map[string]int{}
+
 	for _, node := range nodes.Items {
+		totalCount := 0
 		// count weights for the weighted pod affinity
 		if affinity.PodAffinity != nil {
 			for _, weightedTerm := range affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution {
-				err := topologyCounts.CountWeightByPodMatchAffinityTerm(ipa.info, pod, allPods, weightedTerm.Weight, weightedTerm.PodAffinityTerm, &node)
+				count, err := countWeightByPodMatchAffinityTerm(ipa.info, pod, allPods, weightedTerm.Weight, weightedTerm.PodAffinityTerm, &node)
 				if err != nil {
 					return nil, err
 				}
+				totalCount += count
 			}
 		}
 
 		// count weights for the weighted pod anti-affinity
 		if affinity.PodAntiAffinity != nil {
 			for _, weightedTerm := range affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution {
-				err := topologyCounts.CountWeightByPodMatchAffinityTerm(ipa.info, pod, allPods, (0 - weightedTerm.Weight), weightedTerm.PodAffinityTerm, &node)
+				count, err := countWeightByPodMatchAffinityTerm(ipa.info, pod, allPods, (0 - weightedTerm.Weight), weightedTerm.PodAffinityTerm, &node)
 				if err != nil {
 					return nil, err
 				}
+				totalCount += count
 			}
 		}
 
@@ -171,52 +150,43 @@ func (ipa *InterPodAffinity) CalculateInterPodAffinityPriority(pod *api.Pod, nod
 				//	podAffinityTerms = append(podAffinityTerms, affinity.PodAffinity.RequiredDuringSchedulingRequiredDuringExecution...)
 				//}
 				for _, epAffinityTerm := range podAffinityTerms {
-					err := topologyCounts.CountWeightByPodMatchAffinityTerm(ipa.info, pod, epForMatching, HardPodAffinityImplicitWeight, epAffinityTerm, &node)
+					count, err := countWeightByPodMatchAffinityTerm(ipa.info, pod, epForMatching, HardPodAffinityImplicitWeight, epAffinityTerm, &node)
 					if err != nil {
 						return nil, err
 					}
+					totalCount += count
 				}
 			}
 
 			// count weight for the weighted pod affinity indicated by the existing pod.
 			if epAffinity.PodAffinity != nil {
 				for _, epWeightedTerm := range epAffinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution {
-					err := topologyCounts.CountWeightByPodMatchAffinityTerm(ipa.info, pod, epForMatching, epWeightedTerm.Weight, epWeightedTerm.PodAffinityTerm, &node)
+					count, err := countWeightByPodMatchAffinityTerm(ipa.info, pod, epForMatching, epWeightedTerm.Weight, epWeightedTerm.PodAffinityTerm, &node)
 					if err != nil {
 						return nil, err
 					}
+					totalCount += count
 				}
 			}
 
 			// count weight for the weighted pod anti-affinity indicated by the existing pod.
 			if epAffinity.PodAntiAffinity != nil {
 				for _, epWeightedTerm := range epAffinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution {
-					err := topologyCounts.CountWeightByPodMatchAffinityTerm(ipa.info, pod, epForMatching, (0 - epWeightedTerm.Weight), epWeightedTerm.PodAffinityTerm, &node)
+					count, err := countWeightByPodMatchAffinityTerm(ipa.info, pod, epForMatching, (0 - epWeightedTerm.Weight), epWeightedTerm.PodAffinityTerm, &node)
 					if err != nil {
 						return nil, err
 					}
+					totalCount += count
 				}
 			}
 		}
-	}
 
-	// convert the topology key based weights to the node name based weights
-	var maxCount int
-	var minCount int
-	counts := map[string]int{}
-	for countIndex, count := range topologyCounts {
-		for _, node := range nodes.Items {
-			for k, v := range node.Labels {
-				if topologyCounts.GetIndex(k, v) == countIndex {
-					counts[node.Name] = counts[node.Name] + count
-					if counts[node.Name] > maxCount {
-						maxCount = counts[node.Name]
-					}
-					if counts[node.Name] < minCount {
-						minCount = counts[node.Name]
-					}
-				}
-			}
+		counts[node.Name] = counts[node.Name] + totalCount
+		if counts[node.Name] > maxCount {
+			maxCount = counts[node.Name]
+		}
+		if counts[node.Name] < minCount {
+			minCount = counts[node.Name]
 		}
 	}
 

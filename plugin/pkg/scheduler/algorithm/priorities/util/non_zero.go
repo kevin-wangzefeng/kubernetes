@@ -16,8 +16,10 @@ limitations under the License.
 
 package util
 
-import "k8s.io/kubernetes/pkg/api"
-import "k8s.io/kubernetes/pkg/util/sets"
+import (
+	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/util/sets"
+)
 
 // For each of these resources, a pod that doesn't request the resource explicitly
 // will be treated as having requested the amount indicated below, for the purpose
@@ -73,6 +75,16 @@ func IfNodeHasTopologyKey(node *api.Node, topologyKey string) bool {
 		return true
 	}
 	return false
+}
+
+// NodeHasTopologyKey checks if given node labels has non-nil value with given topologykey as label key.
+// If the topologyKey is nil/empty, regard as the node labels has the topologyKey.
+func NodesHaveSameTopologyKey(nodeA *api.Node, nodeB *api.Node, topologyKey string) bool {
+	// TODO kevin-wangzefeng: update comments
+	if len(topologyKey) == 0 {
+		return true
+	}
+	return nodeA.Labels != nil && nodeB.Labels != nil && len(nodeA.Labels[topologyKey]) > 0 && nodeA.Labels[topologyKey] == nodeB.Labels[topologyKey]
 }
 
 // GetNamespacesFromPodAffinityTerm returns a set of names

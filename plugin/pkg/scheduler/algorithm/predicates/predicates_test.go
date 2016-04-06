@@ -1475,7 +1475,7 @@ func TestInterPodAffinity(t *testing.T) {
 			pod:  new(api.Pod),
 			node: node1,
 			fits: true,
-			test: "A pod that has no required pod affinity scheduling requirements can schedule onto a node with no existing pods",
+			test: "A pod that has no required pod affinity scheduling rules can schedule onto a node with no existing pods",
 		},
 		{
 			pod: &api.Pod{
@@ -1484,10 +1484,8 @@ func TestInterPodAffinity(t *testing.T) {
 					Annotations: map[string]string{
 						api.AffinityAnnotationKey: `
 						{"podAffinity": {
-							"requiredDuringSchedulingIgnoredDuringExecution": [
-							{
-								"labelSelector":
-								{
+							"requiredDuringSchedulingIgnoredDuringExecution": [{
+								"labelSelector": {
 									"matchExpressions": [{
 										"key": "service",
 										"operator": "In",
@@ -1495,8 +1493,7 @@ func TestInterPodAffinity(t *testing.T) {
 										}]
 									},
 								"topologyKey": "region"
-								}
-							]
+							}]
 						}}`,
 					},
 				},
@@ -1513,10 +1510,8 @@ func TestInterPodAffinity(t *testing.T) {
 					Annotations: map[string]string{
 						api.AffinityAnnotationKey: `
 						{"podAffinity": {
-							"requiredDuringSchedulingIgnoredDuringExecution": [
-							{
-								"labelSelector":
-								{
+							"requiredDuringSchedulingIgnoredDuringExecution": [{
+								"labelSelector": {
 									"matchExpressions": [{
 										"key": "service",
 										"operator": "In",
@@ -1524,8 +1519,7 @@ func TestInterPodAffinity(t *testing.T) {
 									}]
 								},
 								"topologyKey": ""
-								}
-							]
+							}]
 						}}`,
 					},
 				},
@@ -1542,10 +1536,8 @@ func TestInterPodAffinity(t *testing.T) {
 					Annotations: map[string]string{
 						api.AffinityAnnotationKey: `
 						{"podAffinity": {
-							"requiredDuringSchedulingIgnoredDuringExecution": [
-							{
-								"labelSelector":
-								{
+							"requiredDuringSchedulingIgnoredDuringExecution": [{
+								"labelSelector": {
 									"matchExpressions": [{
 										"key": "service",
 										"operator": "In",
@@ -1553,8 +1545,7 @@ func TestInterPodAffinity(t *testing.T) {
 									}]
 								},
 								"topologyKey": "wrongtopologykey"
-								}
-							]
+							}]
 						}}`,
 					},
 				},
@@ -1571,22 +1562,18 @@ func TestInterPodAffinity(t *testing.T) {
 					Annotations: map[string]string{
 						api.AffinityAnnotationKey: `
 						{"podAffinity": {
-							"requiredDuringSchedulingIgnoredDuringExecution": [
-							{
-								"labelSelector":
-								{
+							"requiredDuringSchedulingIgnoredDuringExecution": [{
+								"labelSelector": {
 									"matchExpressions": [{
 										"key": "service",
 										"operator": "In",
 										"values": ["securityscan", "value2"]
 									}]
 								},
-								"namespaces":[
-								{
+								"namespaces":[{
 									"metadata":{"name": "DiffNameSpace"}
 								}]
-								}
-							]
+							}]
 						}}`,
 					},
 				},
@@ -1603,10 +1590,8 @@ func TestInterPodAffinity(t *testing.T) {
 					Annotations: map[string]string{
 						api.AffinityAnnotationKey: `
 						{"podAffinity": {
-							"requiredDuringSchedulingIgnoredDuringExecution": [
-							{
-								"labelSelector":
-								{
+							"requiredDuringSchedulingIgnoredDuringExecution": [{
+								"labelSelector": {
 									"matchExpressions": [{
 										"key": "service",
 										"operator": "In",
@@ -1631,36 +1616,31 @@ func TestInterPodAffinity(t *testing.T) {
 						api.AffinityAnnotationKey: `
 						{"podAffinity": {
 							"requiredDuringSchedulingIgnoredDuringExecution": [
-							{
-								"labelSelector":
 								{
-									"matchExpressions": [{
-										"key": "service",
-										"operator": "Exists"
+									"labelSelector": {
+										"matchExpressions": [{
+											"key": "service",
+											"operator": "Exists"
+										}, {
+											"key": "wrongkey",
+											"operator": "DoesNotExist"
+										}]
 									},
-									{
-										"key": "wrongkey",
-										"operator": "DoesNotExist"
-									}]
-								},
-								"topologyKey": "region"
-							},
-							{
-								"labelSelector":
-								{
-									"matchExpressions": [{
-										"key": "service",
-										"operator": "In",
-										"values": ["securityscan"]
+									"topologyKey": "region"
+								}, {
+									"labelSelector": {
+										"matchExpressions": [{
+											"key": "service",
+											"operator": "In",
+											"values": ["securityscan"]
+										}, {
+											"key": "service",
+											"operator": "NotIn",
+											"values": ["WrongValue"]
+										}]
 									},
-									{
-										"key": "service",
-										"operator": "NotIn",
-										"values": ["WrongValue"]
-									}]
-								},
-								"topologyKey": "region"
-							}
+									"topologyKey": "region"
+								}
 							]
 						}}`,
 					},
@@ -1678,10 +1658,8 @@ func TestInterPodAffinity(t *testing.T) {
 					Annotations: map[string]string{
 						api.AffinityAnnotationKey: `
 						{"podAffinity": {
-							"requiredDuringSchedulingIgnoredDuringExecution": [
-							{
-								"labelSelector":
-								{
+							"requiredDuringSchedulingIgnoredDuringExecution": [{
+								"labelSelector": {
 									"matchExpressions": [{
 										"key": "service",
 										"operator": "In",
@@ -1692,10 +1670,8 @@ func TestInterPodAffinity(t *testing.T) {
 							}]
 						},
 						"podAntiAffinity": {
-							"requiredDuringSchedulingIgnoredDuringExecution": [
-							{
-								"labelSelector":
-								{
+							"requiredDuringSchedulingIgnoredDuringExecution": [{
+								"labelSelector": {
 									"matchExpressions": [{
 										"key": "service",
 										"operator": "In",
@@ -1722,36 +1698,31 @@ func TestInterPodAffinity(t *testing.T) {
 		//				api.AffinityAnnotationKey: `
 		//				{"podAffinity": {
 		//					"requiredDuringSchedulingRequiredDuringExecution": [
-		//							{
-		//								"labelSelector":
-		//									{
-		//										"matchExpressions": [{
-		//											"key": "service",
-		//											"operator": "Exists"
-		//										},
-		//										{
-		//											"key": "wrongkey",
-		//											"operator": "DoesNotExist"
-		//										}]
-		//									},
-		//								"topologyKey": "region"
+		//						{
+		//							"labelSelector": {
+		//								"matchExpressions": [{
+		//									"key": "service",
+		//									"operator": "Exists"
+		//								}, {
+		//									"key": "wrongkey",
+		//									"operator": "DoesNotExist"
+		//								}]
 		//							},
-		//							{
-		//								"labelSelector":
-		//									{
-		//										"matchExpressions": [{
-		//											"key": "service",
-		//											"operator": "In",
-		//											"values": ["securityscan"]
-		//										},
-		//										{
-		//											"key": "service",
-		//											"operator": "NotIn",
-		//											"values": ["WrongValue"]
-		//										}]
-		//									},
-		//								"topologyKey": "region"
-		//							}
+		//							"topologyKey": "region"
+		//						}, {
+		//							"labelSelector": {
+		//								"matchExpressions": [{
+		//									"key": "service",
+		//									"operator": "In",
+		//									"values": ["securityscan"]
+		//								}, {
+		//									"key": "service",
+		//									"operator": "NotIn",
+		//									"values": ["WrongValue"]
+		//								}]
+		//							},
+		//							"topologyKey": "region"
+		//						}
 		//					]
 		//				}}`,
 		//			},
@@ -1769,24 +1740,20 @@ func TestInterPodAffinity(t *testing.T) {
 					Annotations: map[string]string{
 						api.AffinityAnnotationKey: `
 						{"podAffinity": {
-							"requiredDuringSchedulingIgnoredDuringExecution": [
-							{
-								"labelSelector":
-								{
+							"requiredDuringSchedulingIgnoredDuringExecution": [{
+								"labelSelector": {
 									"matchExpressions": [{
 										"key": "service",
 										"operator": "In",
 										"values": ["securityscan", "value2"]
 									}]
 								},
-							"topologyKey": "region"
+								"topologyKey": "region"
 							}]
 						},
 						"podAntiAffinity": {
-							"requiredDuringSchedulingIgnoredDuringExecution": [
-							{
-								"labelSelector":
-								{
+							"requiredDuringSchedulingIgnoredDuringExecution": [{
+								"labelSelector": {
 									"matchExpressions": [{
 										"key": "service",
 										"operator": "In",
@@ -1804,10 +1771,8 @@ func TestInterPodAffinity(t *testing.T) {
 					Annotations: map[string]string{
 						api.AffinityAnnotationKey: `
 						{"PodAntiAffinity": {
-							"requiredDuringSchedulingIgnoredDuringExecution": [
-							{
-								"labelSelector":
-								{
+							"requiredDuringSchedulingIgnoredDuringExecution": [{
+								"labelSelector": {
 									"matchExpressions": [{
 										"key": "service",
 										"operator": "In",
@@ -1830,10 +1795,8 @@ func TestInterPodAffinity(t *testing.T) {
 					Annotations: map[string]string{
 						api.AffinityAnnotationKey: `
 						{"podAffinity": {
-							"requiredDuringSchedulingIgnoredDuringExecution": [
-							{
-								"labelSelector":
-								{
+							"requiredDuringSchedulingIgnoredDuringExecution": [{
+								"labelSelector": {
 									"matchExpressions": [{
 										"key": "service",
 										"operator": "In",
@@ -1844,10 +1807,8 @@ func TestInterPodAffinity(t *testing.T) {
 							}]
 						},
 						"podAntiAffinity": {
-							"requiredDuringSchedulingIgnoredDuringExecution": [
-							{
-								"labelSelector":
-								{
+							"requiredDuringSchedulingIgnoredDuringExecution": [{
+								"labelSelector": {
 									"matchExpressions": [{
 										"key": "service",
 										"operator": "In",
@@ -1872,10 +1833,8 @@ func TestInterPodAffinity(t *testing.T) {
 					Annotations: map[string]string{
 						api.AffinityAnnotationKey: `
 						{"podAffinity": {
-							"requiredDuringSchedulingIgnoredDuringExecution": [
-							{
-								"labelSelector":
-								{
+							"requiredDuringSchedulingIgnoredDuringExecution": [{
+								"labelSelector": {
 									"matchExpressions": [{
 										"key": "service",
 										"operator": "In",
@@ -1886,10 +1845,8 @@ func TestInterPodAffinity(t *testing.T) {
 							}]
 						},
 						"podAntiAffinity": {
-							"requiredDuringSchedulingIgnoredDuringExecution": [
-							{
-								"labelSelector":
-								{
+							"requiredDuringSchedulingIgnoredDuringExecution": [{
+								"labelSelector": {
 									"matchExpressions": [{
 										"key": "service",
 										"operator": "In",
@@ -1907,10 +1864,8 @@ func TestInterPodAffinity(t *testing.T) {
 					Annotations: map[string]string{
 						api.AffinityAnnotationKey: `
 						{"PodAntiAffinity": {
-							"requiredDuringSchedulingIgnoredDuringExecution": [
-							{
-								"labelSelector":
-								{
+							"requiredDuringSchedulingIgnoredDuringExecution": [{
+								"labelSelector": {
 									"matchExpressions": [{
 										"key": "service",
 										"operator": "In",
@@ -1933,13 +1888,11 @@ func TestInterPodAffinity(t *testing.T) {
 					Annotations: map[string]string{
 						api.AffinityAnnotationKey: `
 						{"podAffinity": {
-							"requiredDuringSchedulingIgnoredDuringExecution": [
-							{
-								"labelSelector":
-								{
+							"requiredDuringSchedulingIgnoredDuringExecution": [{
+								"labelSelector": {
 									"matchExpressions": [{
 										"key": "service",
-										"operator": "In",
+										"operator": "NotIn",
 										"values": ["securityscan", "value2"]
 									}]
 								},

@@ -17,6 +17,8 @@ limitations under the License.
 package priorities
 
 import (
+	"fmt"
+
 	"github.com/golang/glog"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/unversioned"
@@ -69,11 +71,12 @@ type TopologyCounts map[string]int
 // otherwise only count weight for node.Labels[topologyKey] as index.
 func (tc TopologyCounts) CountWeightByTopologykey(node *api.Node, weight int, topologyKey string) {
 	if len(topologyKey) == 0 && node.Labels != nil {
-		for _, index := range node.Labels {
+		for k, v := range node.Labels {
+			index := fmt.Sprintf("%s, %s", k, v)
 			tc[index] += weight
 		}
 	} else if len(topologyKey) > 0 && node.Labels != nil && len(node.Labels[topologyKey]) > 0 {
-		index := node.Labels[topologyKey]
+		index := fmt.Sprintf("%s, %s", topologyKey, node.Labels[topologyKey])
 		tc[index] += weight
 	}
 	return
@@ -173,8 +176,9 @@ func (s *InterPodAffinity) CalculateInterPodAffinityPriority(pod *api.Pod, nodeN
 	counts := map[string]int{}
 	for countIndex, count := range topologyCounts {
 		for _, node := range nodes.Items {
-			for _, labelVal := range node.Labels {
-				if labelVal == countIndex {
+			for k, v := range node.Labels {
+				index := fmt.Sprintf("%s, %s", k, v)
+				if index == countIndex {
 					counts[node.Name] = counts[node.Name] + count
 					if counts[node.Name] > maxCount {
 						maxCount = counts[node.Name]

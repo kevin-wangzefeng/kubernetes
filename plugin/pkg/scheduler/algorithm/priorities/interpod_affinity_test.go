@@ -445,7 +445,10 @@ func TestInterPodAffinityPriority(t *testing.T) {
 	}
 	for _, test := range tests {
 		nodeNameToInfo := schedulercache.CreateNodeNameToInfoMap(test.pods)
-		interPodAffinity := InterPodAffinity{nodeLister: algorithm.FakeNodeLister(api.NodeList{Items: test.nodes})}
+		interPodAffinity := InterPodAffinity{
+			nodeLister: algorithm.FakeNodeLister(api.NodeList{Items: test.nodes}),
+			podLister: algorithm.FakePodLister(api.PodList{Items: test.pods}),
+		}
 		list, err := interPodAffinity.CalculateInterPodAffinityPriority(test.pod, nodeNameToInfo, algorithm.FakeNodeLister(api.NodeList{Items: test.nodes}))
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)

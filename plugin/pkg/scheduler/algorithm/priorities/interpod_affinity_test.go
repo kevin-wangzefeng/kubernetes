@@ -112,8 +112,7 @@ func TestInterPodAffinityPriority(t *testing.T) {
 								"key": "security",
 								"operator": "NotIn",
 								"values":["S1"]
-							},
-							{
+							}, {
 								"key": "security",
 								"operator": "In",
 								"values":["S2"]
@@ -129,8 +128,7 @@ func TestInterPodAffinityPriority(t *testing.T) {
 							"matchExpressions": [{
 								"key": "security",
 								"operator": "Exists"
-							},
-							{
+							}, {
 								"key": "wrongkey",
 								"operator": "DoesNotExist"
 							}]
@@ -161,8 +159,7 @@ func TestInterPodAffinityPriority(t *testing.T) {
 						"matchExpressions": [{
 							"key": "security",
 							"operator": "Exists"
-						},
-						{
+						}, {
 							"key": "wrongkey",
 							"operator": "DoesNotExist"
 						}]

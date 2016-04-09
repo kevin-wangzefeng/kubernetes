@@ -82,6 +82,23 @@ func countWeightByPodMatchAffinityTerm(nodeInfo predicates.NodeInfo, pod *api.Po
 	return weight * podsMatchedCount, err
 }
 
+// CountWeightByPodMatchAffinityTerm counts the weight to topologyCounts for all the given pods that match the podAffinityTerm.
+func checkIfPodMatchPodAffinityTermFromExistingPod(nodeInfo predicates.NodeInfo, pod *api.Pod, ep *api.Pod, epAffinityTerm api.PodAffinityTerm, node *api.Node) (bool, error) {
+	labelSelector, err := unversioned.LabelSelectorAsSelector(epAffinityTerm.LabelSelector)
+	if err != nil {
+		return false, err
+	}
+	names := priorityutil.GetNamespacesFromPodAffinityTerm(ep, epAffinityTerm)
+	if len(names) != 0 && !names.Has(pod.Namespace) || !labelSelector.Matches(labels.Set(pod.Labels)) {
+		return false, nil
+	}
+	epNode, err := nodeInfo.GetNodeInfo(ep.Spec.NodeName)
+	if err != nil {
+		return false, err
+	}
+	return priorityutil.NodesHaveSameTopologyKey(epNode, node, epAffinityTerm.TopologyKey), nil
+}
+
 // compute a sum by iterating through the elements of weightedPodAffinityTerm and adding
 // "weight" to the sum if the corresponding PodAffinityTerm is satisfied for
 // that node; the node(s) with the highest sum are the most preferred.
@@ -133,7 +150,6 @@ func (ipa *InterPodAffinity) CalculateInterPodAffinityPriority(pod *api.Pod, nod
 		// reverse direction checking: count weights for the inter-pod affinity/anti-affinity rules
 		// that are indicated by existing pods on the node.
 		for _, ep := range allPods {
-			epForMatching := []*api.Pod{ep}
 			epAffinity, err := api.GetAffinityFromPodAnnotations(ep.Annotations)
 			if err != nil {
 				return nil, err
@@ -150,33 +166,47 @@ func (ipa *InterPodAffinity) CalculateInterPodAffinityPriority(pod *api.Pod, nod
 				//	podAffinityTerms = append(podAffinityTerms, affinity.PodAffinity.RequiredDuringSchedulingRequiredDuringExecution...)
 				//}
 				for _, epAffinityTerm := range podAffinityTerms {
-					count, err := countWeightByPodMatchAffinityTerm(ipa.info, pod, epForMatching, HardPodAffinityImplicitWeight, epAffinityTerm, &node)
+					match, err := checkIfPodMatchPodAffinityTermFromExistingPod(ipa.info, pod, ep, epAffinityTerm, &node)
 					if err != nil {
 						return nil, err
 					}
-					totalCount += count
+					if match {
+						totalCount += HardPodAffinityImplicitWeight
+					}
 				}
 			}
 
 			// count weight for the weighted pod affinity indicated by the existing pod.
 			if epAffinity.PodAffinity != nil {
 				for _, epWeightedTerm := range epAffinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution {
-					count, err := countWeightByPodMatchAffinityTerm(ipa.info, pod, epForMatching, epWeightedTerm.Weight, epWeightedTerm.PodAffinityTerm, &node)
+					if epWeightedTerm.Weight == 0 {
+						continue
+					}
+
+					match, err := checkIfPodMatchPodAffinityTermFromExistingPod(ipa.info, pod, ep, epWeightedTerm.PodAffinityTerm, &node)
 					if err != nil {
 						return nil, err
 					}
-					totalCount += count
+					if match {
+						totalCount += epWeightedTerm.Weight
+					}
 				}
 			}
 
 			// count weight for the weighted pod anti-affinity indicated by the existing pod.
 			if epAffinity.PodAntiAffinity != nil {
 				for _, epWeightedTerm := range epAffinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution {
-					count, err := countWeightByPodMatchAffinityTerm(ipa.info, pod, epForMatching, (0 - epWeightedTerm.Weight), epWeightedTerm.PodAffinityTerm, &node)
+					if epWeightedTerm.Weight == 0 {
+						continue
+					}
+
+					match, err := checkIfPodMatchPodAffinityTermFromExistingPod(ipa.info, pod, ep, epWeightedTerm.PodAffinityTerm, &node)
 					if err != nil {
 						return nil, err
 					}
-					totalCount += count
+					if match {
+						totalCount -= epWeightedTerm.Weight
+					}
 				}
 			}
 		}

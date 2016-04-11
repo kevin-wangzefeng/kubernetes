@@ -22,6 +22,7 @@ import (
 	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/algorithm"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/algorithm/predicates"
+	priorityutil "k8s.io/kubernetes/plugin/pkg/scheduler/algorithm/priorities/util"
 	schedulerapi "k8s.io/kubernetes/plugin/pkg/scheduler/api"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/schedulercache"
 )
@@ -50,7 +51,7 @@ func NewInterPodAffinityPriority(info predicates.NodeInfo, nodeLister algorithm.
 func countPodsThatMatchPodAffinityTerm(nodeInfo predicates.NodeInfo, pod *api.Pod, podsForMatching []*api.Pod, node *api.Node, podAffinityTerm api.PodAffinityTerm) (int, error) {
 	matchedCount := 0
 	for _, ep := range podsForMatching {
-		match, err := predicates.CheckIfPodMatchPodAffinityTerm(ep, pod, podAffinityTerm,
+		match, err := priorityutil.CheckIfPodMatchPodAffinityTerm(ep, pod, podAffinityTerm,
 			func(ep *api.Pod) (*api.Node, error) {
 				return nodeInfo.GetNodeInfo(ep.Spec.NodeName)
 			},
@@ -101,28 +102,27 @@ func (ipa *InterPodAffinity) CalculateInterPodAffinityPriority(pod *api.Pod, nod
 	var maxCount int
 	var minCount int
 	counts := map[string]int{}
-
 	for _, node := range nodes.Items {
 		totalCount := 0
 		// count weights for the weighted pod affinity
 		if affinity.PodAffinity != nil {
 			for _, weightedTerm := range affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution {
-				count, err := countWeightByPodMatchAffinityTerm(ipa.info, pod, allPods, weightedTerm.Weight, weightedTerm.PodAffinityTerm, &node)
+				weightedCount, err := countWeightByPodMatchAffinityTerm(ipa.info, pod, allPods, weightedTerm.Weight, weightedTerm.PodAffinityTerm, &node)
 				if err != nil {
 					return nil, err
 				}
-				totalCount += count
+				totalCount += weightedCount
 			}
 		}
 
 		// count weights for the weighted pod anti-affinity
 		if affinity.PodAntiAffinity != nil {
 			for _, weightedTerm := range affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution {
-				count, err := countWeightByPodMatchAffinityTerm(ipa.info, pod, allPods, (0 - weightedTerm.Weight), weightedTerm.PodAffinityTerm, &node)
+				weightedCount, err := countWeightByPodMatchAffinityTerm(ipa.info, pod, allPods, (0 - weightedTerm.Weight), weightedTerm.PodAffinityTerm, &node)
 				if err != nil {
 					return nil, err
 				}
-				totalCount += count
+				totalCount += weightedCount
 			}
 		}
 
@@ -145,7 +145,7 @@ func (ipa *InterPodAffinity) CalculateInterPodAffinityPriority(pod *api.Pod, nod
 				//	podAffinityTerms = append(podAffinityTerms, affinity.PodAffinity.RequiredDuringSchedulingRequiredDuringExecution...)
 				//}
 				for _, epAffinityTerm := range podAffinityTerms {
-					match, err := predicates.CheckIfPodMatchPodAffinityTerm(pod, ep, epAffinityTerm,
+					match, err := priorityutil.CheckIfPodMatchPodAffinityTerm(pod, ep, epAffinityTerm,
 						func(pod *api.Pod) (*api.Node, error) { return &node, nil },
 						func(ep *api.Pod) (*api.Node, error) { return ipa.info.GetNodeInfo(ep.Spec.NodeName) },
 					)
@@ -166,7 +166,7 @@ func (ipa *InterPodAffinity) CalculateInterPodAffinityPriority(pod *api.Pod, nod
 						continue
 					}
 
-					match, err := predicates.CheckIfPodMatchPodAffinityTerm(pod, ep, epWeightedTerm.PodAffinityTerm,
+					match, err := priorityutil.CheckIfPodMatchPodAffinityTerm(pod, ep, epWeightedTerm.PodAffinityTerm,
 						func(pod *api.Pod) (*api.Node, error) { return &node, nil },
 						func(ep *api.Pod) (*api.Node, error) { return ipa.info.GetNodeInfo(ep.Spec.NodeName) },
 					)
@@ -186,7 +186,7 @@ func (ipa *InterPodAffinity) CalculateInterPodAffinityPriority(pod *api.Pod, nod
 						continue
 					}
 
-					match, err := predicates.CheckIfPodMatchPodAffinityTerm(pod, ep, epWeightedTerm.PodAffinityTerm,
+					match, err := priorityutil.CheckIfPodMatchPodAffinityTerm(pod, ep, epWeightedTerm.PodAffinityTerm,
 						func(pod *api.Pod) (*api.Node, error) { return &node, nil },
 						func(ep *api.Pod) (*api.Node, error) { return ipa.info.GetNodeInfo(ep.Spec.NodeName) },
 					)

@@ -761,36 +761,10 @@ func (checker *PodAffinityChecker) InterPodAffinityMatches(pod *api.Pod, nodeNam
 	return checker.NodeMatchPodAffinityAntiAffinity(pod, allPods, node), nil
 }
 
-type getNodeFunc func(*api.Pod) (*api.Node, error)
-
-// CheckIfPodMatchPodAffinityTerm checks if existing pod can match the specific podAffinityTerm.
-func CheckIfPodMatchPodAffinityTerm(podA *api.Pod, podB *api.Pod, podBAffinityTerm api.PodAffinityTerm, getNodeA, getNodeB getNodeFunc) (bool, error) {
-	names := priorityutil.GetNamespacesFromPodAffinityTerm(podB, podBAffinityTerm)
-	if len(names) != 0 && !names.Has(podA.Namespace) {
-		return false, nil
-	}
-
-	labelSelector, err := unversioned.LabelSelectorAsSelector(podBAffinityTerm.LabelSelector)
-	if err != nil || !labelSelector.Matches(labels.Set(podA.Labels)) {
-		return false, err
-	}
-
-	podANode, err := getNodeA(podA)
-	if err != nil {
-		return false, err
-	}
-	podBNode, err := getNodeB(podB)
-	if err != nil {
-		return false, err
-	}
-
-	return priorityutil.NodesHaveSameTopologyKey(podANode, podBNode, podBAffinityTerm.TopologyKey), nil
-}
-
 // CheckIfAnyPodThatMatchPodAffinityTerm checks if any of given pods can match the specific podAffinityTerm.
 func (checker *PodAffinityChecker) CheckIfAnyPodThatMatchPodAffinityTerm(pod *api.Pod, allPods []*api.Pod, node *api.Node, podAffinityTerm api.PodAffinityTerm) (bool, error) {
 	for _, ep := range allPods {
-		match, err := CheckIfPodMatchPodAffinityTerm(ep, pod, podAffinityTerm,
+		match, err := priorityutil.CheckIfPodMatchPodAffinityTerm(ep, pod, podAffinityTerm,
 			func(ep *api.Pod) (*api.Node, error) { return checker.info.GetNodeInfo(ep.Spec.NodeName) },
 			func(pod *api.Pod) (*api.Node, error) { return node, nil },
 		)
@@ -914,7 +888,6 @@ func (checker *PodAffinityChecker) CheckNodeMatchesHardPodAntiAffinity(pod *api.
 					if err != nil || priorityutil.NodesHaveSameTopologyKey(node, epNode, epAntiAffinityTerm.TopologyKey) {
 						glog.V(10).Infof("Cannot schedule Pod %+v, onto node %v because the pod would break the PodAntiAffinityTerm %+v, of existing pod %+v, err: %v",
 							podName(pod), node.Name, epAntiAffinityTerm, podName(ep), err)
-
 						return false
 					}
 				}

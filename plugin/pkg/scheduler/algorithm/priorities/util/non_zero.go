@@ -18,6 +18,8 @@ package util
 
 import (
 	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/api/unversioned"
+	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/util/sets"
 )
 
@@ -66,15 +68,6 @@ func FilterPodsByNameSpaces(names sets.String, pods []*api.Pod) []*api.Pod {
 	return result
 }
 
-// NodeHasTopologyKey checks if nodeA and nodeB have same label value with given topologyKey as label key.
-// If the topologyKey is nil/empty, regard as the two nodes have same topologykey and label value.
-func NodesHaveSameTopologyKey(nodeA *api.Node, nodeB *api.Node, topologyKey string) bool {
-	if len(topologyKey) == 0 {
-		return true
-	}
-	return nodeA.Labels != nil && nodeB.Labels != nil && len(nodeA.Labels[topologyKey]) > 0 && nodeA.Labels[topologyKey] == nodeB.Labels[topologyKey]
-}
-
 // GetNamespacesFromPodAffinityTerm returns a set of names
 // according to the namespaces indicated in podAffinityTerm.
 // if the NameSpaces is nil considers the given pod's namespace
@@ -89,4 +82,39 @@ func GetNamespacesFromPodAffinityTerm(pod *api.Pod, podAffinityTerm api.PodAffin
 		}
 	}
 	return names
+}
+
+// NodeHasTopologyKey checks if nodeA and nodeB have same label value with given topologyKey as label key.
+// If the topologyKey is nil/empty, regard as the two nodes have same topologykey and label value.
+func NodesHaveSameTopologyKey(nodeA *api.Node, nodeB *api.Node, topologyKey string) bool {
+	if len(topologyKey) == 0 {
+		return true
+	}
+	return nodeA.Labels != nil && nodeB.Labels != nil && len(nodeA.Labels[topologyKey]) > 0 && nodeA.Labels[topologyKey] == nodeB.Labels[topologyKey]
+}
+
+type getNodeFunc func(*api.Pod) (*api.Node, error)
+
+// CheckIfPodMatchPodAffinityTerm checks if existing pod can match the specific podAffinityTerm.
+func CheckIfPodMatchPodAffinityTerm(podA *api.Pod, podB *api.Pod, podBAffinityTerm api.PodAffinityTerm, getNodeA, getNodeB getNodeFunc) (bool, error) {
+	names := GetNamespacesFromPodAffinityTerm(podB, podBAffinityTerm)
+	if len(names) != 0 && !names.Has(podA.Namespace) {
+		return false, nil
+	}
+
+	labelSelector, err := unversioned.LabelSelectorAsSelector(podBAffinityTerm.LabelSelector)
+	if err != nil || !labelSelector.Matches(labels.Set(podA.Labels)) {
+		return false, err
+	}
+
+	podANode, err := getNodeA(podA)
+	if err != nil {
+		return false, err
+	}
+	podBNode, err := getNodeB(podB)
+	if err != nil {
+		return false, err
+	}
+
+	return NodesHaveSameTopologyKey(podANode, podBNode, podBAffinityTerm.TopologyKey), nil
 }

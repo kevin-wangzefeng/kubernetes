@@ -71,7 +71,7 @@ func init() {
 		},
 	)
 	// PodFitsPorts has been replaced by PodFitsHostPorts for better user understanding.
-	// For backwards compatibility with 1.0, PodFitsPorts is regitered as well.
+	// For backwards compatibility with 1.0, PodFitsPorts is registered as well.
 	factory.RegisterFitPredicate("PodFitsPorts", predicates.PodFitsHostPorts)
 	// ImageLocalityPriority prioritizes nodes based on locality of images requested by a pod. Nodes with larger size
 	// of already-installed packages required by the pod will be preferred over nodes with no already-installed
@@ -166,7 +166,7 @@ func defaultPriorities() sets.String {
 			"InterPodAffinityPriority",
 			factory.PriorityConfigFactory{
 				Function: func(args factory.PluginFactoryArgs) algorithm.PriorityFunction {
-					return priorities.NewInterPodAffinityPriority(args.NodeLister)
+					return priorities.NewInterPodAffinityPriority(args.NodeInfo, args.NodeLister, args.PodLister)
 				},
 				Weight: 1,
 			},

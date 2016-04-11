@@ -1384,14 +1384,13 @@ const (
 	NodeSelectorOpLt           NodeSelectorOperator = "Lt"
 )
 
-// Affinity is a group of affinity scheduling rules, currently
-// only node affinity, but in the future also inter-pod affinity.
+// Affinity is a group of affinity scheduling rules.
 type Affinity struct {
 	// Describes node affinity scheduling rules for the pod.
 	NodeAffinity *NodeAffinity `json:"nodeAffinity,omitempty" protobuf:"bytes,1,opt,name=nodeAffinity"`
-	// Describes pod affinity scheduling rules for the pod.
+	// Describes pod affinity scheduling rules (e.g. co-locate this pod in the same node, zone, etc. as some other pod(s)).
 	PodAffinity *PodAffinity `json:"podAffinity,omitempty" protobuf:"bytes,2,opt,name=podAffinity"`
-	// Describes pod anti affinity scheduling rules for the pod.
+	// Describes pod anti-affinity scheduling rules (e.g. avoid putting this pod in the same node, zone, etc. as some other pod(s)).
 	PodAntiAffinity *PodAntiAffinity `json:"podAntiAffinity,omitempty" protobuf:"bytes,3,opt,name=podAntiAffinity"`
 }
 
@@ -1457,19 +1456,24 @@ type PodAntiAffinity struct {
 	PreferredDuringSchedulingIgnoredDuringExecution []WeightedPodAffinityTerm `json:"preferredDuringSchedulingIgnoredDuringExecution,omitempty" protobuf:"bytes,2,rep,name=preferredDuringSchedulingIgnoredDuringExecution"`
 }
 
-//The weights of all of the matched WeightedPodAffinityTerms fields are added per-node to find the most preferred node(s)
+// The weights of all of the matched WeightedPodAffinityTerm fields are added per-node to find the most preferred node(s)
 type WeightedPodAffinityTerm struct {
 	// weight associated with matching the corresponding podAffinityTerm, in the range 1-100"
 	Weight int32 `json:"weight" protobuf:"varint,1,opt,name=weight"`
-	//a pod affinity term, associated with the corresponding weight
+	// a pod affinity term, associated with the corresponding weight
 	PodAffinityTerm PodAffinityTerm `json:"podAffinityTerm" protobuf:"bytes,2,opt,name=podAffinityTerm"`
 }
 
-// podAffinityTerm contains LabelSelector,Namespaces & topology key
+// Defines a set of pods (namely those matching the labelSelector
+// relative to the given namespace(s)) that this pod should be
+// co-located (affinity) or not co-located (anti-affinity) with,
+// where co-located is defined as running on a node whose value of
+// the label with key <topologyKey> tches that of any node on which
+// a pod of the set of pods is running
 type PodAffinityTerm struct {
-	// A label selector is a label query over a set of resources.
+	// A label selector is a label query over a set of resources, in this case pods.
 	LabelSelector *unversioned.LabelSelector `json:"labelSelector,omitempty" protobuf:"bytes,1,opt,name=labelSelector"`
-	// namespaces specifies which namespaces the LabelSelector applies to (matches against);
+	// namespaces specifies which namespaces the labelSelector applies to (matches against);
 	// nil list means "this pod's namespace," empty list means "all namespaces"
 	// The json tag here is not "omitempty" since we need to distinguish nil and empty.
 	// See https://golang.org/pkg/encoding/json/#Marshal for more details.

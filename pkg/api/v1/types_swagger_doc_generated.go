@@ -1084,7 +1084,7 @@ func (PodAffinity) SwaggerDoc() map[string]string {
 
 var map_PodAffinityTerm = map[string]string{
 	"":              "Defines a set of pods (namely those matching the labelSelector relative to the given namespace(s)) that this pod should be co-located (affinity) or not co-located (anti-affinity) with, where co-located is defined as running on a node whose value of the label with key <topologyKey> tches that of any node on which a pod of the set of pods is running",
-	"labelSelector": "A label selector is a label query over a set of resources, in this case .",
+	"labelSelector": "A label selector is a label query over a set of resources, in this case pods.",
 	"namespaces":    "namespaces specifies which namespaces the labelSelector applies to (matches against); nil list means \"this pod's namespace,\" empty list means \"all namespaces\" The json tag here is not \"omitempty\" since we need to distinguish nil and empty. See https://golang.org/pkg/encoding/json/#Marshal for more details.",
 	"topologyKey":   "empty topology key is interpreted by the scheduler as \"all topologies\"",
 }

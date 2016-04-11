@@ -82,7 +82,7 @@ func countWeightByPodMatchAffinityTerm(nodeInfo predicates.NodeInfo, pod *api.Po
 	return weight * podsMatchedCount, err
 }
 
-// CountWeightByPodMatchAffinityTerm counts the weight to topologyCounts for all the given pods that match the podAffinityTerm.
+// checkIfPodMatchPodAffinityTermFromExistingPod checks if existing pod can match the specific podAffinityTerm.
 func checkIfPodMatchPodAffinityTermFromExistingPod(nodeInfo predicates.NodeInfo, pod *api.Pod, ep *api.Pod, epAffinityTerm api.PodAffinityTerm, node *api.Node) (bool, error) {
 	labelSelector, err := unversioned.LabelSelectorAsSelector(epAffinityTerm.LabelSelector)
 	if err != nil {

@@ -761,9 +761,8 @@ func (checker *PodAffinityChecker) InterPodAffinityMatches(pod *api.Pod, nodeNam
 	return checker.NodeMatchPodAffinityAntiAffinity(pod, allPods, node), nil
 }
 
-// CheckIfAnyPodThatMatchPodAffinityTerm checks if any of existing pods on the node can match the specific podAffinityTerm.
+// CheckIfAnyPodThatMatchPodAffinityTerm checks if any of given pods can match the specific podAffinityTerm.
 func (checker *PodAffinityChecker) CheckIfAnyPodThatMatchPodAffinityTerm(pod *api.Pod, allPods []*api.Pod, node *api.Node, podAffinityTerm api.PodAffinityTerm) (bool, error) {
-	// TODO kevin-wangzefeng: update comments
 	labelSelector, err := unversioned.LabelSelectorAsSelector(podAffinityTerm.LabelSelector)
 	if err != nil {
 		return false, err

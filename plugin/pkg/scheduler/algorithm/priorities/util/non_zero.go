@@ -66,21 +66,9 @@ func FilterPodsByNameSpaces(names sets.String, pods []*api.Pod) []*api.Pod {
 	return result
 }
 
-// IfNodeHasTopologyKey checks if given node labels has non-nil value with given topologykey as label key.
-// If the topologyKey is nil/empty, regard as the node labels has the topologyKey.
-func IfNodeHasTopologyKey(node *api.Node, topologyKey string) bool {
-	if len(topologyKey) == 0 {
-		return true
-	} else if node.Labels != nil && len(node.Labels[topologyKey]) > 0 {
-		return true
-	}
-	return false
-}
-
-// NodeHasTopologyKey checks if given node labels has non-nil value with given topologykey as label key.
-// If the topologyKey is nil/empty, regard as the node labels has the topologyKey.
+// NodeHasTopologyKey checks if nodeA and nodeB have same label value with given topologyKey as label key.
+// If the topologyKey is nil/empty, regard as the two nodes have same topologykey and label value.
 func NodesHaveSameTopologyKey(nodeA *api.Node, nodeB *api.Node, topologyKey string) bool {
-	// TODO kevin-wangzefeng: update comments
 	if len(topologyKey) == 0 {
 		return true
 	}

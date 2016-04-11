@@ -1467,7 +1467,7 @@ type WeightedPodAffinityTerm struct {
 // the label with key <topologyKey> tches that of any node on which
 // a pod of the set of pods is running
 type PodAffinityTerm struct {
-	// A label selector is a label query over a set of resources, in this case .
+	// A label selector is a label query over a set of resources, in this case pods.
 	LabelSelector *unversioned.LabelSelector `json:"labelSelector,omitempty"`
 	// namespaces specifies which namespaces the labelSelector applies to (matches against);
 	// nil list means "this pod's namespace," empty list means "all namespaces"

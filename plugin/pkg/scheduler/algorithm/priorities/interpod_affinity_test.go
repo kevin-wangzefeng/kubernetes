@@ -285,25 +285,7 @@ func TestInterPodAffinityPriority(t *testing.T) {
 		// the node3(machine3) that have the label {"region": "India"}, match the topology key but have a different label value, don't have existing pods that match the labelSelector,
 		// get a low score.
 		{
-			pod: &api.Pod{
-				ObjectMeta: api.ObjectMeta{
-					Annotations: map[string]string{
-						api.AffinityAnnotationKey: `
-						{"podAffinity": {
-							"preferredDuringSchedulingIgnoredDuringExecution": [{
-								"labelSelector": {
-									"matchExpressions": [{
-										"key": "security",
-										"operator": "In",
-										"values": ["S1"]
-									}]
-								},
-								"topologyKey": "region"
-							}]
-						}}`,
-					},
-				},
-			},
+			pod: &api.Pod{Spec: api.PodSpec{NodeName: ""}, ObjectMeta: api.ObjectMeta{Annotations: affinity1}},
 			pods: []*api.Pod{
 				{Spec: api.PodSpec{NodeName: "machine1"}, ObjectMeta: api.ObjectMeta{Labels: podLabel1}},
 			},

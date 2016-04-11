@@ -19,11 +19,9 @@ package priorities
 import (
 	"github.com/golang/glog"
 	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/algorithm"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/algorithm/predicates"
-	priorityutil "k8s.io/kubernetes/plugin/pkg/scheduler/algorithm/priorities/util"
 	schedulerapi "k8s.io/kubernetes/plugin/pkg/scheduler/api"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/schedulercache"
 )
@@ -50,23 +48,21 @@ func NewInterPodAffinityPriority(info predicates.NodeInfo, nodeLister algorithm.
 
 // countPodsThatMatchPodAffinityTerm counts the number of given pods that match the podAffinityTerm.
 func countPodsThatMatchPodAffinityTerm(nodeInfo predicates.NodeInfo, pod *api.Pod, podsForMatching []*api.Pod, node *api.Node, podAffinityTerm api.PodAffinityTerm) (int, error) {
-	labelSelector, err := unversioned.LabelSelectorAsSelector(podAffinityTerm.LabelSelector)
-	if err != nil {
-		return 0, err
-	}
-
 	matchedCount := 0
-	names := priorityutil.GetNamespacesFromPodAffinityTerm(pod, podAffinityTerm)
-	filteredPods := priorityutil.FilterPodsByNameSpaces(names, podsForMatching)
-	for _, filteredPod := range filteredPods {
-		if labelSelector.Matches(labels.Set(filteredPod.Labels)) {
-			filteredPodNode, err := nodeInfo.GetNodeInfo(filteredPod.Spec.NodeName)
-			if err != nil {
-				return 0, err
-			}
-			if priorityutil.NodesHaveSameTopologyKey(filteredPodNode, node, podAffinityTerm.TopologyKey) {
-				matchedCount++
-			}
+	for _, ep := range podsForMatching {
+		match, err := predicates.CheckIfPodMatchPodAffinityTerm(ep, pod, podAffinityTerm,
+			func(ep *api.Pod) (*api.Node, error) {
+				return nodeInfo.GetNodeInfo(ep.Spec.NodeName)
+			},
+			func(pod *api.Pod) (*api.Node, error) {
+				return node, nil
+			},
+		)
+		if err != nil {
+			return 0, err
+		}
+		if match {
+			matchedCount++
 		}
 	}
 	return matchedCount, nil
@@ -80,23 +76,6 @@ func countWeightByPodMatchAffinityTerm(nodeInfo predicates.NodeInfo, pod *api.Po
 	// get the pods which are there in that particular node
 	podsMatchedCount, err := countPodsThatMatchPodAffinityTerm(nodeInfo, pod, podsForMatching, node, podAffinityTerm)
 	return weight * podsMatchedCount, err
-}
-
-// checkIfPodMatchPodAffinityTermFromExistingPod checks if existing pod can match the specific podAffinityTerm.
-func checkIfPodMatchPodAffinityTermFromExistingPod(nodeInfo predicates.NodeInfo, pod *api.Pod, ep *api.Pod, epAffinityTerm api.PodAffinityTerm, node *api.Node) (bool, error) {
-	labelSelector, err := unversioned.LabelSelectorAsSelector(epAffinityTerm.LabelSelector)
-	if err != nil {
-		return false, err
-	}
-	names := priorityutil.GetNamespacesFromPodAffinityTerm(ep, epAffinityTerm)
-	if len(names) != 0 && !names.Has(pod.Namespace) || !labelSelector.Matches(labels.Set(pod.Labels)) {
-		return false, nil
-	}
-	epNode, err := nodeInfo.GetNodeInfo(ep.Spec.NodeName)
-	if err != nil {
-		return false, err
-	}
-	return priorityutil.NodesHaveSameTopologyKey(epNode, node, epAffinityTerm.TopologyKey), nil
 }
 
 // compute a sum by iterating through the elements of weightedPodAffinityTerm and adding
@@ -166,7 +145,11 @@ func (ipa *InterPodAffinity) CalculateInterPodAffinityPriority(pod *api.Pod, nod
 				//	podAffinityTerms = append(podAffinityTerms, affinity.PodAffinity.RequiredDuringSchedulingRequiredDuringExecution...)
 				//}
 				for _, epAffinityTerm := range podAffinityTerms {
-					match, err := checkIfPodMatchPodAffinityTermFromExistingPod(ipa.info, pod, ep, epAffinityTerm, &node)
+					match, err := predicates.CheckIfPodMatchPodAffinityTerm(pod, ep, epAffinityTerm,
+						func(pod *api.Pod) (*api.Node, error) { return &node, nil },
+						func(ep *api.Pod) (*api.Node, error) { return ipa.info.GetNodeInfo(ep.Spec.NodeName) },
+					)
+
 					if err != nil {
 						return nil, err
 					}
@@ -183,7 +166,10 @@ func (ipa *InterPodAffinity) CalculateInterPodAffinityPriority(pod *api.Pod, nod
 						continue
 					}
 
-					match, err := checkIfPodMatchPodAffinityTermFromExistingPod(ipa.info, pod, ep, epWeightedTerm.PodAffinityTerm, &node)
+					match, err := predicates.CheckIfPodMatchPodAffinityTerm(pod, ep, epWeightedTerm.PodAffinityTerm,
+						func(pod *api.Pod) (*api.Node, error) { return &node, nil },
+						func(ep *api.Pod) (*api.Node, error) { return ipa.info.GetNodeInfo(ep.Spec.NodeName) },
+					)
 					if err != nil {
 						return nil, err
 					}
@@ -200,7 +186,10 @@ func (ipa *InterPodAffinity) CalculateInterPodAffinityPriority(pod *api.Pod, nod
 						continue
 					}
 
-					match, err := checkIfPodMatchPodAffinityTermFromExistingPod(ipa.info, pod, ep, epWeightedTerm.PodAffinityTerm, &node)
+					match, err := predicates.CheckIfPodMatchPodAffinityTerm(pod, ep, epWeightedTerm.PodAffinityTerm,
+						func(pod *api.Pod) (*api.Node, error) { return &node, nil },
+						func(ep *api.Pod) (*api.Node, error) { return ipa.info.GetNodeInfo(ep.Spec.NodeName) },
+					)
 					if err != nil {
 						return nil, err
 					}

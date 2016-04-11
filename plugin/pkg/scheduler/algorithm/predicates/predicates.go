@@ -761,17 +761,17 @@ func (checker *PodAffinityChecker) InterPodAffinityMatches(pod *api.Pod, nodeNam
 	return checker.NodeMatchPodAffinityAntiAffinity(pod, allPods, node), nil
 }
 
-type getNodeFromPod func(*api.Pod) (*api.Node, error)
+type getNodeFunc func(*api.Pod) (*api.Node, error)
 
 // CheckIfPodMatchPodAffinityTerm checks if existing pod can match the specific podAffinityTerm.
-func CheckIfPodMatchPodAffinityTerm(podA *api.Pod, podB *api.Pod, podBAffinityTerm api.PodAffinityTerm, getNodeA, getNodeB getNodeFromPod) (bool, error) {
+func CheckIfPodMatchPodAffinityTerm(podA *api.Pod, podB *api.Pod, podBAffinityTerm api.PodAffinityTerm, getNodeA, getNodeB getNodeFunc) (bool, error) {
 	names := priorityutil.GetNamespacesFromPodAffinityTerm(podB, podBAffinityTerm)
-	if len(names) != 0 && !names.Has(podA.Namespace){
+	if len(names) != 0 && !names.Has(podA.Namespace) {
 		return false, nil
 	}
 
 	labelSelector, err := unversioned.LabelSelectorAsSelector(podBAffinityTerm.LabelSelector)
-	if err != nil || !labelSelector.Matches(labels.Set(podA.Labels))  {
+	if err != nil || !labelSelector.Matches(labels.Set(podA.Labels)) {
 		return false, err
 	}
 
@@ -789,35 +789,11 @@ func CheckIfPodMatchPodAffinityTerm(podA *api.Pod, podB *api.Pod, podBAffinityTe
 
 // CheckIfAnyPodThatMatchPodAffinityTerm checks if any of given pods can match the specific podAffinityTerm.
 func (checker *PodAffinityChecker) CheckIfAnyPodThatMatchPodAffinityTerm(pod *api.Pod, allPods []*api.Pod, node *api.Node, podAffinityTerm api.PodAffinityTerm) (bool, error) {
-	/*
-		labelSelector, err := unversioned.LabelSelectorAsSelector(podAffinityTerm.LabelSelector)
-		if err != nil {
-			return false, err
-		}
-
-		names := priorityutil.GetNamespacesFromPodAffinityTerm(pod, podAffinityTerm)
-		filteredPods := priorityutil.FilterPodsByNameSpaces(names, allPods)
-		for _, filteredPod := range filteredPods {
-			if labelSelector.Matches(labels.Set(filteredPod.Labels)) {
-				filteredPodNode, err := checker.info.GetNodeInfo(filteredPod.Spec.NodeName)
-				if err != nil {
-					return false, err
-				}
-				if priorityutil.NodesHaveSameTopologyKey(filteredPodNode, node, podAffinityTerm.TopologyKey) {
-					return true, nil
-				}
-			}
-		}
-	*/
-
 	for _, ep := range allPods {
 		match, err := CheckIfPodMatchPodAffinityTerm(ep, pod, podAffinityTerm,
-			func(ep *api.Pod) (*api.Node, error) {
-				return checker.info.GetNodeInfo(ep.Spec.NodeName)
-			},
-			func(pod *api.Pod) (*api.Node, error) {
-				return node, nil
-			})
+			func(ep *api.Pod) (*api.Node, error) { return checker.info.GetNodeInfo(ep.Spec.NodeName) },
+			func(pod *api.Pod) (*api.Node, error) { return node, nil },
+		)
 		if err != nil || match {
 			return match, err
 		}

@@ -858,6 +858,7 @@ var map_NodeSpec = map[string]string{
 	"externalID":    "External ID of the node assigned by some machine database (e.g. a cloud provider). Deprecated.",
 	"providerID":    "ID of the node assigned by the cloud provider in the format: <ProviderName>://<ProviderSpecificNodeID>",
 	"unschedulable": "Unschedulable controls node schedulability of new pods. By default, node is schedulable. More info: http://releases.k8s.io/HEAD/docs/admin/node.md#manual-node-administration\"`",
+	"taints":        "Taints is a list of taints applied to the node. Pod that wants to run on the node, should tolerate all the taints of it. Multiple taints with the same key are not allowed.",
 }
 
 func (NodeSpec) SwaggerDoc() map[string]string {
@@ -874,6 +875,7 @@ var map_NodeStatus = map[string]string{
 	"daemonEndpoints": "Endpoints of daemons running on the Node.",
 	"nodeInfo":        "Set of ids/uuids to uniquely identify the node. More info: http://releases.k8s.io/HEAD/docs/admin/node.md#node-info",
 	"images":          "List of container images on this node",
+	"taints":          "Taints is the union of the taints specified by various sources. Multiple taints with the same key are not allowed.",
 }
 
 func (NodeStatus) SwaggerDoc() map[string]string {
@@ -1176,6 +1178,7 @@ var map_PodSpec = map[string]string{
 	"hostIPC":                       "Use the host's ipc namespace. Optional: Default to false.",
 	"securityContext":               "SecurityContext holds pod-level security attributes and common container settings. Optional: Defaults to empty.  See type description for default values of each field.",
 	"imagePullSecrets":              "ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images used by this PodSpec. If specified, these secrets will be passed to individual puller implementations for them to use. For example, in the case of docker, only DockerConfig type secrets are honored. More info: http://releases.k8s.io/HEAD/docs/user-guide/images.md#specifying-imagepullsecrets-on-a-pod",
+	"tolerations":                   "Multiple tolerations with the same key are allowed.",
 }
 
 func (PodSpec) SwaggerDoc() map[string]string {
@@ -1561,6 +1564,29 @@ var map_TCPSocketAction = map[string]string{
 
 func (TCPSocketAction) SwaggerDoc() map[string]string {
 	return map_TCPSocketAction
+}
+
+var map_Taint = map[string]string{
+	"":       "The node this Taint is attached to has the effect \"effect\" on any pod that that does not tolerate the Taint.",
+	"key":    "Required. The taint key to be applied to a node .",
+	"value":  "Required. Value is the taint value the toleration matches to.",
+	"effect": "Required. The effect of the taint, ref TaintEffect.",
+}
+
+func (Taint) SwaggerDoc() map[string]string {
+	return map_Taint
+}
+
+var map_Toleration = map[string]string{
+	"":         "The pod this Toleration is attached to tolerates any taint that matches the triple <key,value,effect> using the matching operator <operator>.",
+	"key":      "Required. Key is the taint key that the toleration applies to.",
+	"operator": "operator represents a key's relationship to the value. Valid operators are Exists and Equal. Defaults to Equal. Exists is equivalent to wildcard for value, so that a pod can tolerate all taints of a particular category.",
+	"value":    "Optional: Value is the taint value the toleration matches to. If the operator is Exists, the value should be empty, otherwise just a regular string.",
+	"effect":   "Required. Effect indicates the taint effect to match.",
+}
+
+func (Toleration) SwaggerDoc() map[string]string {
+	return map_Toleration
 }
 
 var map_Volume = map[string]string{

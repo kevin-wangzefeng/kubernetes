@@ -54,7 +54,8 @@ func GetNonzeroRequests(requests *api.ResourceList) (int64, int64) {
 	return outMilliCPU, outMemory
 }
 
-// FilterPodsByNameSpaces filters the pods based the given list of namespaces
+// FilterPodsByNameSpaces filters the pods based the given list of namespaces,
+// empty set of namespaces means all namespaces.
 func FilterPodsByNameSpaces(names sets.String, pods []*api.Pod) []*api.Pod {
 	if len(pods) == 0 || len(names) == 0 {
 		return pods
@@ -84,19 +85,35 @@ func GetNamespacesFromPodAffinityTerm(pod *api.Pod, podAffinityTerm api.PodAffin
 	return names
 }
 
-// NodeHasTopologyKey checks if nodeA and nodeB have same label value with given topologyKey as label key.
-// If the topologyKey is nil/empty, regard as the two nodes have same topologykey and label value.
-func NodesHaveSameTopologyKey(nodeA *api.Node, nodeB *api.Node, topologyKey string) bool {
-	if len(topologyKey) == 0 {
-		return true
-	}
+// NodesHaveSameTopologyKeyInternal checks if nodeA and nodeB have same label value with given topologyKey as label key.
+func NodesHaveSameTopologyKeyInternal(nodeA, nodeB *api.Node, topologyKey string) bool {
 	return nodeA.Labels != nil && nodeB.Labels != nil && len(nodeA.Labels[topologyKey]) > 0 && nodeA.Labels[topologyKey] == nodeB.Labels[topologyKey]
+}
+
+type Topologies struct {
+	DefaultKeys []string
+}
+
+// NodesHaveSameTopologyKey checks if nodeA and nodeB have same label value with given topologyKey as label key.
+// If the topologyKey is nil/empty, check if the two nodes have any of the default topologyKeys, and have same corresponding label value.
+func (tps *Topologies) NodesHaveSameTopologyKey(nodeA *api.Node, nodeB *api.Node, topologyKey string) bool {
+	if len(topologyKey) == 0 {
+		// assumes this is allowed only for soft pod anti-affinity (ensured by api/validation)
+		for _, defaultKey := range tps.DefaultKeys {
+			if NodesHaveSameTopologyKeyInternal(nodeA, nodeB, defaultKey) {
+				return true
+			}
+		}
+		return false
+	} else {
+		return NodesHaveSameTopologyKeyInternal(nodeA, nodeB, topologyKey)
+	}
 }
 
 type getNodeFunc func(*api.Pod) (*api.Node, error)
 
-// CheckIfPodMatchPodAffinityTerm checks if existing pod can match the specific podAffinityTerm.
-func CheckIfPodMatchPodAffinityTerm(podA *api.Pod, podB *api.Pod, podBAffinityTerm api.PodAffinityTerm, getNodeA, getNodeB getNodeFunc) (bool, error) {
+// CheckIfPodMatchPodAffinityTerm checks if podB's affinity request is compatible with podA
+func (tps *Topologies) CheckIfPodMatchPodAffinityTerm(podA *api.Pod, podB *api.Pod, podBAffinityTerm api.PodAffinityTerm, getNodeA, getNodeB getNodeFunc) (bool, error) {
 	names := GetNamespacesFromPodAffinityTerm(podB, podBAffinityTerm)
 	if len(names) != 0 && !names.Has(podA.Namespace) {
 		return false, nil
@@ -116,5 +133,5 @@ func CheckIfPodMatchPodAffinityTerm(podA *api.Pod, podB *api.Pod, podBAffinityTe
 		return false, err
 	}
 
-	return NodesHaveSameTopologyKey(podANode, podBNode, podBAffinityTerm.TopologyKey), nil
+	return tps.NodesHaveSameTopologyKey(podANode, podBNode, podBAffinityTerm.TopologyKey), nil
 }

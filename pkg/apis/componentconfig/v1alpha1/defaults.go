@@ -82,6 +82,9 @@ func addDefaultingFuncs(scheme *runtime.Scheme) {
 			if obj.SchedulerName == "" {
 				obj.SchedulerName = api.DefaultSchedulerName
 			}
+			if obj.FailureDomains == "" {
+				obj.FailureDomains = api.DefaultFailureDomains
+			}
 		},
 		func(obj *LeaderElectionConfiguration) {
 			zero := unversioned.Duration{}

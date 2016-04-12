@@ -1968,8 +1968,7 @@ func TestValidateAffinity(t *testing.T) {
 				//				}
 				//			}],
 				//			"topologyKey": "zone"
-				//		}
-				//	]
+				//		}]
 				Annotations: map[string]string{
 					api.AffinityAnnotationKey: `
 					{"podAffinity": {
@@ -2027,29 +2026,25 @@ func TestValidateAffinity(t *testing.T) {
 				Namespace: "ns",
 				// TODO: Uncomment and move this block into Annotations map once
 				// RequiredDuringSchedulingRequiredDuringExecution is implemented
-				//"requiredDuringSchedulingRequiredDuringExecution": [
-				//	{
-				//      	"labelSelector":
-				//      		{
-				//                      	"matchExpressions": [{
-				//                              	"key": "key2",
-				//                                      "operator": "In",
-				//                                      "values": ["value1", "value2"]
-				//                                  }]
-				//                      },
-				//              "namespaces":[
-				//                      {
-				//                               "metadata":{
-				//                                        "name": "ns",
-				//                                        "labels":{
-				//                                                  "key1": "value1",
-				//                                                  "key2": "value2"
-				//                                       }
-				//                                }
-				//                     }],
-				//              "topologyKey": "zone"
-				//      }
-				//      ]
+				//		"requiredDuringSchedulingRequiredDuringExecution": [{
+				//			"labelSelector": {
+				//				"matchExpressions": [{
+				//					"key": "key2",
+				//					"operator": "In",
+				//					"values": ["value1", "value2"]
+				//				}]
+				//			},
+				//			"namespaces":[{
+				//				"metadata":{
+				//					"name": "ns",
+				//					"labels":{
+				//						"key1": "value1",
+				//						"key2": "value2"
+				//					}
+				//				}
+				//			}],
+				//			"topologyKey": "zone"
+				//		}]
 				Annotations: map[string]string{
 					api.AffinityAnnotationKey: `
 					{"podAntiAffinity": {
@@ -2103,7 +2098,7 @@ func TestValidateAffinity(t *testing.T) {
 	}
 
 	errorCases := map[string]api.Pod{
-		"invalid json of affinity in pod annotations": {
+		"invalid json of node affinity in pod annotations": {
 			ObjectMeta: api.ObjectMeta{
 				Name:      "123",
 				Namespace: "ns",
@@ -2121,7 +2116,7 @@ func TestValidateAffinity(t *testing.T) {
 				DNSPolicy:     api.DNSClusterFirst,
 			},
 		},
-		"invalid node selector requirement in affinity in pod annotations, operator can't be null": {
+		"invalid node selector requirement in node affinity in pod annotations, operator can't be null": {
 			ObjectMeta: api.ObjectMeta{
 				Name:      "123",
 				Namespace: "ns",
@@ -2142,7 +2137,7 @@ func TestValidateAffinity(t *testing.T) {
 				DNSPolicy:     api.DNSClusterFirst,
 			},
 		},
-		"invalid preferredSchedulingTerm in affinity in pod annotations, weight should be in range 1-100": {
+		"invalid preferredSchedulingTerm in node affinity in pod annotations, weight should be in range 1-100": {
 			ObjectMeta: api.ObjectMeta{
 				Name:      "123",
 				Namespace: "ns",
@@ -2342,6 +2337,114 @@ func TestValidateAffinity(t *testing.T) {
 								}
 							}],
 							"topologyKey": "region"
+						}
+					}]}}`,
+				},
+			},
+			Spec: api.PodSpec{
+				Containers:    []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
+				RestartPolicy: api.RestartPolicyAlways,
+				DNSPolicy:     api.DNSClusterFirst,
+			},
+		},
+		"invalid pod affinity, empty topologyKey is not allowed for hard pod affinity": {
+			ObjectMeta: api.ObjectMeta{
+				Name:      "123",
+				Namespace: "ns",
+				Annotations: map[string]string{
+					api.AffinityAnnotationKey: `
+					{"podAffinity": {"requiredDuringSchedulingIgnoredDuringExecution": [{
+						"weight": 10,
+						"podAffinityTerm":
+						{
+							"labelSelector": {
+								"matchExpressions": [{
+									"key": "key2",
+									"operator": "In",
+									"values": ["value1", "value2"]
+								}]
+							},
+							"namespaces": [{
+								"metadata": {
+									"name": "ns",
+									"labels": {
+										"key1": "value1"
+									}
+								}
+							}],
+							"topologyKey": ""
+						}
+					}]}}`,
+				},
+			},
+			Spec: api.PodSpec{
+				Containers:    []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
+				RestartPolicy: api.RestartPolicyAlways,
+				DNSPolicy:     api.DNSClusterFirst,
+			},
+		},
+		"invalid pod anti-affinity, empty topologyKey is not allowed for hard pod anti-affinity": {
+			ObjectMeta: api.ObjectMeta{
+				Name:      "123",
+				Namespace: "ns",
+				Annotations: map[string]string{
+					api.AffinityAnnotationKey: `
+					{"podAntiAffinity": {"requiredDuringSchedulingIgnoredDuringExecution": [{
+						"weight": 10,
+						"podAffinityTerm":
+						{
+							"labelSelector": {
+								"matchExpressions": [{
+									"key": "key2",
+									"operator": "In",
+									"values": ["value1", "value2"]
+								}]
+							},
+							"namespaces": [{
+								"metadata": {
+									"name": "ns",
+									"labels": {
+										"key1": "value1"
+									}
+								}
+							}],
+							"topologyKey": ""
+						}
+					}]}}`,
+				},
+			},
+			Spec: api.PodSpec{
+				Containers:    []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
+				RestartPolicy: api.RestartPolicyAlways,
+				DNSPolicy:     api.DNSClusterFirst,
+			},
+		},
+		"invalid pod anti-affinity, empty topologyKey is not allowed for soft pod anti-affinity": {
+			ObjectMeta: api.ObjectMeta{
+				Name:      "123",
+				Namespace: "ns",
+				Annotations: map[string]string{
+					api.AffinityAnnotationKey: `
+					{"podAntiAffinity": {"preferredDuringSchedulingIgnoredDuringExecution": [{
+						"weight": 10,
+						"podAffinityTerm":
+						{
+							"labelSelector": {
+								"matchExpressions": [{
+									"key": "key2",
+									"operator": "In",
+									"values": ["value1", "value2"]
+								}]
+							},
+							"namespaces": [{
+								"metadata": {
+									"name": "ns",
+									"labels": {
+										"key1": "value1"
+									}
+								}
+							}],
+							"topologyKey": ""
 						}
 					}]}}`,
 				},

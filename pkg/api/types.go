@@ -1223,9 +1223,10 @@ type PodAntiAffinity struct {
 
 // The weights of all of the matched WeightedPodAffinityTerm fields are added per-node to find the most preferred node(s)
 type WeightedPodAffinityTerm struct {
-	// weight associated with matching the corresponding podAffinityTerm, in the range 1-100"
-	Weight int `json:"weight"`
-	// a pod affinity term, associated with the corresponding weight
+	// weight associated with matching the corresponding podAffinityTerm,
+	// in the range 1-100, if not set, defaults to 1.
+	Weight int `json:"weight,omitempty"`
+	// Required. A pod affinity term, associated with the corresponding weight
 	PodAffinityTerm PodAffinityTerm `json:"podAffinityTerm"`
 }
 
@@ -1236,14 +1237,20 @@ type WeightedPodAffinityTerm struct {
 // the label with key <topologyKey> matches that of any node on which
 // a pod of the set of pods is running.
 type PodAffinityTerm struct {
-	// A label selector is a label query over a set of resources, in this case pods.
+	// A label query over a set of resources, in this case pods.
 	LabelSelector *unversioned.LabelSelector `json:"labelSelector,omitempty"`
 	// namespaces specifies which namespaces the labelSelector applies to (matches against);
 	// nil list means "this pod's namespace," empty list means "all namespaces"
 	// The json tag here is not "omitempty" since we need to distinguish nil and empty.
 	// See https://golang.org/pkg/encoding/json/#Marshal for more details.
 	Namespaces []Namespace `json:"namespaces"`
-	// empty topology key is interpreted by the scheduler as "all topologies"
+	// This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching
+	// the labelSelector in the specified namespaces, where co-located is defined as running on a node
+	// whose value of the label with key topologyKey matches that of any node on which any of the
+	// selected pods is running.
+	// For soft anti-affinity, empty topologyKey is interpreted as "all topologies"
+	// ("all topologies" here means all the topologyKeys indicated by scheduler command-line argument --failure-domains);
+	// for affinity and for hard anti-affinity, empty topologyKey is not allowed.
 	TopologyKey string `json:"topologyKey,omitempty"`
 }
 
@@ -2664,4 +2671,12 @@ type RangeAllocation struct {
 const (
 	// "default-scheduler" is the name of default scheduler.
 	DefaultSchedulerName = "default-scheduler"
+
+	// RequiredDuringScheduling affinity is not symmetric, but there is an implicit PreferredDuringScheduling affinity rule
+	// corresponding to every RequiredDuringScheduling affinity rule.
+	// DefaultHardPodAffinityWeight represents the default weight of implicit PreferredDuringScheduling affinity rule.
+	DefaultHardPodAffinitySymmetricWeight int = 1
+
+	//DefaultFailureDomains string = "kubernetes.io/hostname,failure-domain.beta.kubernetes.io/zone,ailure-domain.beta.kubernetes.io/region"
+	DefaultFailureDomains string = unversioned.LabelHostname + "," + unversioned.LabelZoneFailureDomain + "," + unversioned.LabelZoneRegion
 )

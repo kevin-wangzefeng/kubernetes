@@ -1489,11 +1489,14 @@ func ValidatePreferredSchedulingTerms(terms []api.PreferredSchedulingTerm, fldPa
 }
 
 // validatePodAffinityTerm tests that the specified podAffinityTerm fields have valid data
-func validatePodAffinityTerm(podAffinityTerm api.PodAffinityTerm, fldPath *field.Path) field.ErrorList {
+func validatePodAffinityTerm(podAffinityTerm api.PodAffinityTerm, allowEmptyTopologyKey bool, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, unversionedvalidation.ValidateLabelSelector(podAffinityTerm.LabelSelector, fldPath.Child("matchExpressions"))...)
 	for _, namespace := range podAffinityTerm.Namespaces {
 		allErrs = append(allErrs, ValidateNamespace(&namespace)...)
+	}
+	if !allowEmptyTopologyKey && len(podAffinityTerm.TopologyKey) == 0 {
+		allErrs = append(allErrs, field.Required(fldPath.Child("topologyKey"), "can only be empty for soft pod anti affinity"))
 	}
 	if len(podAffinityTerm.TopologyKey) != 0 {
 		allErrs = append(allErrs, unversionedvalidation.ValidateLabelName(podAffinityTerm.TopologyKey, fldPath.Child("topologyKey"))...)
@@ -1502,22 +1505,23 @@ func validatePodAffinityTerm(podAffinityTerm api.PodAffinityTerm, fldPath *field
 }
 
 // validatePodAffinityTerms tests that the specified podAffinityTerms fields have valid data
-func validatePodAffinityTerms(podAffinityTerms []api.PodAffinityTerm, fldPath *field.Path) field.ErrorList {
+func validatePodAffinityTerms(podAffinityTerms []api.PodAffinityTerm, allowEmptyTopologyKey bool, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	for i, podAffinityTerm := range podAffinityTerms {
-		allErrs = append(allErrs, validatePodAffinityTerm(podAffinityTerm, fldPath.Index(i))...)
+		allErrs = append(allErrs, validatePodAffinityTerm(podAffinityTerm, allowEmptyTopologyKey, fldPath.Index(i))...)
 	}
 	return allErrs
 }
 
 // validateWeightedPodAffinityTerms tests that the specified weightedPodAffinityTerms fields have valid data
-func validateWeightedPodAffinityTerms(weightedPodAffinityTerms []api.WeightedPodAffinityTerm, fldPath *field.Path) field.ErrorList {
+func validateWeightedPodAffinityTerms(weightedPodAffinityTerms []api.WeightedPodAffinityTerm, allowEmptyTopologyKey bool, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	for j, weightedTerm := range weightedPodAffinityTerms {
-		if weightedTerm.Weight <= 0 || weightedTerm.Weight > 100 {
+		if weightedTerm.Weight < 0 || weightedTerm.Weight > 100 {
+			// if weight is 0 or not set, defaults to 1.
 			allErrs = append(allErrs, field.Invalid(fldPath.Index(j).Child("weight"), weightedTerm.Weight, "must be in the range 1-100"))
 		}
-		allErrs = append(allErrs, validatePodAffinityTerm(weightedTerm.PodAffinityTerm, fldPath.Index(j).Child("podAffinityTerm"))...)
+		allErrs = append(allErrs, validatePodAffinityTerm(weightedTerm.PodAffinityTerm, allowEmptyTopologyKey, fldPath.Index(j).Child("podAffinityTerm"))...)
 	}
 	return allErrs
 }
@@ -1527,15 +1531,17 @@ func validatePodAntiAffinity(podAntiAffinity *api.PodAntiAffinity, fldPath *fiel
 	allErrs := field.ErrorList{}
 	// TODO:Uncomment below code once RequiredDuringSchedulingRequiredDuringExecution is implemented.
 	// if podAntiAffinity.RequiredDuringSchedulingRequiredDuringExecution != nil {
-	//	allErrs = append(allErrs, validatePodAffinityTerms(podAntiAffinity.RequiredDuringSchedulingRequiredDuringExecution,
+	//	allErrs = append(allErrs, validatePodAffinityTerms(podAntiAffinity.RequiredDuringSchedulingRequiredDuringExecution, false,
 	//		fldPath.Child("requiredDuringSchedulingRequiredDuringExecution"))...)
 	//}
 	if podAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution != nil {
-		allErrs = append(allErrs, validatePodAffinityTerms(podAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution,
+		// empty topologyKey is not allowed for hard pod anti-affinity
+		allErrs = append(allErrs, validatePodAffinityTerms(podAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution, false,
 			fldPath.Child("requiredDuringSchedulingIgnoredDuringExecution"))...)
 	}
 	if podAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution != nil {
-		allErrs = append(allErrs, validateWeightedPodAffinityTerms(podAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution,
+		// empty topologyKey is not allowed for soft pod anti-affinity
+		allErrs = append(allErrs, validateWeightedPodAffinityTerms(podAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution, false,
 			fldPath.Child("preferredDuringSchedulingIgnoredDuringExecution"))...)
 	}
 	return allErrs
@@ -1546,15 +1552,17 @@ func validatePodAffinity(podAffinity *api.PodAffinity, fldPath *field.Path) fiel
 	allErrs := field.ErrorList{}
 	// TODO:Uncomment below code once RequiredDuringSchedulingRequiredDuringExecution is implemented.
 	// if podAffinity.RequiredDuringSchedulingRequiredDuringExecution != nil {
-	//	allErrs = append(allErrs, validatePodAffinityTerms(podAffinity.RequiredDuringSchedulingRequiredDuringExecution,
+	//	allErrs = append(allErrs, validatePodAffinityTerms(podAffinity.RequiredDuringSchedulingRequiredDuringExecution, false,
 	//		fldPath.Child("requiredDuringSchedulingRequiredDuringExecution"))...)
 	//}
 	if podAffinity.RequiredDuringSchedulingIgnoredDuringExecution != nil {
-		allErrs = append(allErrs, validatePodAffinityTerms(podAffinity.RequiredDuringSchedulingIgnoredDuringExecution,
+		// empty topologyKey is not allowed for hard pod affinity
+		allErrs = append(allErrs, validatePodAffinityTerms(podAffinity.RequiredDuringSchedulingIgnoredDuringExecution, false,
 			fldPath.Child("requiredDuringSchedulingIgnoredDuringExecution"))...)
 	}
 	if podAffinity.PreferredDuringSchedulingIgnoredDuringExecution != nil {
-		allErrs = append(allErrs, validateWeightedPodAffinityTerms(podAffinity.PreferredDuringSchedulingIgnoredDuringExecution,
+		// empty topologyKey is allowed for soft pod affinity
+		allErrs = append(allErrs, validateWeightedPodAffinityTerms(podAffinity.PreferredDuringSchedulingIgnoredDuringExecution, true,
 			fldPath.Child("preferredDuringSchedulingIgnoredDuringExecution"))...)
 	}
 	return allErrs
@@ -1584,7 +1592,6 @@ func ValidateAffinityInPodAnnotations(annotations map[string]string, fldPath *fi
 
 		if len(na.PreferredDuringSchedulingIgnoredDuringExecution) > 0 {
 			allErrs = append(allErrs, ValidatePreferredSchedulingTerms(na.PreferredDuringSchedulingIgnoredDuringExecution, fldPath.Child("preferredDuringSchedulingIgnoredDuringExecution"))...)
-
 		}
 	}
 	if affinity.PodAffinity != nil {

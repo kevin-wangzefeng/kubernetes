@@ -89,6 +89,9 @@ func SetDefaults_KubeSchedulerConfiguration(obj *KubeSchedulerConfiguration) {
 	if obj.SchedulerName == "" {
 		obj.SchedulerName = api.DefaultSchedulerName
 	}
+	if obj.FailureDomains == "" {
+		obj.FailureDomains = api.DefaultFailureDomains
+	}
 }
 
 func SetDefaults_LeaderElectionConfiguration(obj *LeaderElectionConfiguration) {

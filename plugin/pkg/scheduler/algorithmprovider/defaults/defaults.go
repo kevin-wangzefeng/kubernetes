@@ -32,8 +32,10 @@ import (
 	"github.com/golang/glog"
 )
 
-// GCE instances can have up to 16 PD volumes attached.
-const DefaultMaxGCEPDVolumes = 16
+const (
+	// GCE instances can have up to 16 PD volumes attached.
+	DefaultMaxGCEPDVolumes = 16
+)
 
 // getMaxVols checks the max PD volumes environment variable, otherwise returning a default value
 func getMaxVols(defaultVal int) int {
@@ -129,7 +131,7 @@ func defaultPredicates() sets.String {
 		factory.RegisterFitPredicateFactory(
 			"MatchInterPodAffinity",
 			func(args factory.PluginFactoryArgs) algorithm.FitPredicate {
-				return predicates.NewPodAffinityPredicate(args.NodeInfo, args.PodLister)
+				return predicates.NewPodAffinityPredicate(args.NodeInfo, args.PodLister, args.FailureDomains)
 			},
 		),
 	)
@@ -166,7 +168,7 @@ func defaultPriorities() sets.String {
 			"InterPodAffinityPriority",
 			factory.PriorityConfigFactory{
 				Function: func(args factory.PluginFactoryArgs) algorithm.PriorityFunction {
-					return priorities.NewInterPodAffinityPriority(args.NodeInfo, args.NodeLister, args.PodLister)
+					return priorities.NewInterPodAffinityPriority(args.NodeInfo, args.NodeLister, args.PodLister, args.HardPodAffinitySymmetricWeight, args.FailureDomains)
 				},
 				Weight: 1,
 			},

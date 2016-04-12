@@ -20,12 +20,14 @@ import (
 	"fmt"
 	"os/exec"
 	"reflect"
+	"strings"
 	"testing"
 
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/resource"
 	"k8s.io/kubernetes/pkg/util/codeinspector"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/algorithm"
+	priorityutil "k8s.io/kubernetes/plugin/pkg/scheduler/algorithm/priorities/util"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/schedulercache"
 )
 
@@ -1623,11 +1625,11 @@ func TestInterPodAffinity(t *testing.T) {
 								"labelSelector": {
 									"matchExpressions": [{
 										"key": "service",
-										"operator": "In",
-										"values": ["securityscan", "value2"]
+										"operator": "NotIn",
+										"values": ["securityscan3", "value3"]
 									}]
 								},
-								"topologyKey": ""
+								"topologyKey": "region"
 							}]
 						}}`,
 					},
@@ -1636,7 +1638,7 @@ func TestInterPodAffinity(t *testing.T) {
 			pods: []*api.Pod{{Spec: api.PodSpec{NodeName: "machine1"}, ObjectMeta: api.ObjectMeta{Labels: podLabel}}},
 			node: node1,
 			fits: true,
-			test: "satisfies the pod with requiredDuringSchedulingIgnoredDuringExecution in PodAffinity using empty topologyKey in labelSelector that matches the existing pod",
+			test: "satisfies the pod with requiredDuringSchedulingIgnoredDuringExecution in PodAffinity using not in operator in labelSelector that matches the existing pod",
 		},
 		{
 			pod: &api.Pod{
@@ -1924,7 +1926,7 @@ func TestInterPodAffinity(t *testing.T) {
 										"values": ["securityscan", "value2"]
 									}]
 								},
-								"topologyKey": ""
+								"topologyKey": "zone"
 							}]
 						}}`,
 					},
@@ -1981,7 +1983,7 @@ func TestInterPodAffinity(t *testing.T) {
 										"values": ["securityscan", "value2"]
 									}]
 								},
-								"topologyKey": ""
+								"topologyKey": "zone"
 							}]
 						}}`,
 					}},
@@ -2026,7 +2028,11 @@ func TestInterPodAffinity(t *testing.T) {
 			}
 		}
 
-		fit := PodAffinityChecker{FakeNodeInfo(node), algorithm.FakePodLister(test.pods)}
+		fit := PodAffinityChecker{
+			info:           FakeNodeInfo(node),
+			podLister:      algorithm.FakePodLister(test.pods),
+			failureDomains: priorityutil.Topologies{DefaultKeys: strings.Split(api.DefaultFailureDomains, ",")},
+		}
 		fits, err := fit.InterPodAffinityMatches(test.pod, test.node.Name, schedulercache.NewNodeInfo(podsOnNode...))
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
@@ -2104,7 +2110,11 @@ func TestInterPodAffinityWithMultipleNodes(t *testing.T) {
 				}
 			}
 
-			testFit := PodAffinityChecker{nodeListInfo, algorithm.FakePodLister(test.pods)}
+			testFit := PodAffinityChecker{
+				info:           nodeListInfo,
+				podLister:      algorithm.FakePodLister(test.pods),
+				failureDomains: priorityutil.Topologies{DefaultKeys: strings.Split(api.DefaultFailureDomains, ",")},
+			}
 			fits, err := testFit.InterPodAffinityMatches(test.pod, node.Name, schedulercache.NewNodeInfo(podsOnNode...))
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)

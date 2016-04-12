@@ -48,7 +48,7 @@ func TestCreate(t *testing.T) {
 	// TODO: Uncomment when fix #19254
 	// defer server.Close()
 	client := client.NewOrDie(&restclient.Config{Host: server.URL, ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Default.GroupVersion()}})
-	factory := NewConfigFactory(client, api.DefaultSchedulerName)
+	factory := NewConfigFactory(client, api.DefaultSchedulerName, api.DefaultHardPodAffinitySymmetricWeight, api.DefaultFailureDomains)
 	factory.Create()
 }
 
@@ -67,7 +67,7 @@ func TestCreateFromConfig(t *testing.T) {
 	// TODO: Uncomment when fix #19254
 	// defer server.Close()
 	client := client.NewOrDie(&restclient.Config{Host: server.URL, ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Default.GroupVersion()}})
-	factory := NewConfigFactory(client, api.DefaultSchedulerName)
+	factory := NewConfigFactory(client, api.DefaultSchedulerName, api.DefaultHardPodAffinitySymmetricWeight, api.DefaultFailureDomains)
 
 	// Pre-register some predicate and priority functions
 	RegisterFitPredicate("PredicateOne", PredicateOne)
@@ -109,7 +109,7 @@ func TestCreateFromEmptyConfig(t *testing.T) {
 	// TODO: Uncomment when fix #19254
 	// defer server.Close()
 	client := client.NewOrDie(&restclient.Config{Host: server.URL, ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Default.GroupVersion()}})
-	factory := NewConfigFactory(client, api.DefaultSchedulerName)
+	factory := NewConfigFactory(client, api.DefaultSchedulerName, api.DefaultHardPodAffinitySymmetricWeight, api.DefaultFailureDomains)
 
 	configData = []byte(`{}`)
 	if err := runtime.DecodeInto(latestschedulerapi.Codec, configData, &policy); err != nil {
@@ -152,7 +152,7 @@ func TestDefaultErrorFunc(t *testing.T) {
 	server := httptest.NewServer(mux)
 	// TODO: Uncomment when fix #19254
 	// defer server.Close()
-	factory := NewConfigFactory(client.NewOrDie(&restclient.Config{Host: server.URL, ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Default.GroupVersion()}}), api.DefaultSchedulerName)
+	factory := NewConfigFactory(client.NewOrDie(&restclient.Config{Host: server.URL, ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Default.GroupVersion()}}), api.DefaultSchedulerName, api.DefaultHardPodAffinitySymmetricWeight, api.DefaultFailureDomains)
 	queue := cache.NewFIFO(cache.MetaNamespaceKeyFunc)
 	podBackoff := podBackoff{
 		perPodBackoff:   map[types.NamespacedName]*backoffEntry{},
@@ -324,9 +324,9 @@ func TestResponsibleForPod(t *testing.T) {
 	// defer server.Close()
 	client := client.NewOrDie(&restclient.Config{Host: server.URL, ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Default.GroupVersion()}})
 	// factory of "default-scheduler"
-	factoryDefaultScheduler := NewConfigFactory(client, api.DefaultSchedulerName)
+	factoryDefaultScheduler := NewConfigFactory(client, api.DefaultSchedulerName, api.DefaultHardPodAffinitySymmetricWeight, api.DefaultFailureDomains)
 	// factory of "foo-scheduler"
-	factoryFooScheduler := NewConfigFactory(client, "foo-scheduler")
+	factoryFooScheduler := NewConfigFactory(client, "foo-scheduler", api.DefaultHardPodAffinitySymmetricWeight, api.DefaultFailureDomains)
 	// scheduler annotaions to be tested
 	schedulerAnnotationFitsDefault := map[string]string{"scheduler.alpha.kubernetes.io/name": "default-scheduler"}
 	schedulerAnnotationFitsFoo := map[string]string{"scheduler.alpha.kubernetes.io/name": "foo-scheduler"}
@@ -375,4 +375,65 @@ func TestResponsibleForPod(t *testing.T) {
 			t.Errorf("expected: {%v, %v}, got {%v, %v}", test.pickedByDefault, test.pickedByFoo, podOfDefault, podOfFoo)
 		}
 	}
+}
+
+func TestInvalidHardPodAffinitySymmetricWeight(t *testing.T) {
+	handler := utiltesting.FakeHandler{
+		StatusCode:   500,
+		ResponseBody: "",
+		T:            t,
+	}
+	server := httptest.NewServer(&handler)
+	// TODO: Uncomment when fix #19254
+	// defer server.Close()
+	client := client.NewOrDie(&restclient.Config{Host: server.URL, ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Default.GroupVersion()}})
+	// factory of "default-scheduler"
+	factory := NewConfigFactory(client, api.DefaultSchedulerName, -1, api.DefaultFailureDomains)
+	_, err := factory.Create()
+	if err == nil {
+		t.Errorf("expected err: invalid hardPodAffinitySymmetricWeight, got nothing")
+	}
+}
+
+func TestInvalidFactoryArgs(t *testing.T) {
+	handler := utiltesting.FakeHandler{
+		StatusCode:   500,
+		ResponseBody: "",
+		T:            t,
+	}
+	server := httptest.NewServer(&handler)
+	// TODO: Uncomment when fix #19254
+	// defer server.Close()
+	client := client.NewOrDie(&restclient.Config{Host: server.URL, ContentConfig: restclient.ContentConfig{GroupVersion: testapi.Default.GroupVersion()}})
+
+	testCases := []struct {
+		hardPodAffinitySymmetricWeight int
+		failureDomains                 string
+		expectErr                      string
+	}{
+		{
+			hardPodAffinitySymmetricWeight: -1,
+			failureDomains:                 api.DefaultFailureDomains,
+			expectErr:                      "invalid hardPodAffinitySymmetricWeight: -1, must be in the range 0-100",
+		},
+		{
+			hardPodAffinitySymmetricWeight: 101,
+			failureDomains:                 api.DefaultFailureDomains,
+			expectErr:                      "invalid hardPodAffinitySymmetricWeight: 101, must be in the range 0-100",
+		},
+		{
+			hardPodAffinitySymmetricWeight: 0,
+			failureDomains:                 "INVALID_FAILURE_DOMAINS",
+			expectErr:                      "invalid failure domain: INVALID_FAILURE_DOMAINS",
+		},
+	}
+
+	for _, test := range testCases {
+		factory := NewConfigFactory(client, api.DefaultSchedulerName, test.hardPodAffinitySymmetricWeight, test.failureDomains)
+		_, err := factory.Create()
+		if err == nil {
+			t.Errorf("expected err: %s, got nothing", test.expectErr)
+		}
+	}
+
 }

@@ -1576,7 +1576,6 @@ func ValidateAffinityInPodAnnotations(annotations map[string]string, fldPath *fi
 
 		if len(na.PreferredDuringSchedulingIgnoredDuringExecution) > 0 {
 			allErrs = append(allErrs, ValidatePreferredSchedulingTerms(na.PreferredDuringSchedulingIgnoredDuringExecution, fldPath.Child("preferredDuringSchedulingIgnoredDuringExecution"))...)
-
 		}
 	}
 	if affinity.PodAffinity != nil {

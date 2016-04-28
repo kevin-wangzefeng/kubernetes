@@ -2263,26 +2263,58 @@ func TestInterPodAffinityWithMultipleNodes(t *testing.T) {
 func TestPodToleratesTaints(t *testing.T) {
 	podTolerateTaintsTests := []struct {
 		pod  *api.Pod
+		node api.Node
 		fits bool
 		test string
 	}{
 		{
 			pod: &api.Pod{
-				ObjectMeta: api.ObjectMeta{Name: "pod0"},
-				Spec: api.PodSpec{
-					Containers:  []api.Container{{Image: "pod0:V1"}},
-					Tolerations: []api.Toleration{},
+				ObjectMeta: api.ObjectMeta{
+					Name: "pod0",
+				},
+			},
+			node: api.Node{
+				ObjectMeta: api.ObjectMeta{
+					Annotations: map[string]string{
+						api.TaintsAnnotationKey: `
+						[{
+							"key": "dedicated",
+							"value": "user1",
+							"effect": "NoSchedule"
+						}]`,
+					},
 				},
 			},
 			fits: false,
-			test: "a pod having no tolerations can be scheduled",
+			test: "a pod having no tolerations can't be scheduled onto a node with any none empty taints",
 		},
 		{
 			pod: &api.Pod{
-				ObjectMeta: api.ObjectMeta{Name: "pod1"},
+				ObjectMeta: api.ObjectMeta{
+					Name: "pod1",
+					Annotations: map[string]string{
+						api.TolerationsAnnotationKey: `
+						[{
+							"key": "dedicated",
+							"value": "user1",
+							"effect": "NoSchedule"
+						}]`,
+					},
+				},
 				Spec: api.PodSpec{
-					Containers:  []api.Container{{Image: "pod1:V1"}},
-					Tolerations: []api.Toleration{{Key: "dedicated", Value: "user1", Effect: api.TaintEffectNoSchedule}},
+					Containers: []api.Container{{Image: "pod1:V1"}},
+				},
+			},
+			node: api.Node{
+				ObjectMeta: api.ObjectMeta{
+					Annotations: map[string]string{
+						api.TaintsAnnotationKey: `
+						[{
+							"key": "dedicated",
+							"value": "user1",
+							"effect": "NoSchedule"
+						}]`,
+					},
 				},
 			},
 			fits: true,
@@ -2290,36 +2322,49 @@ func TestPodToleratesTaints(t *testing.T) {
 		},
 		{
 			pod: &api.Pod{
-				ObjectMeta: api.ObjectMeta{Name: "pod2"},
+				ObjectMeta: api.ObjectMeta{
+					Name: "pod2",
+					Annotations: map[string]string{
+						api.TolerationsAnnotationKey: `
+						[{
+							"key": "dedicated",
+							"operator": "Equal",
+							"value": "user2",
+							"effect": "NoSchedule"
+						}]`,
+					},
+				},
 				Spec: api.PodSpec{
-					Containers:  []api.Container{{Image: "pod2:V1"}},
-					Tolerations: []api.Toleration{{Key: "dedicated", Value: "user2", Effect: api.TaintEffectNoSchedule}},
+					Containers: []api.Container{{Image: "pod2:V1"}},
+				},
+			},
+			node: api.Node{
+				ObjectMeta: api.ObjectMeta{
+					Annotations: map[string]string{
+						api.TaintsAnnotationKey: `
+						[{
+							"key": "dedicated",
+							"value": "user1",
+							"effect": "NoSchedule"
+						}]`,
+					},
 				},
 			},
 			fits: false,
-			test: "a pod which can be scheduled on a dedicated node assgined to user2 with effect NoSchedule",
+			test: "a pod which can't be scheduled on a dedicated node assgined to user2 with effect NoSchedule",
 		},
 	}
 
 	for _, test := range podTolerateTaintsTests {
-		node := api.Node{
-			Spec: api.NodeSpec{
-				ExternalID: "external",
-				Taints:     []api.Taint{{Key: "dedicated", Value: "user1", Effect: api.TaintEffectNoSchedule}},
-			},
-			Status: api.NodeStatus{
-				Taints: []api.Taint{{Key: "dedicated", Value: "user1", Effect: api.TaintEffectNoSchedule}},
-			},
-		}
-		tolerationMatch := TolerationMatch{FakeNodeInfo(node)}
+		tolerationMatch := TolerationMatch{FakeNodeInfo(test.node)}
 		nodeInfo := schedulercache.NewNodeInfo()
-		nodeInfo.SetNode(&node)
+		nodeInfo.SetNode(&test.node)
 		fits, err := tolerationMatch.PodToleratesNodeTaints(test.pod, nodeInfo)
 		if fits == false && !reflect.DeepEqual(err, ErrTaintsTolerationsNotMatch) {
 			t.Errorf("unexpected error: %v", err)
 		}
 		if fits != test.fits {
-			t.Errorf("%s: expected: %v got %v", test.test, test.fits, fits)
+			t.Errorf("%s, expected: %v got %v", test.test, test.fits, fits)
 		}
 	}
 }

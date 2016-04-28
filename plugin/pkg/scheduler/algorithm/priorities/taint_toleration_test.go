@@ -17,8 +17,8 @@ limitations under the License.
 package priorities
 
 import (
+	"encoding/json"
 	"reflect"
-	"strconv"
 	"testing"
 
 	"k8s.io/kubernetes/pkg/api"
@@ -27,45 +27,26 @@ import (
 	"k8s.io/kubernetes/plugin/pkg/scheduler/schedulercache"
 )
 
-// Make a node with the given count of Taints ( with effect TaintEffectPreferNoSchedule)
-// Only TaintEffectPreferNoSchedule is considered in priority function
-// No need to consider other Effect
-
-func makeNodeWithTaints(node string, taintCount int) api.Node {
-
-	var taints []api.Taint
-	for i := 0; i < taintCount; i++ {
-		taints = append(taints, api.Taint{
-			Key:    "Key" + strconv.FormatInt(int64(i), 10),
-			Value:  "Value" + strconv.FormatInt(int64(i), 10),
-			Effect: api.TaintEffectPreferNoSchedule,
-		})
-	}
+func nodeWithTaints(nodeName string, taints []api.Taint) api.Node {
+	taintsData, _ := json.Marshal(taints)
 	return api.Node{
-		ObjectMeta: api.ObjectMeta{Name: node},
-		Spec: api.NodeSpec{
-			Taints: taints,
+		ObjectMeta: api.ObjectMeta{
+			Name: nodeName,
+			Annotations: map[string]string{
+				api.TaintsAnnotationKey: string(taintsData),
+			},
 		},
 	}
 }
 
-// Make a  pod with the given count of Tolerations ( with effect TaintEffectPreferNoSchedule)
-// Only TaintEffectPreferNoSchedule is considered in priority function
-// No need to consider other Effect
-
-func makePodWithToleration(op api.TolerationOperator, tolerationCount int) api.PodSpec {
-
-	var tolerationArray []api.Toleration
-	for i := 0; i < tolerationCount; i++ {
-		tolerationArray = append(tolerationArray, api.Toleration{
-			Key:      "Key" + strconv.FormatInt(int64(i), 10),
-			Value:    "Value" + strconv.FormatInt(int64(i), 10),
-			Operator: op,
-			Effect:   api.TaintEffectPreferNoSchedule,
-		})
-	}
-	return api.PodSpec{
-		Tolerations: tolerationArray,
+func podWithTolerations(tolerations []api.Toleration) *api.Pod {
+	tolerationData, _ := json.Marshal(tolerations)
+	return &api.Pod{
+		ObjectMeta: api.ObjectMeta{
+			Annotations: map[string]string{
+				api.TolerationsAnnotationKey: string(tolerationData),
+			},
+		},
 	}
 }
 
@@ -74,193 +55,174 @@ func makePodWithToleration(op api.TolerationOperator, tolerationCount int) api.P
 // Pods with zero,one,two,three,four and hundred tolerations are created
 
 func TestTaintAndToleration(t *testing.T) {
-
-	//Pod with no toleration
-	podWithNoToleration := makePodWithToleration(api.TolerationOpExists, 0)
-
-	// Pod with one toleration
-	podWithOneToleration := makePodWithToleration(api.TolerationOpExists, 1)
-
-	// Pod with two toleration
-	podWithTwoToleration := makePodWithToleration(api.TolerationOpExists, 2)
-
-	// Pod with three tolerations
-	podWithThreeToleration := makePodWithToleration(api.TolerationOpExists, 3)
-
-	// Pod with four tolerations
-	podWithFourToleration := makePodWithToleration(api.TolerationOpExists, 4)
-
-	// Pod with hundred toleration
-	podWithHundredToleration := makePodWithToleration(api.TolerationOpEqual, 100)
-
-	// Node with no taints
-	nodeWithNoTaints := makeNodeWithTaints("Node0", 0)
-
-	// Nodes with one taints
-	nodeWithOneTaint := makeNodeWithTaints("Node1", 1)
-
-	// Nodes with two taints
-	nodeWithTwoTaints := makeNodeWithTaints("Node2", 2)
-
-	// Nodes with three taints
-	nodeWithThreeTaints := makeNodeWithTaints("Node3", 3)
-
-	// Nodes with four taints
-	nodeWithFourTaints := makeNodeWithTaints("Node4", 4)
-
-	// Node with hundred taints
-	nodeWithHundredTaints := makeNodeWithTaints("Node100", 100)
-
 	tests := []struct {
 		pod          *api.Pod
-		pods         []*api.Pod
 		nodes        []api.Node
 		expectedList schedulerapi.HostPriorityList
 		test         string
 	}{
+		// basic test case
 		{
-			pod: &api.Pod{Spec: podWithNoToleration},
+			test: "node with taints tolerated by the pod, gets a higher score than those node with intolerable taints",
+			pod: podWithTolerations([]api.Toleration{{
+				Key:      "foo",
+				Operator: api.TolerationOpEqual,
+				Value:    "bar",
+				Effect:   api.TaintEffectPreferNoSchedule,
+			}}),
 			nodes: []api.Node{
-				nodeWithNoTaints,
-				nodeWithOneTaint,
-				nodeWithTwoTaints,
-				nodeWithThreeTaints,
-				nodeWithFourTaints,
-				nodeWithHundredTaints},
-			test: "test priority for a pod with No Toleration and nodes with multiple taints",
-			pods: []*api.Pod{
-				{},
+				nodeWithTaints("nodeA", []api.Taint{{
+					Key:    "foo",
+					Value:  "bar",
+					Effect: api.TaintEffectPreferNoSchedule,
+				}}),
+				nodeWithTaints("nodeB", []api.Taint{{
+					Key:    "foo",
+					Value:  "blah",
+					Effect: api.TaintEffectPreferNoSchedule,
+				}}),
 			},
 			expectedList: []schedulerapi.HostPriority{
-				{Host: "Node0", Score: 10},
-				{Host: "Node1", Score: 9},
-				{Host: "Node2", Score: 9},
-				{Host: "Node3", Score: 9},
-				{Host: "Node4", Score: 9},
-				{Host: "Node100", Score: 0},
+				{Host: "nodeA", Score: 10},
+				{Host: "nodeB", Score: 0},
 			},
 		},
+		// the count of taints that are tolerated by pod, does not matter.
 		{
-			pod: &api.Pod{Spec: podWithOneToleration},
+			test: "the nodes that all of their taints are tolerated by the pod, get the same score, no matter how many tolerable taints a node has",
+			pod: podWithTolerations([]api.Toleration{
+				{
+					Key:      "cpu-type",
+					Operator: api.TolerationOpEqual,
+					Value:    "arm64",
+					Effect:   api.TaintEffectPreferNoSchedule,
+				}, {
+					Key:      "disk-type",
+					Operator: api.TolerationOpEqual,
+					Value:    "ssd",
+					Effect:   api.TaintEffectPreferNoSchedule,
+				},
+			}),
 			nodes: []api.Node{
-				nodeWithNoTaints,
-				nodeWithOneTaint,
-				nodeWithTwoTaints,
-			},
-			test: "test priority for a pod with One Toleration and nodes with multiple taints",
-			pods: []*api.Pod{
-				{},
+				nodeWithTaints("nodeA", []api.Taint{}),
+				nodeWithTaints("nodeB", []api.Taint{
+					{
+						Key:    "cpu-type",
+						Value:  "arm64",
+						Effect: api.TaintEffectPreferNoSchedule,
+					},
+				}),
+				nodeWithTaints("nodeC", []api.Taint{
+					{
+						Key:    "cpu-type",
+						Value:  "arm64",
+						Effect: api.TaintEffectPreferNoSchedule,
+					}, {
+						Key:    "disk-type",
+						Value:  "ssd",
+						Effect: api.TaintEffectPreferNoSchedule,
+					},
+				}),
 			},
 			expectedList: []schedulerapi.HostPriority{
-				{Host: "Node0", Score: 10},
-				{Host: "Node1", Score: 10},
-				{Host: "Node2", Score: 0},
+				{Host: "nodeA", Score: 10},
+				{Host: "nodeB", Score: 10},
+				{Host: "nodeC", Score: 10},
 			},
 		},
+		// the count of taints on a node that are not tolerated by pod, matters.
 		{
-			pod: &api.Pod{Spec: podWithTwoToleration},
+			test: "the more intolerable taints a node has, the lower score it gets.",
+			pod: podWithTolerations([]api.Toleration{{
+				Key:      "foo",
+				Operator: api.TolerationOpEqual,
+				Value:    "bar",
+				Effect:   api.TaintEffectPreferNoSchedule,
+			}}),
 			nodes: []api.Node{
-				nodeWithNoTaints,
-				nodeWithOneTaint,
-				nodeWithTwoTaints,
-				nodeWithThreeTaints,
-				nodeWithFourTaints,
-				nodeWithHundredTaints,
-			},
-			test: "test priority for a pod with Two Toleration and nodes with multiple taints",
-			pods: []*api.Pod{
-				{},
+				nodeWithTaints("nodeA", []api.Taint{}),
+				nodeWithTaints("nodeB", []api.Taint{
+					{
+						Key:    "cpu-type",
+						Value:  "arm64",
+						Effect: api.TaintEffectPreferNoSchedule,
+					},
+				}),
+				nodeWithTaints("nodeC", []api.Taint{
+					{
+						Key:    "cpu-type",
+						Value:  "arm64",
+						Effect: api.TaintEffectPreferNoSchedule,
+					}, {
+						Key:    "disk-type",
+						Value:  "ssd",
+						Effect: api.TaintEffectPreferNoSchedule,
+					},
+				}),
 			},
 			expectedList: []schedulerapi.HostPriority{
-				{Host: "Node0", Score: 10},
-				{Host: "Node1", Score: 10},
-				{Host: "Node2", Score: 10},
-				{Host: "Node3", Score: 9},
-				{Host: "Node4", Score: 9},
-				{Host: "Node100", Score: 0},
+				{Host: "nodeA", Score: 10},
+				{Host: "nodeB", Score: 5},
+				{Host: "nodeC", Score: 0},
 			},
 		},
+		// taints-tolerations priority only takes care about the taints and tolerations that have effect PreferNoSchedule
 		{
-			pod: &api.Pod{Spec: podWithThreeToleration},
+			test: "only taints and tolerations that have effect PreferNoSchedule are checked by taints-tolerations priority function",
+			pod: podWithTolerations([]api.Toleration{
+				{
+					Key:      "cpu-type",
+					Operator: api.TolerationOpEqual,
+					Value:    "arm64",
+					Effect:   api.TaintEffectNoSchedule,
+				}, {
+					Key:      "disk-type",
+					Operator: api.TolerationOpEqual,
+					Value:    "ssd",
+					Effect:   api.TaintEffectNoSchedule,
+				},
+			}),
 			nodes: []api.Node{
-				nodeWithNoTaints,
-				nodeWithOneTaint,
-				nodeWithTwoTaints,
-				nodeWithThreeTaints,
-				nodeWithFourTaints,
-				nodeWithHundredTaints},
-
-			test: "test priority for a pod with Three Toleration and nodes with multiple taints",
-			pods: []*api.Pod{
-				{},
+				nodeWithTaints("nodeA", []api.Taint{}),
+				nodeWithTaints("nodeB", []api.Taint{
+					{
+						Key:    "cpu-type",
+						Value:  "arm64",
+						Effect: api.TaintEffectNoSchedule,
+					},
+				}),
+				nodeWithTaints("nodeC", []api.Taint{
+					{
+						Key:    "cpu-type",
+						Value:  "arm64",
+						Effect: api.TaintEffectPreferNoSchedule,
+					}, {
+						Key:    "disk-type",
+						Value:  "ssd",
+						Effect: api.TaintEffectPreferNoSchedule,
+					},
+				}),
 			},
 			expectedList: []schedulerapi.HostPriority{
-				{Host: "Node0", Score: 10},
-				{Host: "Node1", Score: 10},
-				{Host: "Node2", Score: 10},
-				{Host: "Node3", Score: 10},
-				{Host: "Node4", Score: 9},
-				{Host: "Node100", Score: 0},
-			},
-		},
-		{
-			pod: &api.Pod{Spec: podWithFourToleration},
-			nodes: []api.Node{
-				nodeWithNoTaints,
-				nodeWithOneTaint,
-				nodeWithTwoTaints,
-				nodeWithThreeTaints,
-				nodeWithFourTaints,
-				nodeWithHundredTaints},
-			test: "test priority for a pod with Four Toleration and nodes with multiple taints",
-			pods: []*api.Pod{
-				{},
-			},
-			expectedList: []schedulerapi.HostPriority{
-				{Host: "Node0", Score: 10},
-				{Host: "Node1", Score: 10},
-				{Host: "Node2", Score: 10},
-				{Host: "Node3", Score: 10},
-				{Host: "Node4", Score: 10},
-				{Host: "Node100", Score: 0},
-			},
-		},
-		{
-			pod: &api.Pod{Spec: podWithHundredToleration},
-			nodes: []api.Node{
-				nodeWithNoTaints,
-				nodeWithOneTaint,
-				nodeWithTwoTaints,
-				nodeWithThreeTaints,
-				nodeWithFourTaints,
-				nodeWithHundredTaints},
-			test: "test priority for a pod with Four Toleration and nodes with multiple taints",
-			pods: []*api.Pod{
-				{},
-			},
-			expectedList: []schedulerapi.HostPriority{
-				{Host: "Node0", Score: 10},
-				{Host: "Node1", Score: 10},
-				{Host: "Node2", Score: 10},
-				{Host: "Node3", Score: 10},
-				{Host: "Node4", Score: 10},
-				{Host: "Node100", Score: 10},
+				{Host: "nodeA", Score: 10},
+				{Host: "nodeB", Score: 10},
+				{Host: "nodeC", Score: 0},
 			},
 		},
 	}
 	for _, test := range tests {
-		nodeNameToInfo := schedulercache.CreateNodeNameToInfoMap(test.pods)
+		nodeNameToInfo := schedulercache.CreateNodeNameToInfoMap([]*api.Pod{{}})
 		taintToleration := TaintToleration{nodeLister: algorithm.FakeNodeLister(api.NodeList{Items: test.nodes})}
 		list, err := taintToleration.ComputeTaintTolerationPriority(
 			test.pod,
 			nodeNameToInfo,
 			algorithm.FakeNodeLister(api.NodeList{Items: test.nodes}))
 		if err != nil {
-			t.Errorf("unexpected error: %v", err)
+			t.Errorf("%s, unexpected error: %v", test.test, err)
 		}
 
 		if !reflect.DeepEqual(test.expectedList, list) {
-			t.Errorf("%s: expected %#v, got %#v", test.test, test.expectedList, list)
+			t.Errorf("%s,\nexpected:\n\t%+v,\ngot:\n\t%+v", test.test, test.expectedList, list)
 		}
 	}
 

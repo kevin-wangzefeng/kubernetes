@@ -1675,8 +1675,6 @@ type PodSpec struct {
 	// If specified, the fully qualified Pod hostname will be "<hostname>.<subdomain>.<pod namespace>.svc.<cluster domain>".
 	// If not specified, the pod will not have a domainname at all.
 	Subdomain string `json:"subdomain,omitempty" protobuf:"bytes,17,opt,name=subdomain"`
-	// Multiple tolerations with the same key are allowed.
-	Tolerations []Toleration `json:"tolerations,omitempty"`
 }
 
 // PodSecurityContext holds pod-level security attributes and common container settings.
@@ -2234,10 +2232,6 @@ type NodeSpec struct {
 	// Unschedulable controls node schedulability of new pods. By default, node is schedulable.
 	// More info: http://releases.k8s.io/HEAD/docs/admin/node.md#manual-node-administration"`
 	Unschedulable bool `json:"unschedulable,omitempty" protobuf:"varint,4,opt,name=unschedulable"`
-	// Taints is a list of taints applied to the node.
-	// Pod that wants to run on the node, should tolerate all the taints of it.
-	// Multiple taints with the same key are not allowed.
-	Taints []Taint `json:"taints,omitempty"`
 }
 
 // DaemonEndpoint contains information about a single Daemon endpoint.
@@ -2303,9 +2297,6 @@ type NodeStatus struct {
 	NodeInfo NodeSystemInfo `json:"nodeInfo,omitempty" protobuf:"bytes,7,opt,name=nodeInfo"`
 	// List of container images on this node
 	Images []ContainerImage `json:"images,omitempty" protobuf:"bytes,8,rep,name=images"`
-	// Taints is the union of the taints specified by various sources.
-	// Multiple taints with the same key are not allowed.
-	Taints []Taint `json:"taints,omitempty"`
 }
 
 // Describe a container image

@@ -933,6 +933,16 @@ func NewTolerationMatchPredicate(info NodeInfo) algorithm.FitPredicate {
 func (t *TolerationMatch) PodToleratesNodeTaints(pod *api.Pod, nodeInfo *schedulercache.NodeInfo) (bool, error) {
 	node := nodeInfo.Node()
 
+	taints, err := api.GetTaintsFromNodeAnnotations(node.Annotations)
+	if err != nil {
+		return false, err
+	}
+
+	tolerations, err := api.GetTolerationsFromPodAnnotations(pod.Annotations)
+	if err != nil {
+		return false, err
+	}
+
 	if tolerationsToleratesTaints(pod.Spec.Tolerations, node.Status.Taints) {
 		return true, nil
 	}

@@ -1754,30 +1754,6 @@ func TestValidatePodSpec(t *testing.T) {
 			RestartPolicy: api.RestartPolicyAlways,
 			DNSPolicy:     api.DNSClusterFirst,
 		},
-		{ // Populate Toleration with Equals operator
-			Volumes:       []api.Volume{{Name: "vol", VolumeSource: api.VolumeSource{EmptyDir: &api.EmptyDirVolumeSource{}}}},
-			Containers:    []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
-			RestartPolicy: api.RestartPolicyAlways,
-			DNSPolicy:     api.DNSClusterFirst,
-			Tolerations: []api.Toleration{{
-				Key:      "GPU",
-				Operator: api.TolerationOpEqual,
-				Value:    "grid",
-				Effect:   api.TaintEffectNoSchedule,
-			}},
-		},
-		{ // Populate Toleration with Exists operator
-			Volumes:       []api.Volume{{Name: "vol", VolumeSource: api.VolumeSource{EmptyDir: &api.EmptyDirVolumeSource{}}}},
-			Containers:    []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
-			RestartPolicy: api.RestartPolicyAlways,
-			DNSPolicy:     api.DNSClusterFirst,
-			Tolerations: []api.Toleration{{
-				Key:      "GPU",
-				Operator: api.TolerationOpExists,
-				Value:    "",
-				Effect:   api.TaintEffectNoSchedule,
-			}},
-		},
 	}
 	for i := range successCases {
 		if errs := ValidatePodSpec(&successCases[i], field.NewPath("field")); len(errs) != 0 {
@@ -1906,66 +1882,6 @@ func TestValidatePodSpec(t *testing.T) {
 			RestartPolicy: api.RestartPolicyAlways,
 			DNSPolicy:     api.DNSClusterFirst,
 		},
-		"bad toleration key": {
-			Containers: []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
-			SecurityContext: &api.PodSecurityContext{
-				HostNetwork: false,
-				FSGroup:     &minID,
-			},
-			RestartPolicy: api.RestartPolicyAlways,
-			DNSPolicy:     api.DNSClusterFirst,
-			Tolerations: []api.Toleration{{
-				Key:      "nospecialchars^=@",
-				Operator: api.TolerationOpExists,
-				Value:    "",
-				Effect:   api.TaintEffectNoSchedule,
-			}},
-		},
-		"bad toleration operator": {
-			Containers: []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
-			SecurityContext: &api.PodSecurityContext{
-				HostNetwork: false,
-				FSGroup:     &minID,
-			},
-			RestartPolicy: api.RestartPolicyAlways,
-			DNSPolicy:     api.DNSClusterFirst,
-			Tolerations: []api.Toleration{{
-				Key:      "GPU",
-				Operator: "LessThanOperator",
-				Value:    "",
-				Effect:   api.TaintEffectNoSchedule,
-			}},
-		},
-		"bad toleration value": {
-			Containers: []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
-			SecurityContext: &api.PodSecurityContext{
-				HostNetwork: false,
-				FSGroup:     &minID,
-			},
-			RestartPolicy: api.RestartPolicyAlways,
-			DNSPolicy:     api.DNSClusterFirst,
-			Tolerations: []api.Toleration{{
-				Key:      "GPU",
-				Operator: api.TolerationOpExists,
-				Value:    "foo",
-				Effect:   api.TaintEffectNoSchedule,
-			}},
-		},
-		"bad toleration effect": {
-			Containers: []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
-			SecurityContext: &api.PodSecurityContext{
-				HostNetwork: false,
-				FSGroup:     &minID,
-			},
-			RestartPolicy: api.RestartPolicyAlways,
-			DNSPolicy:     api.DNSClusterFirst,
-			Tolerations: []api.Toleration{{
-				Key:      "GPU",
-				Operator: api.TolerationOpEqual,
-				Value:    "bar",
-				Effect:   "",
-			}},
-		},
 	}
 	for k, v := range failureCases {
 		if errs := ValidatePodSpec(&v, field.NewPath("field")); len(errs) == 0 {
@@ -2000,60 +1916,6 @@ func TestValidatePod(t *testing.T) {
 				NodeName: "foobar",
 			},
 		},
-	}
-	for _, pod := range successCases {
-		if errs := ValidatePod(&pod); len(errs) != 0 {
-			t.Errorf("expected success: %v", errs)
-		}
-	}
-
-	errorCases := map[string]api.Pod{
-		"bad name": {
-			ObjectMeta: api.ObjectMeta{Name: "", Namespace: "ns"},
-			Spec: api.PodSpec{
-				RestartPolicy: api.RestartPolicyAlways,
-				DNSPolicy:     api.DNSClusterFirst,
-				Containers:    []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
-			},
-		},
-		"bad namespace": {
-			ObjectMeta: api.ObjectMeta{Name: "abc", Namespace: ""},
-			Spec: api.PodSpec{
-				RestartPolicy: api.RestartPolicyAlways,
-				DNSPolicy:     api.DNSClusterFirst,
-				Containers:    []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
-			},
-		},
-		"bad spec": {
-			ObjectMeta: api.ObjectMeta{Name: "abc", Namespace: "ns"},
-			Spec: api.PodSpec{
-				Containers: []api.Container{{}},
-			},
-		},
-		"bad label": {
-			ObjectMeta: api.ObjectMeta{
-				Name:      "abc",
-				Namespace: "ns",
-				Labels: map[string]string{
-					"NoUppercaseOrSpecialCharsLike=Equals": "bar",
-				},
-			},
-			Spec: api.PodSpec{
-				RestartPolicy: api.RestartPolicyAlways,
-				DNSPolicy:     api.DNSClusterFirst,
-				Containers:    []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
-			},
-		},
-	}
-	for k, v := range errorCases {
-		if errs := ValidatePod(&v); len(errs) == 0 {
-			t.Errorf("expected failure for %q", k)
-		}
-	}
-}
-
-func TestValidateAffinity(t *testing.T) {
-	successCases := []api.Pod{
 		{ // Serialized affinity requirements in annotations.
 			ObjectMeta: api.ObjectMeta{
 				Name:      "123",
@@ -2206,6 +2068,83 @@ func TestValidateAffinity(t *testing.T) {
 				DNSPolicy:     api.DNSClusterFirst,
 			},
 		},
+		{ // populate tolerations equal operator in annotations.
+			ObjectMeta: api.ObjectMeta{
+				Name:      "123",
+				Namespace: "ns",
+				Annotations: map[string]string{
+					api.TolerationsAnnotationKey: `
+					[{
+						"key": "foo",
+						"operator": "Equal",
+						"value": "bar",
+						"effect": "NoSchedule"
+					}]`,
+				},
+			},
+			Spec: api.PodSpec{
+				Containers:    []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
+				RestartPolicy: api.RestartPolicyAlways,
+				DNSPolicy:     api.DNSClusterFirst,
+			},
+		},
+		{ // populate tolerations exists operator in annotations.
+			ObjectMeta: api.ObjectMeta{
+				Name:      "123",
+				Namespace: "ns",
+				Annotations: map[string]string{
+					api.TolerationsAnnotationKey: `
+					[{
+						"key": "foo",
+						"operator": "Exists",
+						"effect": "NoSchedule"
+					}]`,
+				},
+			},
+			Spec: api.PodSpec{
+				Containers:    []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
+				RestartPolicy: api.RestartPolicyAlways,
+				DNSPolicy:     api.DNSClusterFirst,
+			},
+		},
+		{ // empty operator is ok for toleration
+			ObjectMeta: api.ObjectMeta{
+				Name:      "123",
+				Namespace: "ns",
+				Annotations: map[string]string{
+					api.TolerationsAnnotationKey: `
+					[{
+						"key": "foo",
+						"value": "bar",
+						"effect": "NoSchedule"
+					}]`,
+				},
+			},
+			Spec: api.PodSpec{
+				Containers:    []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
+				RestartPolicy: api.RestartPolicyAlways,
+				DNSPolicy:     api.DNSClusterFirst,
+			},
+		},
+		{ // empty efffect is ok for toleration
+			ObjectMeta: api.ObjectMeta{
+				Name:      "123",
+				Namespace: "ns",
+				Annotations: map[string]string{
+					api.TolerationsAnnotationKey: `
+					[{
+						"key": "foo",
+						"operator": "Equal",
+						"value": "bar"
+					}]`,
+				},
+			},
+			Spec: api.PodSpec{
+				Containers:    []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
+				RestartPolicy: api.RestartPolicyAlways,
+				DNSPolicy:     api.DNSClusterFirst,
+			},
+		},
 	}
 	for _, pod := range successCases {
 		if errs := ValidatePod(&pod); len(errs) != 0 {
@@ -2214,6 +2153,42 @@ func TestValidateAffinity(t *testing.T) {
 	}
 
 	errorCases := map[string]api.Pod{
+		"bad name": {
+			ObjectMeta: api.ObjectMeta{Name: "", Namespace: "ns"},
+			Spec: api.PodSpec{
+				RestartPolicy: api.RestartPolicyAlways,
+				DNSPolicy:     api.DNSClusterFirst,
+				Containers:    []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
+			},
+		},
+		"bad namespace": {
+			ObjectMeta: api.ObjectMeta{Name: "abc", Namespace: ""},
+			Spec: api.PodSpec{
+				RestartPolicy: api.RestartPolicyAlways,
+				DNSPolicy:     api.DNSClusterFirst,
+				Containers:    []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
+			},
+		},
+		"bad spec": {
+			ObjectMeta: api.ObjectMeta{Name: "abc", Namespace: "ns"},
+			Spec: api.PodSpec{
+				Containers: []api.Container{{}},
+			},
+		},
+		"bad label": {
+			ObjectMeta: api.ObjectMeta{
+				Name:      "abc",
+				Namespace: "ns",
+				Labels: map[string]string{
+					"NoUppercaseOrSpecialCharsLike=Equals": "bar",
+				},
+			},
+			Spec: api.PodSpec{
+				RestartPolicy: api.RestartPolicyAlways,
+				DNSPolicy:     api.DNSClusterFirst,
+				Containers:    []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
+			},
+		},
 		"invalid json of node affinity in pod annotations": {
 			ObjectMeta: api.ObjectMeta{
 				Name:      "123",
@@ -2514,6 +2489,66 @@ func TestValidateAffinity(t *testing.T) {
 							"topologyKey": ""
 						}
 					}]}}`,
+				},
+			},
+			Spec: api.PodSpec{
+				Containers:    []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
+				RestartPolicy: api.RestartPolicyAlways,
+				DNSPolicy:     api.DNSClusterFirst,
+			},
+		},
+		"invalid toleration key": {
+			ObjectMeta: api.ObjectMeta{
+				Name:      "123",
+				Namespace: "ns",
+				Annotations: map[string]string{
+					api.TolerationsAnnotationKey: `
+					[{
+						"key": "nospecialchars^=@",
+						"operator": "Equal",
+						"value": "bar",
+						"effect": "NoSchedule"
+					}]`,
+				},
+			},
+			Spec: api.PodSpec{
+				Containers:    []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
+				RestartPolicy: api.RestartPolicyAlways,
+				DNSPolicy:     api.DNSClusterFirst,
+			},
+		},
+		"invalid toleration operator": {
+			ObjectMeta: api.ObjectMeta{
+				Name:      "123",
+				Namespace: "ns",
+				Annotations: map[string]string{
+					api.TolerationsAnnotationKey: `
+					[{
+						"key": "foo",
+						"operator": "In",
+						"value": "bar",
+						"effect": "NoSchedule"
+					}]`,
+				},
+			},
+			Spec: api.PodSpec{
+				Containers:    []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
+				RestartPolicy: api.RestartPolicyAlways,
+				DNSPolicy:     api.DNSClusterFirst,
+			},
+		},
+		"value must be empty when `operator` is 'Exists'": {
+			ObjectMeta: api.ObjectMeta{
+				Name:      "123",
+				Namespace: "ns",
+				Annotations: map[string]string{
+					api.TolerationsAnnotationKey: `
+					[{
+						"key": "foo",
+						"operator": "Exists",
+						"value": "bar",
+						"effect": "NoSchedule"
+					}]`,
 				},
 			},
 			Spec: api.PodSpec{
@@ -3934,6 +3969,15 @@ func TestValidateNode(t *testing.T) {
 		{
 			ObjectMeta: api.ObjectMeta{
 				Name: "dedicated-node1",
+				// Add a valid taint to a node
+				Annotations: map[string]string{
+					api.TaintsAnnotationKey: `
+					[{
+						"key": "GPU",
+						"value": "true",
+						"effect": "NoSchedule"
+					}]`,
+				},
 			},
 			Status: api.NodeStatus{
 				Addresses: []api.NodeAddress{
@@ -3944,14 +3988,8 @@ func TestValidateNode(t *testing.T) {
 					api.ResourceName(api.ResourceMemory): resource.MustParse("0"),
 				},
 			},
-			// Add a valid taint to a node
 			Spec: api.NodeSpec{
 				ExternalID: "external",
-				Taints: []api.Taint{{
-					Key:    "GPU",
-					Value:  "true",
-					Effect: api.TaintEffectNoSchedule,
-				}},
 			},
 		},
 	}
@@ -4009,35 +4047,49 @@ func TestValidateNode(t *testing.T) {
 
 			ObjectMeta: api.ObjectMeta{
 				Name: "dedicated-node1",
+				// Add a taint with an empty key to a node
+				Annotations: map[string]string{
+					api.TaintsAnnotationKey: `
+					[{
+						"key": "",
+						"value": "special-user-1",
+						"effect": "NoSchedule"
+					}]`,
+				},
 			},
-			// Add a taint with an empty key to a node
 			Spec: api.NodeSpec{
 				ExternalID: "external",
-				Taints: []api.Taint{{
-					Key:    "",
-					Value:  "special-user-1",
-					Effect: api.TaintEffectNoSchedule,
-				}},
 			},
 		},
 		"bad-taint-key": {
 
 			ObjectMeta: api.ObjectMeta{
 				Name: "dedicated-node1",
+				// Add a taint with an empty key to a node
+				Annotations: map[string]string{
+					api.TaintsAnnotationKey: `
+					[{
+						"key": "NoUppercaseOrSpecialCharsLike=Equals",
+						"value": "special-user-1",
+						"effect": "NoSchedule"
+					}]`,
+				},
 			},
-			// Add a taint with an empty key to a node
 			Spec: api.NodeSpec{
 				ExternalID: "external",
-				Taints: []api.Taint{{
-					Key:    "NoUppercaseOrSpecialCharsLike=Equals",
-					Value:  "special-user-1",
-					Effect: api.TaintEffectNoSchedule,
-				}},
 			},
 		},
 		"bad-taint-value": {
 			ObjectMeta: api.ObjectMeta{
 				Name: "dedicated-node2",
+				Annotations: map[string]string{
+					api.TaintsAnnotationKey: `
+					[{
+						"key": "dedicated",
+						"value": "some\\bad\\value",
+						"effect": "NoSchedule"
+					}]`,
+				},
 			},
 			Status: api.NodeStatus{
 				Addresses: []api.NodeAddress{
@@ -4051,16 +4103,20 @@ func TestValidateNode(t *testing.T) {
 			// Add a taint with an empty value to a node
 			Spec: api.NodeSpec{
 				ExternalID: "external",
-				Taints: []api.Taint{{
-					Key:    "dedicated",
-					Value:  "some\\bad\\value",
-					Effect: api.TaintEffectNoSchedule,
-				}},
 			},
 		},
 		"missing-taint-effect": {
 			ObjectMeta: api.ObjectMeta{
 				Name: "dedicated-node3",
+				// Add a taint with an empty effect to a node
+				Annotations: map[string]string{
+					api.TaintsAnnotationKey: `
+					[{
+						"key": "dedicated",
+						"value": "special-user-3",
+						"effect": ""
+					}]`,
+				},
 			},
 			Status: api.NodeStatus{
 				Addresses: []api.NodeAddress{
@@ -4071,12 +4127,8 @@ func TestValidateNode(t *testing.T) {
 					api.ResourceName(api.ResourceMemory): resource.MustParse("0"),
 				},
 			},
-			// Add a taint with an empty effect to a node
 			Spec: api.NodeSpec{
 				ExternalID: "external",
-				Taints: []api.Taint{
-					{Key: "dedicated", Value: "special-user-3", Effect: ""},
-				},
 			},
 		},
 	}
@@ -4093,9 +4145,9 @@ func TestValidateNode(t *testing.T) {
 				"metadata.annotations":  true,
 				"metadata.namespace":    true,
 				"spec.externalID":       true,
-				"spec.taints[0].key":    true,
-				"spec.taints[0].value":  true,
-				"spec.taints[0].effect": true,
+				"metadata.annotations.scheduler.alpha.kubernetes.io/taints[0].key":    true,
+				"metadata.annotations.scheduler.alpha.kubernetes.io/taints[0].value":  true,
+				"metadata.annotations.scheduler.alpha.kubernetes.io/taints[0].effect": true,
 			}
 			if val, ok := expectedFields[field]; ok {
 				if !val {

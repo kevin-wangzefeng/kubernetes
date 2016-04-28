@@ -3512,6 +3512,15 @@ func TestValidateNode(t *testing.T) {
 		{
 			ObjectMeta: api.ObjectMeta{
 				Name: "dedicated-node1",
+				// Add a valid taint to a node
+				Annotations: map[string]string{
+					api.TaintsAnnotationKey: `
+					[{
+						"key": "GPU",
+						"value": "true",
+						"effect": "NoSchedule"
+					}]`,
+				},
 			},
 			Status: api.NodeStatus{
 				Addresses: []api.NodeAddress{
@@ -3522,14 +3531,8 @@ func TestValidateNode(t *testing.T) {
 					api.ResourceName(api.ResourceMemory): resource.MustParse("0"),
 				},
 			},
-			// Add a valid taint to a node
 			Spec: api.NodeSpec{
 				ExternalID: "external",
-				Taints: []api.Taint{{
-					Key:    "GPU",
-					Value:  "true",
-					Effect: api.TaintEffectNoSchedule,
-				}},
 			},
 		},
 	}
@@ -3587,35 +3590,49 @@ func TestValidateNode(t *testing.T) {
 
 			ObjectMeta: api.ObjectMeta{
 				Name: "dedicated-node1",
+				// Add a taint with an empty key to a node
+				Annotations: map[string]string{
+					api.TaintsAnnotationKey: `
+					[{
+						"key": "",
+						"value": "special-user-1",
+						"effect": "NoSchedule"
+					}]`,
+				},
 			},
-			// Add a taint with an empty key to a node
 			Spec: api.NodeSpec{
 				ExternalID: "external",
-				Taints: []api.Taint{{
-					Key:    "",
-					Value:  "special-user-1",
-					Effect: api.TaintEffectNoSchedule,
-				}},
 			},
 		},
 		"bad-taint-key": {
 
 			ObjectMeta: api.ObjectMeta{
 				Name: "dedicated-node1",
+				// Add a taint with an empty key to a node
+				Annotations: map[string]string{
+					api.TaintsAnnotationKey: `
+					[{
+						"key": "NoUppercaseOrSpecialCharsLike=Equals",
+						"value": "special-user-1",
+						"effect": "NoSchedule"
+					}]`,
+				},
 			},
-			// Add a taint with an empty key to a node
 			Spec: api.NodeSpec{
 				ExternalID: "external",
-				Taints: []api.Taint{{
-					Key:    "NoUppercaseOrSpecialCharsLike=Equals",
-					Value:  "special-user-1",
-					Effect: api.TaintEffectNoSchedule,
-				}},
 			},
 		},
 		"bad-taint-value": {
 			ObjectMeta: api.ObjectMeta{
 				Name: "dedicated-node2",
+				Annotations: map[string]string{
+					api.TaintsAnnotationKey: `
+					[{
+						"key": "dedicated",
+						"value": "some\\bad\\value",
+						"effect": "NoSchedule"
+					}]`,
+				},
 			},
 			Status: api.NodeStatus{
 				Addresses: []api.NodeAddress{
@@ -3629,16 +3646,20 @@ func TestValidateNode(t *testing.T) {
 			// Add a taint with an empty value to a node
 			Spec: api.NodeSpec{
 				ExternalID: "external",
-				Taints: []api.Taint{{
-					Key:    "dedicated",
-					Value:  "some\\bad\\value",
-					Effect: api.TaintEffectNoSchedule,
-				}},
 			},
 		},
 		"missing-taint-effect": {
 			ObjectMeta: api.ObjectMeta{
 				Name: "dedicated-node3",
+				// Add a taint with an empty effect to a node
+				Annotations: map[string]string{
+					api.TaintsAnnotationKey: `
+					[{
+						"key": "dedicated",
+						"value": "special-user-3",
+						"effect": ""
+					}]`,
+				},
 			},
 			Status: api.NodeStatus{
 				Addresses: []api.NodeAddress{
@@ -3649,12 +3670,8 @@ func TestValidateNode(t *testing.T) {
 					api.ResourceName(api.ResourceMemory): resource.MustParse("0"),
 				},
 			},
-			// Add a taint with an empty effect to a node
 			Spec: api.NodeSpec{
 				ExternalID: "external",
-				Taints: []api.Taint{
-					{Key: "dedicated", Value: "special-user-3", Effect: ""},
-				},
 			},
 		},
 	}
@@ -3671,9 +3688,9 @@ func TestValidateNode(t *testing.T) {
 				"metadata.annotations":  true,
 				"metadata.namespace":    true,
 				"spec.externalID":       true,
-				"spec.taints[0].key":    true,
-				"spec.taints[0].value":  true,
-				"spec.taints[0].effect": true,
+				"metadata.annotations.scheduler.alpha.kubernetes.io/taints[0].key":    true,
+				"metadata.annotations.scheduler.alpha.kubernetes.io/taints[0].value":  true,
+				"metadata.annotations.scheduler.alpha.kubernetes.io/taints[0].effect": true,
 			}
 			if val, ok := expectedFields[field]; ok {
 				if !val {

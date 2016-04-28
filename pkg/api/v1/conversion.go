@@ -338,16 +338,6 @@ func Convert_api_PodSpec_To_v1_PodSpec(in *api.PodSpec, out *PodSpec, s conversi
 	} else {
 		out.ImagePullSecrets = nil
 	}
-	if in.Tolerations != nil {
-		out.Tolerations = make([]Toleration, len(in.Tolerations))
-		for i := range in.Tolerations {
-			if err := s.Convert(&in.Tolerations[i], &out.Tolerations[i], 0); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Tolerations = nil
-	}
 	return nil
 }
 
@@ -428,16 +418,6 @@ func Convert_v1_PodSpec_To_api_PodSpec(in *PodSpec, out *api.PodSpec, s conversi
 		}
 	} else {
 		out.ImagePullSecrets = nil
-	}
-	if in.Tolerations != nil {
-		out.Tolerations = make([]api.Toleration, len(in.Tolerations))
-		for i := range in.Tolerations {
-			if err := s.Convert(&in.Tolerations[i], &out.Tolerations[i], 0); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Tolerations = nil
 	}
 	return nil
 }

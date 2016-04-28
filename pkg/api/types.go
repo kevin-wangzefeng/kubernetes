@@ -1289,8 +1289,6 @@ type PodSpec struct {
 	// If specified, these secrets will be passed to individual puller implementations for them to use.  For example,
 	// in the case of docker, only DockerConfig type secrets are honored.
 	ImagePullSecrets []LocalObjectReference `json:"imagePullSecrets,omitempty"`
-	// Multiple tolerations with the same key are allowed.
-	Tolerations []Toleration `json:"tolerations,omitempty"`
 }
 
 // PodSecurityContext holds pod-level security attributes and common container settings.
@@ -1733,11 +1731,6 @@ type NodeSpec struct {
 
 	// Unschedulable controls node schedulability of new pods. By default node is schedulable.
 	Unschedulable bool `json:"unschedulable,omitempty"`
-
-	// Taints is a list of taints applied to the node.
-	// Pod that wants to run on the node, should tolerate all the taints of it.
-	// Multiple taints with the same key are not allowed.
-	Taints []Taint `json:"taints,omitempty"`
 }
 
 // DaemonEndpoint contains information about a single Daemon endpoint.
@@ -1796,9 +1789,6 @@ type NodeStatus struct {
 	NodeInfo NodeSystemInfo `json:"nodeInfo,omitempty"`
 	// List of container images on this node
 	Images []ContainerImage `json:"images,omitempty"`
-	// Taints is the union of the taints specified by various sources.
-	// Multiple taints with the same key are not allowed.
-	Taints []Taint `json:"taints,omitempty"`
 }
 
 // Describe a container image

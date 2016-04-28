@@ -66,7 +66,7 @@ func countIntolerableTaintsPreferNoSchedule(taints []api.Taint, tolerations []ap
 }
 
 // getAllTolerationEffectPreferNoSchedule gets the list of all Toleration with Effect PreferNoSchedule
-func getAllTolerationEffectPreferNoSchedule(tolerations []api.Toleration) (tolerationList []api.Toleration) {
+func getAllTolerationPreferNoSchedule(tolerations []api.Toleration) (tolerationList []api.Toleration) {
 	for _, toleration := range tolerations {
 		if toleration.Effect == api.TaintEffectPreferNoSchedule {
 			tolerationList = append(tolerationList, toleration)
@@ -93,17 +93,28 @@ func (s *TaintToleration) ComputeTaintTolerationPriority(pod *api.Pod, nodeNameT
 	}
 	counts = make(map[string]int)
 
+	tolerations, err := api.GetTolerationsFromPodAnnotations(pod.Annotations)
+	if err != nil {
+		return false, err
+	}
+
 	// Fetch a list of all toleration with effect PreferNoSchedule
-	tolerationList := getAllTolerationEffectPreferNoSchedule(pod.Spec.Tolerations)
+	tolerationList := getAllTolerationPreferNoSchedule(tolerations)
 
 	// calculate the intolerable taints for all the nodes
 	for _, node := range nodes.Items {
-		count := countIntolerableTaintsPreferNoSchedule(node.Spec.Taints, tolerationList)
+		taints, err := api.GetTaintsFromNodeAnnotations(node.Annotations)
+		if err != nil {
+			return result, err
+		}
+
+		count := countIntolerableTaintsPreferNoSchedule(taints, tolerationList)
 		counts[node.Name] = count
 		if count > maxCount {
 			maxCount = count
 		}
 	}
+
 	for _, node := range nodes.Items {
 		fScore := float64(maxPriority)
 		if maxCount > 0 {

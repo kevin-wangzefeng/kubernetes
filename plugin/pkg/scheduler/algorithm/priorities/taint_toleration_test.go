@@ -17,6 +17,7 @@ limitations under the License.
 package priorities
 
 import (
+	"encoding/json"
 	"reflect"
 	"strconv"
 	"testing"
@@ -32,7 +33,6 @@ import (
 // No need to consider other Effect
 
 func makeNodeWithTaints(node string, taintCount int) api.Node {
-
 	var taints []api.Taint
 	for i := 0; i < taintCount; i++ {
 		taints = append(taints, api.Taint{
@@ -41,10 +41,13 @@ func makeNodeWithTaints(node string, taintCount int) api.Node {
 			Effect: api.TaintEffectPreferNoSchedule,
 		})
 	}
+
+	taintsData, _ := json.Marshal(taints)
 	return api.Node{
-		ObjectMeta: api.ObjectMeta{Name: node},
-		Spec: api.NodeSpec{
-			Taints: taints,
+		ObjectMeta: api.ObjectMeta{
+			Annotations: map[string]string{
+				api.TaintsAnnotationKey: string(taintsData),
+			},
 		},
 	}
 }
@@ -53,7 +56,7 @@ func makeNodeWithTaints(node string, taintCount int) api.Node {
 // Only TaintEffectPreferNoSchedule is considered in priority function
 // No need to consider other Effect
 
-func makePodWithToleration(op api.TolerationOperator, tolerationCount int) api.PodSpec {
+func makePodWithToleration(op api.TolerationOperator, tolerationCount int) api.Pod {
 
 	var tolerationArray []api.Toleration
 	for i := 0; i < tolerationCount; i++ {
@@ -64,8 +67,14 @@ func makePodWithToleration(op api.TolerationOperator, tolerationCount int) api.P
 			Effect:   api.TaintEffectPreferNoSchedule,
 		})
 	}
-	return api.PodSpec{
-		Tolerations: tolerationArray,
+
+	tolerationsData, _ := json.Marshal(tolerationArray)
+	return api.Pod{
+		ObjectMeta: api.ObjectMeta{
+			Annotations: map[string]string{
+				api.TolerationsAnnotationKey: string(tolerationsData),
+			},
+		},
 	}
 }
 
@@ -119,7 +128,7 @@ func TestTaintAndToleration(t *testing.T) {
 		test         string
 	}{
 		{
-			pod: &api.Pod{Spec: podWithNoToleration},
+			pod: &podWithNoToleration,
 			nodes: []api.Node{
 				nodeWithNoTaints,
 				nodeWithOneTaint,
@@ -141,7 +150,7 @@ func TestTaintAndToleration(t *testing.T) {
 			},
 		},
 		{
-			pod: &api.Pod{Spec: podWithOneToleration},
+			pod: &podWithOneToleration,
 			nodes: []api.Node{
 				nodeWithNoTaints,
 				nodeWithOneTaint,
@@ -158,7 +167,7 @@ func TestTaintAndToleration(t *testing.T) {
 			},
 		},
 		{
-			pod: &api.Pod{Spec: podWithTwoToleration},
+			pod: &podWithTwoToleration,
 			nodes: []api.Node{
 				nodeWithNoTaints,
 				nodeWithOneTaint,
@@ -181,7 +190,7 @@ func TestTaintAndToleration(t *testing.T) {
 			},
 		},
 		{
-			pod: &api.Pod{Spec: podWithThreeToleration},
+			pod: &podWithThreeToleration,
 			nodes: []api.Node{
 				nodeWithNoTaints,
 				nodeWithOneTaint,
@@ -204,7 +213,7 @@ func TestTaintAndToleration(t *testing.T) {
 			},
 		},
 		{
-			pod: &api.Pod{Spec: podWithFourToleration},
+			pod: &podWithFourToleration,
 			nodes: []api.Node{
 				nodeWithNoTaints,
 				nodeWithOneTaint,
@@ -226,7 +235,7 @@ func TestTaintAndToleration(t *testing.T) {
 			},
 		},
 		{
-			pod: &api.Pod{Spec: podWithHundredToleration},
+			pod: &podWithHundredToleration,
 			nodes: []api.Node{
 				nodeWithNoTaints,
 				nodeWithOneTaint,

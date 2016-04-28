@@ -753,7 +753,17 @@ func (t *TolerationMatch) PodToleratesNodeTaints(pod *api.Pod, nodeName string, 
 		return false, err
 	}
 
-	return tolerationsToleratesTaints(pod.Spec.Tolerations, node.Status.Taints), nil
+	taints, err := api.GetTaintsFromNodeAnnotations(node.Annotations)
+	if err != nil {
+		return false, err
+	}
+
+	tolerations, err := api.GetTolerationsFromPodAnnotations(pod.Annotations)
+	if err != nil {
+		return false, err
+	}
+
+	return tolerationsToleratesTaints(tolerations, taints), nil
 }
 
 func tolerationsToleratesTaints(tolerations []api.Toleration, taints []api.Taint) bool {

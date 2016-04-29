@@ -98,7 +98,7 @@ type Topologies struct {
 // If the topologyKey is nil/empty, check if the two nodes have any of the default topologyKeys, and have same corresponding label value.
 func (tps *Topologies) NodesHaveSameTopologyKey(nodeA *api.Node, nodeB *api.Node, topologyKey string) bool {
 	if len(topologyKey) == 0 {
-		// assumes this is allowed only for soft pod anti-affinity (ensured by api/validation)
+		// assumes this is allowed only for PreferredDuringScheduling pod anti-affinity (ensured by api/validation)
 		for _, defaultKey := range tps.DefaultKeys {
 			if NodesHaveSameTopologyKeyInternal(nodeA, nodeB, defaultKey) {
 				return true

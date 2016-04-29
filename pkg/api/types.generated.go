@@ -23405,12 +23405,11 @@ func (x *WeightedPodAffinityTerm) CodecEncodeSelf(e *codec1978.Encoder) {
 			var yyq2 [2]bool
 			_, _, _ = yysep2, yyq2, yy2arr2
 			const yyr2 bool = false
-			yyq2[0] = x.Weight != 0
 			var yynn2 int
 			if yyr2 || yy2arr2 {
 				r.EncodeArrayStart(2)
 			} else {
-				yynn2 = 1
+				yynn2 = 2
 				for _, b := range yyq2 {
 					if b {
 						yynn2++
@@ -23421,27 +23420,21 @@ func (x *WeightedPodAffinityTerm) CodecEncodeSelf(e *codec1978.Encoder) {
 			}
 			if yyr2 || yy2arr2 {
 				z.EncSendContainerState(codecSelfer_containerArrayElem1234)
-				if yyq2[0] {
-					yym4 := z.EncBinary()
-					_ = yym4
-					if false {
-					} else {
-						r.EncodeInt(int64(x.Weight))
-					}
+				yym4 := z.EncBinary()
+				_ = yym4
+				if false {
 				} else {
-					r.EncodeInt(0)
+					r.EncodeInt(int64(x.Weight))
 				}
 			} else {
-				if yyq2[0] {
-					z.EncSendContainerState(codecSelfer_containerMapKey1234)
-					r.EncodeString(codecSelferC_UTF81234, string("weight"))
-					z.EncSendContainerState(codecSelfer_containerMapValue1234)
-					yym5 := z.EncBinary()
-					_ = yym5
-					if false {
-					} else {
-						r.EncodeInt(int64(x.Weight))
-					}
+				z.EncSendContainerState(codecSelfer_containerMapKey1234)
+				r.EncodeString(codecSelferC_UTF81234, string("weight"))
+				z.EncSendContainerState(codecSelfer_containerMapValue1234)
+				yym5 := z.EncBinary()
+				_ = yym5
+				if false {
+				} else {
+					r.EncodeInt(int64(x.Weight))
 				}
 			}
 			if yyr2 || yy2arr2 {

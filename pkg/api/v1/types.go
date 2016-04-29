@@ -1459,9 +1459,9 @@ type PodAntiAffinity struct {
 // The weights of all of the matched WeightedPodAffinityTerm fields are added per-node to find the most preferred node(s)
 type WeightedPodAffinityTerm struct {
 	// weight associated with matching the corresponding podAffinityTerm,
-	// in the range 1-100, if not set, defaults to 1.
+	// in the range 1-100.
 	Weight int32 `json:"weight" protobuf:"varint,1,opt,name=weight"`
-	// Required. A pod affinity term, associated with the corresponding weight
+	// Required. A pod affinity term, associated with the corresponding weight.
 	PodAffinityTerm PodAffinityTerm `json:"podAffinityTerm" protobuf:"bytes,2,opt,name=podAffinityTerm"`
 }
 
@@ -1483,9 +1483,9 @@ type PodAffinityTerm struct {
 	// the labelSelector in the specified namespaces, where co-located is defined as running on a node
 	// whose value of the label with key topologyKey matches that of any node on which any of the
 	// selected pods is running.
-	// For soft anti-affinity, empty topologyKey is interpreted as "all topologies"
+	// For PreferredDuringScheduling pod anti-affinity, empty topologyKey is interpreted as "all topologies"
 	// ("all topologies" here means all the topologyKeys indicated by scheduler command-line argument --failure-domains);
-	// for affinity and for hard anti-affinity, empty topologyKey is not allowed.
+	// for affinity and for RequiredDuringScheduling pod anti-affinity, empty topologyKey is not allowed.
 	TopologyKey string `json:"topologyKey,omitempty" protobuf:"bytes,3,opt,name=topologyKey"`
 }
 

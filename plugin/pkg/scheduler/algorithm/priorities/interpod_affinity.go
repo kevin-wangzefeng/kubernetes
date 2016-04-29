@@ -71,8 +71,7 @@ func (ipa *InterPodAffinity) CountPodsThatMatchPodAffinityTerm(pod *api.Pod, pod
 // CountWeightByPodMatchAffinityTerm counts the weight to topologyCounts for all the given pods that match the podAffinityTerm.
 func (ipa *InterPodAffinity) CountWeightByPodMatchAffinityTerm(pod *api.Pod, podsForMatching []*api.Pod, weight int, podAffinityTerm api.PodAffinityTerm, node *api.Node) (int, error) {
 	if weight == 0 {
-		// if weight not set, defaults to 1
-		weight = 1
+		return 0, nil
 	}
 	// get the pods which are there in that particular node
 	podsMatchedCount, err := ipa.CountPodsThatMatchPodAffinityTerm(pod, podsForMatching, node, podAffinityTerm)
@@ -134,32 +133,32 @@ func (ipa *InterPodAffinity) CalculateInterPodAffinityPriority(pod *api.Pod, nod
 				return nil, err
 			}
 
-			// count the implicit weight for the hard pod affinity indicated by the existing pod.
 			if epAffinity.PodAffinity != nil {
-				var podAffinityTerms []api.PodAffinityTerm
-				if len(epAffinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution) != 0 {
-					podAffinityTerms = epAffinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution
-				}
-				// TODO: Uncomment this block when implement RequiredDuringSchedulingRequiredDuringExecution.
-				//if len(affinity.PodAffinity.RequiredDuringSchedulingRequiredDuringExecution) != 0 {
-				//	podAffinityTerms = append(podAffinityTerms, affinity.PodAffinity.RequiredDuringSchedulingRequiredDuringExecution...)
-				//}
-				for _, epAffinityTerm := range podAffinityTerms {
-					match, err := ipa.failureDomains.CheckIfPodMatchPodAffinityTerm(pod, ep, epAffinityTerm,
-						func(pod *api.Pod) (*api.Node, error) { return &node, nil },
-						func(ep *api.Pod) (*api.Node, error) { return ipa.info.GetNodeInfo(ep.Spec.NodeName) },
-					)
-					if err != nil {
-						return nil, err
+				// count the implicit weight for the hard pod affinity indicated by the existing pod.
+				if ipa.hardPodAffinityWeight > 0 {
+					var podAffinityTerms []api.PodAffinityTerm
+					if len(epAffinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution) != 0 {
+						podAffinityTerms = epAffinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution
 					}
-					if match {
-						totalCount += ipa.hardPodAffinityWeight
+					// TODO: Uncomment this block when implement RequiredDuringSchedulingRequiredDuringExecution.
+					//if len(affinity.PodAffinity.RequiredDuringSchedulingRequiredDuringExecution) != 0 {
+					//	podAffinityTerms = append(podAffinityTerms, affinity.PodAffinity.RequiredDuringSchedulingRequiredDuringExecution...)
+					//}
+					for _, epAffinityTerm := range podAffinityTerms {
+						match, err := ipa.failureDomains.CheckIfPodMatchPodAffinityTerm(pod, ep, epAffinityTerm,
+							func(pod *api.Pod) (*api.Node, error) { return &node, nil },
+							func(ep *api.Pod) (*api.Node, error) { return ipa.info.GetNodeInfo(ep.Spec.NodeName) },
+						)
+						if err != nil {
+							return nil, err
+						}
+						if match {
+							totalCount += ipa.hardPodAffinityWeight
+						}
 					}
 				}
-			}
 
-			// count weight for the weighted pod affinity indicated by the existing pod.
-			if epAffinity.PodAffinity != nil {
+				// count weight for the weighted pod affinity indicated by the existing pod.
 				for _, epWeightedTerm := range epAffinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution {
 					match, err := ipa.failureDomains.CheckIfPodMatchPodAffinityTerm(pod, ep, epWeightedTerm.PodAffinityTerm,
 						func(pod *api.Pod) (*api.Node, error) { return &node, nil },
@@ -168,15 +167,9 @@ func (ipa *InterPodAffinity) CalculateInterPodAffinityPriority(pod *api.Pod, nod
 					if err != nil {
 						return nil, err
 					}
-					if !match {
-						continue
+					if match {
+						totalCount += epWeightedTerm.Weight
 					}
-					weight := epWeightedTerm.Weight
-					if weight == 0 {
-						// if weight not set, defaults to 1
-						weight = 1
-					}
-					totalCount += weight
 				}
 			}
 
@@ -190,15 +183,9 @@ func (ipa *InterPodAffinity) CalculateInterPodAffinityPriority(pod *api.Pod, nod
 					if err != nil {
 						return nil, err
 					}
-					if !match {
-						continue
+					if match {
+						totalCount -= epWeightedTerm.Weight
 					}
-					weight := epWeightedTerm.Weight
-					if weight == 0 {
-						// if weight not set, defaults to 1
-						weight = 1
-					}
-					totalCount -= weight
 				}
 			}
 		}

@@ -89,7 +89,7 @@ type ConfigFactory struct {
 	// HardPodAffinitySymmetricWeight represents the weight of implicit PreferredDuringScheduling affinity rule, in the range 0-100.
 	HardPodAffinitySymmetricWeight int
 
-	// Indicate the "all topologies" range for empty topologyKey when it's used for soft pod anti-affinity.
+	// Indicate the "all topologies" set for empty topologyKey when it's used for PreferredDuringScheduling pod anti-affinity.
 	FailureDomains string
 }
 

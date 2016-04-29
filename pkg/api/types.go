@@ -1224,9 +1224,9 @@ type PodAntiAffinity struct {
 // The weights of all of the matched WeightedPodAffinityTerm fields are added per-node to find the most preferred node(s)
 type WeightedPodAffinityTerm struct {
 	// weight associated with matching the corresponding podAffinityTerm,
-	// in the range 1-100, if not set, defaults to 1.
-	Weight int `json:"weight,omitempty"`
-	// Required. A pod affinity term, associated with the corresponding weight
+	// in the range 1-100.
+	Weight int `json:"weight"`
+	// Required. A pod affinity term, associated with the corresponding weight.
 	PodAffinityTerm PodAffinityTerm `json:"podAffinityTerm"`
 }
 
@@ -1248,9 +1248,9 @@ type PodAffinityTerm struct {
 	// the labelSelector in the specified namespaces, where co-located is defined as running on a node
 	// whose value of the label with key topologyKey matches that of any node on which any of the
 	// selected pods is running.
-	// For soft anti-affinity, empty topologyKey is interpreted as "all topologies"
+	// For PreferredDuringScheduling pod anti-affinity, empty topologyKey is interpreted as "all topologies"
 	// ("all topologies" here means all the topologyKeys indicated by scheduler command-line argument --failure-domains);
-	// for affinity and for hard anti-affinity, empty topologyKey is not allowed.
+	// for affinity and for RequiredDuringScheduling pod anti-affinity, empty topologyKey is not allowed.
 	TopologyKey string `json:"topologyKey,omitempty"`
 }
 
@@ -2664,9 +2664,11 @@ const (
 
 	// RequiredDuringScheduling affinity is not symmetric, but there is an implicit PreferredDuringScheduling affinity rule
 	// corresponding to every RequiredDuringScheduling affinity rule.
-	// DefaultHardPodAffinityWeight represents the default weight of implicit PreferredDuringScheduling affinity rule.
+	// When the --hard-pod-affinity-weight scheduler flag is not specified,
+	// DefaultHardPodAffinityWeight defines the weight of the implicit PreferredDuringScheduling affinity rule.
 	DefaultHardPodAffinitySymmetricWeight int = 1
 
-	//DefaultFailureDomains string = "kubernetes.io/hostname,failure-domain.beta.kubernetes.io/zone,ailure-domain.beta.kubernetes.io/region"
+	// When the --failure-domains scheduler flag is not specified,
+	// DefaultFailureDomains defines the set of label keys used when TopologyKey is empty in PreferredDuringScheduling anti-affinity.
 	DefaultFailureDomains string = unversioned.LabelHostname + "," + unversioned.LabelZoneFailureDomain + "," + unversioned.LabelZoneRegion
 )

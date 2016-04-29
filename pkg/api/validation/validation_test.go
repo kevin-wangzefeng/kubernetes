@@ -2336,13 +2336,13 @@ func TestValidateAffinity(t *testing.T) {
 				DNSPolicy:     api.DNSClusterFirst,
 			},
 		},
-		"invalid pod anti-affinity, empty topologyKey is not allowed for soft pod anti-affinity": {
+		"invalid pod anti-affinity, empty topologyKey is not allowed for soft pod affinity": {
 			ObjectMeta: api.ObjectMeta{
 				Name:      "123",
 				Namespace: "ns",
 				Annotations: map[string]string{
 					api.AffinityAnnotationKey: `
-					{"podAntiAffinity": {"preferredDuringSchedulingIgnoredDuringExecution": [{
+					{"podAffinity": {"preferredDuringSchedulingIgnoredDuringExecution": [{
 						"weight": 10,
 						"podAffinityTerm":
 						{

@@ -190,7 +190,7 @@ func (ipa *InterPodAffinity) CalculateInterPodAffinityPriority(pod *api.Pod, nod
 			}
 		}
 
-		counts[node.Name] = counts[node.Name] + totalCount
+		counts[node.Name] = totalCount
 		if counts[node.Name] > maxCount {
 			maxCount = counts[node.Name]
 		}

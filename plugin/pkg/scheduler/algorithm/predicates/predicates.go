@@ -748,7 +748,10 @@ func (checker *PodAffinityChecker) InterPodAffinityMatches(pod *api.Pod, nodeNam
 	if err != nil {
 		return false, err
 	}
-	return checker.NodeMatchPodAffinityAntiAffinity(pod, allPods, node), nil
+	if checker.NodeMatchPodAffinityAntiAffinity(pod, allPods, node) {
+		return true, nil
+	}
+	return false, ErrPodAffinityNotMatch
 }
 
 // AnyPodMatchesPodAffinityTerm checks if any of given pods can match the specific podAffinityTerm.

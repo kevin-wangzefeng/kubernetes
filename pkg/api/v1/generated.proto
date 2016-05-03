@@ -1743,7 +1743,7 @@ message PodAffinityTerm {
   // nil list means "this pod's namespace," empty list means "all namespaces"
   // The json tag here is not "omitempty" since we need to distinguish nil and empty.
   // See https://golang.org/pkg/encoding/json/#Marshal for more details.
-  repeated Namespace namespaces = 2;
+  repeated string namespaces = 2;
 
   // This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching
   // the labelSelector in the specified namespaces, where co-located is defined as running on a node

@@ -1937,12 +1937,8 @@ func DeepCopy_v1_PodAffinityTerm(in PodAffinityTerm, out *PodAffinityTerm, c *co
 	}
 	if in.Namespaces != nil {
 		in, out := in.Namespaces, &out.Namespaces
-		*out = make([]Namespace, len(in))
-		for i := range in {
-			if err := DeepCopy_v1_Namespace(in[i], &(*out)[i], c); err != nil {
-				return err
-			}
-		}
+		*out = make([]string, len(in))
+		copy(*out, in)
 	} else {
 		out.Namespaces = nil
 	}

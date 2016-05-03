@@ -5054,12 +5054,8 @@ func autoConvert_v1_PodAffinityTerm_To_api_PodAffinityTerm(in *PodAffinityTerm, 
 	}
 	if in.Namespaces != nil {
 		in, out := &in.Namespaces, &out.Namespaces
-		*out = make([]api.Namespace, len(*in))
-		for i := range *in {
-			if err := Convert_v1_Namespace_To_api_Namespace(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
+		*out = make([]string, len(*in))
+		copy(*out, *in)
 	} else {
 		out.Namespaces = nil
 	}
@@ -5087,12 +5083,8 @@ func autoConvert_api_PodAffinityTerm_To_v1_PodAffinityTerm(in *api.PodAffinityTe
 	}
 	if in.Namespaces != nil {
 		in, out := &in.Namespaces, &out.Namespaces
-		*out = make([]Namespace, len(*in))
-		for i := range *in {
-			if err := Convert_api_Namespace_To_v1_Namespace(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
+		*out = make([]string, len(*in))
+		copy(*out, *in)
 	} else {
 		out.Namespaces = nil
 	}

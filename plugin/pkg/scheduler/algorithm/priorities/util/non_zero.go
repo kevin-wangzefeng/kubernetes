@@ -78,9 +78,7 @@ func GetNamespacesFromPodAffinityTerm(pod *api.Pod, podAffinityTerm api.PodAffin
 	if podAffinityTerm.Namespaces == nil {
 		names.Insert(pod.Namespace)
 	} else if len(podAffinityTerm.Namespaces) != 0 {
-		for _, nameSpace := range podAffinityTerm.Namespaces {
-			names.Insert(nameSpace.Name)
-		}
+		names.Insert(podAffinityTerm.Namespaces...)
 	}
 	return names
 }

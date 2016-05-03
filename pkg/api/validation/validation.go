@@ -1492,8 +1492,10 @@ func ValidatePreferredSchedulingTerms(terms []api.PreferredSchedulingTerm, fldPa
 func validatePodAffinityTerm(podAffinityTerm api.PodAffinityTerm, allowEmptyTopologyKey bool, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, unversionedvalidation.ValidateLabelSelector(podAffinityTerm.LabelSelector, fldPath.Child("matchExpressions"))...)
-	for _, namespace := range podAffinityTerm.Namespaces {
-		allErrs = append(allErrs, ValidateNamespace(&namespace)...)
+	for _, name := range podAffinityTerm.Namespaces {
+		if ok, _ := ValidateNamespaceName(name, false); !ok {
+			allErrs = append(allErrs, field.Invalid(fldPath.Child("namespace"), name, DNS1123LabelErrorMsg))
+		}
 	}
 	if !allowEmptyTopologyKey && len(podAffinityTerm.TopologyKey) == 0 {
 		allErrs = append(allErrs, field.Required(fldPath.Child("topologyKey"), "can only be empty for PreferredDuringScheduling pod anti affinity"))

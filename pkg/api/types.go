@@ -1243,7 +1243,7 @@ type PodAffinityTerm struct {
 	// nil list means "this pod's namespace," empty list means "all namespaces"
 	// The json tag here is not "omitempty" since we need to distinguish nil and empty.
 	// See https://golang.org/pkg/encoding/json/#Marshal for more details.
-	Namespaces []Namespace `json:"namespaces"`
+	Namespaces []string `json:"namespaces"`
 	// This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching
 	// the labelSelector in the specified namespaces, where co-located is defined as running on a node
 	// whose value of the label with key topologyKey matches that of any node on which any of the

@@ -4983,15 +4983,18 @@ func (m *PodAffinityTerm) MarshalTo(data []byte) (int, error) {
 		i += n104
 	}
 	if len(m.Namespaces) > 0 {
-		for _, msg := range m.Namespaces {
+		for _, s := range m.Namespaces {
 			data[i] = 0x12
 			i++
-			i = encodeVarintGenerated(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
-			if err != nil {
-				return 0, err
+			l = len(s)
+			for l >= 1<<7 {
+				data[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
 			}
-			i += n
+			data[i] = uint8(l)
+			i++
+			i += copy(data[i:], s)
 		}
 	}
 	data[i] = 0x1a
@@ -8858,8 +8861,8 @@ func (m *PodAffinityTerm) Size() (n int) {
 		n += 1 + l + sovGenerated(uint64(l))
 	}
 	if len(m.Namespaces) > 0 {
-		for _, e := range m.Namespaces {
-			l = e.Size()
+		for _, s := range m.Namespaces {
+			l = len(s)
 			n += 1 + l + sovGenerated(uint64(l))
 		}
 	}
@@ -24440,7 +24443,7 @@ func (m *PodAffinityTerm) Unmarshal(data []byte) error {
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Namespaces", wireType)
 			}
-			var msglen int
+			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowGenerated
@@ -24450,22 +24453,20 @@ func (m *PodAffinityTerm) Unmarshal(data []byte) error {
 				}
 				b := data[iNdEx]
 				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
+				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			if msglen < 0 {
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
 				return ErrInvalidLengthGenerated
 			}
-			postIndex := iNdEx + msglen
+			postIndex := iNdEx + intStringLen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Namespaces = append(m.Namespaces, Namespace{})
-			if err := m.Namespaces[len(m.Namespaces)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
+			m.Namespaces = append(m.Namespaces, string(data[iNdEx:postIndex]))
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {

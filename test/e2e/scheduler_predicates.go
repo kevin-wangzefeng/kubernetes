@@ -393,7 +393,7 @@ var _ = framework.KubeDescribe("SchedulerPredicates [Serial]", func() {
 		cleanupPods(c, ns)
 	})
 
-	It("validates that a pod with an invalid NodeAffinity is rejected [Feature:NodeAffinity]", func() {
+	It("validates that a pod with an invalid NodeAffinity is rejected", func() {
 
 		By("Trying to launch a pod with an invalid Affinity data.")
 		podName := "without-label"
@@ -517,7 +517,7 @@ var _ = framework.KubeDescribe("SchedulerPredicates [Serial]", func() {
 
 	// Test Nodes does not have any label, hence it should be impossible to schedule Pod with
 	// non-nil NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.
-	It("validates that NodeAffinity is respected if not matching [Feature:NodeAffinity]", func() {
+	It("validates that NodeAffinity is respected if not matching", func() {
 		By("Trying to schedule Pod with nonempty NodeSelector.")
 		podName := "restricted-pod"
 
@@ -573,7 +573,7 @@ var _ = framework.KubeDescribe("SchedulerPredicates [Serial]", func() {
 
 	// Keep the same steps with the test on NodeSelector,
 	// but specify Affinity in Pod.Annotations, instead of NodeSelector.
-	It("validates that required NodeAffinity setting is respected if matching [Feature:NodeAffinity]", func() {
+	It("validates that required NodeAffinity setting is respected if matching", func() {
 		// launch a pod to find a node which can launch a pod. We intentionally do
 		// not just take the node list and choose the first of them. Depending on the
 		// cluster and the scheduler it might be that a "normal" pod cannot be
@@ -667,7 +667,7 @@ var _ = framework.KubeDescribe("SchedulerPredicates [Serial]", func() {
 	})
 
 	// Verify that an escaped JSON string of NodeAffinity in a YAML PodSpec works.
-	It("validates that embedding the JSON NodeAffinity setting as a string in the annotation value work [Feature:NodeAffinity]", func() {
+	It("validates that embedding the JSON NodeAffinity setting as a string in the annotation value work", func() {
 		// launch a pod to find a node which can launch a pod. We intentionally do
 		// not just take the node list and choose the first of them. Depending on the
 		// cluster and the scheduler it might be that a "normal" pod cannot be
@@ -730,7 +730,7 @@ var _ = framework.KubeDescribe("SchedulerPredicates [Serial]", func() {
 
 	// labelSelector Operator is DoesNotExist but values are there in requiredDuringSchedulingIgnoredDuringExecution
 	// part of podAffinity,so validation fails.
-	It("validates that a pod with an invalid podAffinity is rejected because of the LabelSelectorRequirement is invalid [Feature:InterPodAffinity]", func() {
+	It("validates that a pod with an invalid podAffinity is rejected because of the LabelSelectorRequirement is invalid", func() {
 		By("Trying to launch a pod with an invalid pod Affinity data.")
 		podName := "without-label-" + string(util.NewUUID())
 		_, err := c.Pods(ns).Create(&api.Pod{
@@ -753,7 +753,7 @@ var _ = framework.KubeDescribe("SchedulerPredicates [Serial]", func() {
 										"values":["securityscan"]
 									}]
 								},
-								"namespaces":[{}],
+								"namespaces": [],
 								"topologyKey": "kubernetes.io/hostname"
 							}
 						}]
@@ -783,7 +783,7 @@ var _ = framework.KubeDescribe("SchedulerPredicates [Serial]", func() {
 	})
 
 	// Test Nodes does not have any pod, hence it should be impossible to schedule a Pod with pod affinity.
-	It("validates that Inter-pod-Affinity is respected if not matching [Feature:InterPodAffinity]", func() {
+	It("validates that Inter-pod-Affinity is respected if not matching", func() {
 		By("Trying to schedule Pod with nonempty Pod Affinity.")
 		podName := "without-label-" + string(util.NewUUID())
 
@@ -831,7 +831,7 @@ var _ = framework.KubeDescribe("SchedulerPredicates [Serial]", func() {
 	})
 
 	// test the pod affinity successful matching scenario.
-	It("validates that InterPodAffinity is respected if matching [Feature:InterPodAffinity]", func() {
+	It("validates that InterPodAffinity is respected if matching", func() {
 		// launch a pod to find a node which can launch a pod. We intentionally do
 		// not just take the node list and choose the first of them. Depending on the
 		// cluster and the scheduler it might be that a "normal" pod cannot be
@@ -894,13 +894,9 @@ var _ = framework.KubeDescribe("SchedulerPredicates [Serial]", func() {
 								}]
 							},
 							"topologyKey": "` + k + `",
-							"namespaces":[{
-								"metadata": {
-									"name": "` + ns + `"
-								}
-							}]
+							"namespaces":["` + ns + `"]
 						}]
-					 }}`,
+					}}`,
 				},
 			},
 			Spec: api.PodSpec{
@@ -926,8 +922,8 @@ var _ = framework.KubeDescribe("SchedulerPredicates [Serial]", func() {
 		Expect(labelPod.Spec.NodeName).To(Equal(nodeName))
 	})
 
-	// test the pod affinity successful matching scenario with diff labels.
-	It("validates that InterPodAffinity with diff Labels and macthing Pod [Feature:InterPodAffinity]", func() {
+	// test when the pod anti affinity rule is not satisfied, the pod would stay pending.
+	It("validates that InterPodAntiAffinity is respected if matching", func() {
 		// launch a pod to find a node which can launch a pod. We intentionally do
 		// not just take the node list and choose the first of them. Depending on the
 		// cluster and the scheduler it might be that a "normal" pod cannot be
@@ -957,7 +953,6 @@ var _ = framework.KubeDescribe("SchedulerPredicates [Serial]", func() {
 		framework.ExpectNoError(err)
 
 		nodeName := pod.Spec.NodeName
-		defer c.Pods(ns).Delete(podName, api.NewDeleteOptions(0))
 
 		By("Trying to apply a random label on the found node.")
 		k := "e2e.inter-pod-affinity.kubernetes.io/zone"
@@ -981,7 +976,7 @@ var _ = framework.KubeDescribe("SchedulerPredicates [Serial]", func() {
 				Labels: map[string]string{"service": "Diff"},
 				Annotations: map[string]string{
 					"scheduler.alpha.kubernetes.io/affinity": `
-						{"podAffinity": {
+						{"podAntiAffinity": {
 							"requiredDuringSchedulingIgnoredDuringExecution": [{
 								"labelSelector":{
 									"matchExpressions": [{
@@ -991,12 +986,7 @@ var _ = framework.KubeDescribe("SchedulerPredicates [Serial]", func() {
 									}]
 								},
 								"topologyKey": "` + k + `",
-								"namespaces":[{
-									"metadata":
-									{
-										"name": "` + ns + `"
-									}
-								}]
+								"namespaces": ["` + ns + `"]
 							}]
 						}}`,
 				},
@@ -1011,21 +1001,17 @@ var _ = framework.KubeDescribe("SchedulerPredicates [Serial]", func() {
 			},
 		})
 		framework.ExpectNoError(err)
-		defer c.Pods(ns).Delete(labelPodName, api.NewDeleteOptions(0))
+		// Wait a bit to allow scheduler to do its thing
+		// TODO: this is brittle; there's no guarantee the scheduler will have run in 10 seconds.
+		framework.Logf("Sleeping 10 seconds and crossing our fingers that scheduler will run in that time.")
+		time.Sleep(10 * time.Second)
 
-		// check that pod got scheduled. We intentionally DO NOT check that the
-		// pod is running because this will create a race condition with the
-		// kubelet and the scheduler: the scheduler might have scheduled a pod
-		// already when the kubelet does not know about its new label yet. The
-		// kubelet will then refuse to launch the pod.
-		framework.ExpectNoError(framework.WaitForPodNotPending(c, ns, labelPodName))
-		labelPod, err := c.Pods(ns).Get(labelPodName)
-		framework.ExpectNoError(err)
-		Expect(labelPod.Spec.NodeName).To(Equal(nodeName))
+		verifyResult(c, labelPodName, ns)
+		cleanupPods(c, ns)
 	})
 
 	// test the pod affinity successful matching scenario with multiple Label Operators.
-	It("validates that InterPodAffinity is respected if matching with multiple Affinities [Feature:InterPodAffinity]", func() {
+	It("validates that InterPodAffinity is respected if matching with multiple Affinities", func() {
 		// launch a pod to find a node which can launch a pod. We intentionally do
 		// not just take the node list and choose the first of them. Depending on the
 		// cluster and the scheduler it might be that a "normal" pod cannot be
@@ -1125,7 +1111,7 @@ var _ = framework.KubeDescribe("SchedulerPredicates [Serial]", func() {
 	})
 
 	// test the pod affinity and anti affinity successful matching scenario.
-	It("validates that InterPod Affinity and AntiAffinity is respected if matching [Feature:InterPodAffinity]", func() {
+	It("validates that InterPod Affinity and AntiAffinity is respected if matching", func() {
 		// launch a pod to find a node which can launch a pod. We intentionally do
 		// not just take the node list and choose the first of them. Depending on the
 		// cluster and the scheduler it might be that a "normal" pod cannot be
@@ -1228,7 +1214,7 @@ var _ = framework.KubeDescribe("SchedulerPredicates [Serial]", func() {
 	})
 
 	// Verify that an escaped JSON string of pod affinity and pod anti affinity in a YAML PodSpec works.
-	It("validates that embedding the JSON PodAffinity and PodAntiAffinity setting as a string in the annotation value work [Feature:InterPodAffinity]", func() {
+	It("validates that embedding the JSON PodAffinity and PodAntiAffinity setting as a string in the annotation value work", func() {
 		// launch a pod to find a node which can launch a pod. We intentionally do
 		// not just take the node list and choose the first of them. Depending on the
 		// cluster and the scheduler it might be that a "normal" pod cannot be

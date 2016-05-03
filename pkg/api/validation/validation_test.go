@@ -1957,16 +1957,7 @@ func TestValidateAffinity(t *testing.T) {
 				//					"values": ["value1", "value2"]
 				//				}]
 				//			},
-				//			"namespaces":[
-				//			{
-				//				"metadata":{
-				//					"name": "ns",
-				//					"labels":{
-				//						"key1": "value1",
-				//						"key2": "value2"
-				//					}
-				//				}
-				//			}],
+				//			"namespaces":["ns"],
 				//			"topologyKey": "zone"
 				//		}]
 				Annotations: map[string]string{
@@ -1981,14 +1972,7 @@ func TestValidateAffinity(t *testing.T) {
 								}]
 							},
 							"topologyKey": "zone",
-							"namespaces": [{
-								"metadata":{
-									"name": "ns",
-									"labels":{
-										"key1": "value1"
-									}
-								}
-							}]
+							"namespaces": ["ns"]
 						}],
 						"preferredDuringSchedulingIgnoredDuringExecution": [{
 							"weight": 10,
@@ -2000,14 +1984,7 @@ func TestValidateAffinity(t *testing.T) {
 										"values": ["value1", "value2"]
 									}]
 								},
-								"namespaces": [{
-									"metadata": {
-										"name": "ns",
-										"labels": {
-											"key1": "value1"
-										}
-									}
-								}],
+								"namespaces": ["ns"],
 								"topologyKey": "region"
 							}
 						 }]
@@ -2034,15 +2011,7 @@ func TestValidateAffinity(t *testing.T) {
 				//					"values": ["value1", "value2"]
 				//				}]
 				//			},
-				//			"namespaces":[{
-				//				"metadata":{
-				//					"name": "ns",
-				//					"labels":{
-				//						"key1": "value1",
-				//						"key2": "value2"
-				//					}
-				//				}
-				//			}],
+				//			"namespaces":["ns"],
 				//			"topologyKey": "zone"
 				//		}]
 				Annotations: map[string]string{
@@ -2056,12 +2025,7 @@ func TestValidateAffinity(t *testing.T) {
 								}]
 							},
 							"topologyKey": "zone",
-							"namespaces": [{
-								"metadata": {
-									"name": "ns",
-									"labels": {"key1": "value1"}
-								}
-							}]
+							"namespaces": ["ns"]
 						}],
 						"preferredDuringSchedulingIgnoredDuringExecution": [{
 							"weight": 10,
@@ -2072,12 +2036,7 @@ func TestValidateAffinity(t *testing.T) {
 										"operator": "DoesNotExist"
 									}]
 								},
-								"namespaces": [{
-									"metadata": {
-										"name": "ns",
-										"labels": {"key2": "value2"}
-									}
-								}],
+								"namespaces": ["ns"],
 								"topologyKey": "region"
 							}
 						}]
@@ -2220,14 +2179,7 @@ func TestValidateAffinity(t *testing.T) {
 									"values": ["value1", "value2"]
 								}]
 							},
-							"namespaces": [{
-								"metadata": {
-									"name": "ns",
-									"labels": {
-										"key1": "value1"
-									}
-								}
-							}],
+							"namespaces": ["ns"],
 							"topologyKey": "region"
 						}
 					}]}}`,
@@ -2256,14 +2208,7 @@ func TestValidateAffinity(t *testing.T) {
 									"values": ["value1", "value2"]
 								}]
 							},
-							"namespaces": [{
-								"metadata": {
-									"name": "ns",
-									"labels": {
-										"key1": "value1"
-									}
-								}
-							}],
+							"namespaces": ["ns"],
 							"topologyKey": "region"
 						}
 					}]}}`,
@@ -2292,14 +2237,7 @@ func TestValidateAffinity(t *testing.T) {
 									"values": ["value1", "value2"]
 								}]
 							},
-							"namespaces": [{
-								"metadata": {
-									"name": "ns",
-									"labels": {
-										"NoUppercaseOrSpecialCharsLike=Equals": "b"
-									}
-								}
-							}],
+							"namespaces": ["INVALID_NAMESPACE"],
 							"topologyKey": "region"
 						}
 					}]}}`,
@@ -2328,14 +2266,7 @@ func TestValidateAffinity(t *testing.T) {
 									"values": ["value1", "value2"]
 								}]
 							},
-							"namespaces": [{
-								"metadata": {
-									"name": "ns",
-									"labels": {
-										"key1": "value1"
-									}
-								}
-							}],
+							"namespaces": ["ns"],
 							"topologyKey": "region"
 						}
 					}]}}`,
@@ -2364,14 +2295,7 @@ func TestValidateAffinity(t *testing.T) {
 									"values": ["value1", "value2"]
 								}]
 							},
-							"namespaces": [{
-								"metadata": {
-									"name": "ns",
-									"labels": {
-										"key1": "value1"
-									}
-								}
-							}],
+							"namespaces": ["ns"],
 							"topologyKey": ""
 						}
 					}]}}`,
@@ -2400,14 +2324,7 @@ func TestValidateAffinity(t *testing.T) {
 									"values": ["value1", "value2"]
 								}]
 							},
-							"namespaces": [{
-								"metadata": {
-									"name": "ns",
-									"labels": {
-										"key1": "value1"
-									}
-								}
-							}],
+							"namespaces": ["ns"],
 							"topologyKey": ""
 						}
 					}]}}`,
@@ -2436,14 +2353,7 @@ func TestValidateAffinity(t *testing.T) {
 									"values": ["value1", "value2"]
 								}]
 							},
-							"namespaces": [{
-								"metadata": {
-									"name": "ns",
-									"labels": {
-										"key1": "value1"
-									}
-								}
-							}],
+							"namespaces": ["ns"],
 							"topologyKey": ""
 						}
 					}]}}`,

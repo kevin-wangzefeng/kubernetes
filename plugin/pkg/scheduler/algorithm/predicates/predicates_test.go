@@ -1655,35 +1655,7 @@ func TestInterPodAffinity(t *testing.T) {
 										"values": ["securityscan", "value2"]
 									}]
 								},
-								"topologyKey": "wrongtopologykey"
-							}]
-						}}`,
-					},
-				},
-			},
-			pods: []*api.Pod{{Spec: api.PodSpec{NodeName: "machine1"}, ObjectMeta: api.ObjectMeta{Labels: podLabel}}},
-			node: node1,
-			fits: false,
-			test: "Does not satisfy the PodAffinity with labelSelector because the node doesn't have corresponding topology key",
-		},
-		{
-			pod: &api.Pod{
-				ObjectMeta: api.ObjectMeta{
-					Labels: podLabel2,
-					Annotations: map[string]string{
-						api.AffinityAnnotationKey: `
-						{"podAffinity": {
-							"requiredDuringSchedulingIgnoredDuringExecution": [{
-								"labelSelector": {
-									"matchExpressions": [{
-										"key": "service",
-										"operator": "In",
-										"values": ["securityscan", "value2"]
-									}]
-								},
-								"namespaces":[{
-									"metadata":{"name": "DiffNameSpace"}
-								}]
+								"namespaces":["DiffNameSpace"]
 							}]
 						}}`,
 					},
@@ -1761,6 +1733,49 @@ func TestInterPodAffinity(t *testing.T) {
 			node: node1,
 			fits: true,
 			test: "satisfies the PodAffinity with different label Operators in multiple RequiredDuringSchedulingIgnoredDuringExecution ",
+		},
+		{
+			pod: &api.Pod{
+				ObjectMeta: api.ObjectMeta{
+					Labels: podLabel2,
+					Annotations: map[string]string{
+						api.AffinityAnnotationKey: `
+						{"podAffinity": {
+							"requiredDuringSchedulingIgnoredDuringExecution": [
+								{
+									"labelSelector": {
+										"matchExpressions": [{
+											"key": "service",
+											"operator": "Exists"
+										}, {
+											"key": "wrongkey",
+											"operator": "DoesNotExist"
+										}]
+									},
+									"topologyKey": "region"
+								}, {
+									"labelSelector": {
+										"matchExpressions": [{
+											"key": "service",
+											"operator": "In",
+											"values": ["securityscan2"]
+										}, {
+											"key": "service",
+											"operator": "NotIn",
+											"values": ["WrongValue"]
+										}]
+									},
+									"topologyKey": "region"
+								}
+							]
+						}}`,
+					},
+				},
+			},
+			pods: []*api.Pod{{Spec: api.PodSpec{NodeName: "machine1"}, ObjectMeta: api.ObjectMeta{Labels: podLabel}}},
+			node: node1,
+			fits: false,
+			test: "The labelSelector requirements(items of matchExpressions) are ANDed, the pod cannot schedule onto the node becasue one of the matchExpression item don't match.",
 		},
 		{
 			pod: &api.Pod{
@@ -2034,11 +2049,11 @@ func TestInterPodAffinity(t *testing.T) {
 			failureDomains: priorityutil.Topologies{DefaultKeys: strings.Split(api.DefaultFailureDomains, ",")},
 		}
 		fits, err := fit.InterPodAffinityMatches(test.pod, test.node.Name, schedulercache.NewNodeInfo(podsOnNode...))
-		if err != nil {
-			t.Errorf("unexpected error: %v", err)
+		if !reflect.DeepEqual(err, ErrPodAffinityNotMatch) && err != nil {
+			t.Errorf("%s: unexpected error %v", test.test, err)
 		}
 		if fits != test.fits {
-			t.Errorf("%s: expected: %v got %v", test.test, test.fits, fits)
+			t.Errorf("%s: expected %v got %v", test.test, test.fits, fits)
 		}
 	}
 }
@@ -2099,6 +2114,88 @@ func TestInterPodAffinityWithMultipleNodes(t *testing.T) {
 			},
 			test: "A pod can be scheduled onto all the nodes that have the same topology key & label value with one of them has an existing pod that match the affinity rules",
 		},
+		{
+			pod: &api.Pod{
+				ObjectMeta: api.ObjectMeta{
+					Annotations: map[string]string{
+						api.AffinityAnnotationKey: `
+						{
+							"nodeAffinity": {
+								"requiredDuringSchedulingIgnoredDuringExecution": {
+									"nodeSelectorTerms": [{
+										"matchExpressions": [{
+											"key": "hostname",
+											"operator": "NotIn",
+											"values": ["h1"]
+										}]
+									}]
+								}
+							},
+							"podAffinity": {
+								"requiredDuringSchedulingIgnoredDuringExecution": [{
+									"labelSelector": {
+										"matchExpressions": [{
+											"key": "foo",
+											"operator": "In",
+											"values": ["abc"]
+										}]
+									},
+									"topologyKey": "region"
+								}]
+							}
+						}`,
+					},
+				},
+			},
+			pods: []*api.Pod{
+				{Spec: api.PodSpec{NodeName: "nodeA"}, ObjectMeta: api.ObjectMeta{Labels: map[string]string{"foo": "abc"}}},
+				{Spec: api.PodSpec{NodeName: "nodeB"}, ObjectMeta: api.ObjectMeta{Labels: map[string]string{"foo": "def"}}},
+			},
+			nodes: []api.Node{
+				{ObjectMeta: api.ObjectMeta{Name: "nodeA", Labels: map[string]string{"region": "r1", "hostname": "h1"}}},
+				{ObjectMeta: api.ObjectMeta{Name: "nodeB", Labels: map[string]string{"region": "r1", "hostname": "h2"}}},
+			},
+			fits: map[string]bool{
+				"nodeA": false,
+				"nodeB": true,
+			},
+			test: "NodeA and nodeB have same topologyKey and label value. NodeA does not satisfy node affinity rule, but has an existing pod that match the inter pod affinity rule. The pod can be scheduled onto nodeB.",
+		},
+		{
+			pod: &api.Pod{
+				ObjectMeta: api.ObjectMeta{
+					Labels: map[string]string{
+						"foo": "bar",
+					},
+					Annotations: map[string]string{
+						api.AffinityAnnotationKey: `
+						{"podAffinity": {
+							"requiredDuringSchedulingIgnoredDuringExecution": [{
+								"labelSelector": {
+									"matchExpressions": [{
+										"key": "foo",
+										"operator": "In",
+										"values": ["bar"]
+									}]
+								},
+								"topologyKey": "zone"
+							}]
+						}}`,
+					},
+				},
+			},
+			pods: []*api.Pod{},
+			nodes: []api.Node{
+				{ObjectMeta: api.ObjectMeta{Name: "nodeA", Labels: map[string]string{"zone": "az1", "hostname": "h1"}}},
+				{ObjectMeta: api.ObjectMeta{Name: "nodeB", Labels: map[string]string{"zone": "az2", "hostname": "h2"}}},
+			},
+			fits: map[string]bool{
+				"nodeA": true,
+				"nodeB": true,
+			},
+			test: "The affinity rule is to schedule all of the pods of this collection to the same zone. The first pod of the collection " +
+				"should not be blocked from being scheduled onto any node, even there's no existing pod that match the rule anywhere.",
+		},
 	}
 	for _, test := range tests {
 		nodeListInfo := FakeNodeListInfo(test.nodes)
@@ -2116,11 +2213,25 @@ func TestInterPodAffinityWithMultipleNodes(t *testing.T) {
 				failureDomains: priorityutil.Topologies{DefaultKeys: strings.Split(api.DefaultFailureDomains, ",")},
 			}
 			fits, err := testFit.InterPodAffinityMatches(test.pod, node.Name, schedulercache.NewNodeInfo(podsOnNode...))
+			if !reflect.DeepEqual(err, ErrPodAffinityNotMatch) && err != nil {
+				t.Errorf("%s: unexpected error %v", test.test, err)
+			}
+			affinity, err := api.GetAffinityFromPodAnnotations(test.pod.ObjectMeta.Annotations)
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
 			}
+			if affinity.NodeAffinity != nil {
+				nodeInfo := schedulercache.NewNodeInfo()
+				nodeInfo.SetNode(&node)
+				fits2, err := PodSelectorMatches(test.pod, node.Name, nodeInfo)
+				if !reflect.DeepEqual(err, ErrNodeSelectorNotMatch) && err != nil {
+					t.Errorf("unexpected error: %v", err)
+				}
+				fits = fits && fits2
+			}
+
 			if fits != test.fits[node.Name] {
-				t.Errorf("%s: expected: %v got %v", test.test, test.fits[node.Name], fits)
+				t.Errorf("%s: expected %v for %s got %v", test.test, test.fits[node.Name], node.Name, fits)
 			}
 		}
 	}

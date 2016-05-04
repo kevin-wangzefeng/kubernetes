@@ -1421,17 +1421,7 @@ func DeepCopy_v1_NodeSpec(in NodeSpec, out *NodeSpec, c *conversion.Cloner) erro
 	out.ExternalID = in.ExternalID
 	out.ProviderID = in.ProviderID
 	out.Unschedulable = in.Unschedulable
-	if in.Taints != nil {
-		in, out := in.Taints, &out.Taints
-		*out = make([]Taint, len(in))
-		for i := range in {
-			if err := DeepCopy_v1_Taint(in[i], &(*out)[i], c); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Taints = nil
-	}
+
 	return nil
 }
 
@@ -1501,17 +1491,6 @@ func DeepCopy_v1_NodeStatus(in NodeStatus, out *NodeStatus, c *conversion.Cloner
 		}
 	} else {
 		out.Images = nil
-	}
-	if in.Taints != nil {
-		in, out := in.Taints, &out.Taints
-		*out = make([]Taint, len(in))
-		for i := range in {
-			if err := DeepCopy_v1_Taint(in[i], &(*out)[i], c); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Taints = nil
 	}
 	return nil
 }
@@ -2130,17 +2109,7 @@ func DeepCopy_v1_PodSpec(in PodSpec, out *PodSpec, c *conversion.Cloner) error {
 	} else {
 		out.ImagePullSecrets = nil
 	}
-	if in.Tolerations != nil {
-		in, out := in.Tolerations, &out.Tolerations
-		*out = make([]Toleration, len(in))
-		for i := range in {
-			if err := DeepCopy_v1_Toleration(in[i], &(*out)[i], c); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Tolerations = nil
-	}
+
 	return nil
 }
 

@@ -911,16 +911,6 @@ func autoConvert_api_PodSpec_To_v1_PodSpec(in *api.PodSpec, out *v1.PodSpec, s c
 	} else {
 		out.ImagePullSecrets = nil
 	}
-	if in.Tolerations != nil {
-		out.Tolerations = make([]v1.Toleration, len(in.Tolerations))
-		for i := range in.Tolerations {
-			if err := Convert_api_Toleration_To_v1_Toleration(&in.Tolerations[i], &out.Tolerations[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Tolerations = nil
-	}
 	return nil
 }
 
@@ -1136,21 +1126,6 @@ func autoConvert_api_TCPSocketAction_To_v1_TCPSocketAction(in *api.TCPSocketActi
 
 func Convert_api_TCPSocketAction_To_v1_TCPSocketAction(in *api.TCPSocketAction, out *v1.TCPSocketAction, s conversion.Scope) error {
 	return autoConvert_api_TCPSocketAction_To_v1_TCPSocketAction(in, out, s)
-}
-
-func autoConvert_api_Toleration_To_v1_Toleration(in *api.Toleration, out *v1.Toleration, s conversion.Scope) error {
-	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
-		defaulting.(func(*api.Toleration))(in)
-	}
-	out.Key = in.Key
-	out.Operator = v1.TolerationOperator(in.Operator)
-	out.Value = in.Value
-	out.Effect = v1.TaintEffect(in.Effect)
-	return nil
-}
-
-func Convert_api_Toleration_To_v1_Toleration(in *api.Toleration, out *v1.Toleration, s conversion.Scope) error {
-	return autoConvert_api_Toleration_To_v1_Toleration(in, out, s)
 }
 
 func autoConvert_api_Volume_To_v1_Volume(in *api.Volume, out *v1.Volume, s conversion.Scope) error {
@@ -2272,16 +2247,7 @@ func autoConvert_v1_PodSpec_To_api_PodSpec(in *v1.PodSpec, out *api.PodSpec, s c
 	} else {
 		out.ImagePullSecrets = nil
 	}
-	if in.Tolerations != nil {
-		out.Tolerations = make([]api.Toleration, len(in.Tolerations))
-		for i := range in.Tolerations {
-			if err := Convert_v1_Toleration_To_api_Toleration(&in.Tolerations[i], &out.Tolerations[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Tolerations = nil
-	}
+	// in.Tolerations has no peer in out
 	return nil
 }
 
@@ -2497,21 +2463,6 @@ func autoConvert_v1_TCPSocketAction_To_api_TCPSocketAction(in *v1.TCPSocketActio
 
 func Convert_v1_TCPSocketAction_To_api_TCPSocketAction(in *v1.TCPSocketAction, out *api.TCPSocketAction, s conversion.Scope) error {
 	return autoConvert_v1_TCPSocketAction_To_api_TCPSocketAction(in, out, s)
-}
-
-func autoConvert_v1_Toleration_To_api_Toleration(in *v1.Toleration, out *api.Toleration, s conversion.Scope) error {
-	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
-		defaulting.(func(*v1.Toleration))(in)
-	}
-	out.Key = in.Key
-	out.Operator = api.TolerationOperator(in.Operator)
-	out.Value = in.Value
-	out.Effect = api.TaintEffect(in.Effect)
-	return nil
-}
-
-func Convert_v1_Toleration_To_api_Toleration(in *v1.Toleration, out *api.Toleration, s conversion.Scope) error {
-	return autoConvert_v1_Toleration_To_api_Toleration(in, out, s)
 }
 
 func autoConvert_v1_Volume_To_api_Volume(in *v1.Volume, out *api.Volume, s conversion.Scope) error {
@@ -5199,7 +5150,6 @@ func init() {
 		autoConvert_api_SecretVolumeSource_To_v1_SecretVolumeSource,
 		autoConvert_api_SecurityContext_To_v1_SecurityContext,
 		autoConvert_api_TCPSocketAction_To_v1_TCPSocketAction,
-		autoConvert_api_Toleration_To_v1_Toleration,
 		autoConvert_api_VolumeMount_To_v1_VolumeMount,
 		autoConvert_api_VolumeSource_To_v1_VolumeSource,
 		autoConvert_api_Volume_To_v1_Volume,
@@ -5303,7 +5253,6 @@ func init() {
 		autoConvert_v1_SecretVolumeSource_To_api_SecretVolumeSource,
 		autoConvert_v1_SecurityContext_To_api_SecurityContext,
 		autoConvert_v1_TCPSocketAction_To_api_TCPSocketAction,
-		autoConvert_v1_Toleration_To_api_Toleration,
 		autoConvert_v1_VolumeMount_To_api_VolumeMount,
 		autoConvert_v1_VolumeSource_To_api_VolumeSource,
 		autoConvert_v1_Volume_To_api_Volume,

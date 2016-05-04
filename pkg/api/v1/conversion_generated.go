@@ -3824,17 +3824,7 @@ func autoConvert_v1_NodeSpec_To_api_NodeSpec(in *NodeSpec, out *api.NodeSpec, s 
 	out.ExternalID = in.ExternalID
 	out.ProviderID = in.ProviderID
 	out.Unschedulable = in.Unschedulable
-	if in.Taints != nil {
-		in, out := &in.Taints, &out.Taints
-		*out = make([]api.Taint, len(*in))
-		for i := range *in {
-			if err := Convert_v1_Taint_To_api_Taint(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Taints = nil
-	}
+
 	return nil
 }
 
@@ -3850,17 +3840,6 @@ func autoConvert_api_NodeSpec_To_v1_NodeSpec(in *api.NodeSpec, out *NodeSpec, s 
 	out.ExternalID = in.ExternalID
 	out.ProviderID = in.ProviderID
 	out.Unschedulable = in.Unschedulable
-	if in.Taints != nil {
-		in, out := &in.Taints, &out.Taints
-		*out = make([]Taint, len(*in))
-		for i := range *in {
-			if err := Convert_api_Taint_To_v1_Taint(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Taints = nil
-	}
 	return nil
 }
 
@@ -3917,17 +3896,6 @@ func autoConvert_v1_NodeStatus_To_api_NodeStatus(in *NodeStatus, out *api.NodeSt
 		}
 	} else {
 		out.Images = nil
-	}
-	if in.Taints != nil {
-		in, out := &in.Taints, &out.Taints
-		*out = make([]api.Taint, len(*in))
-		for i := range *in {
-			if err := Convert_v1_Taint_To_api_Taint(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Taints = nil
 	}
 	return nil
 }
@@ -4006,17 +3974,7 @@ func autoConvert_api_NodeStatus_To_v1_NodeStatus(in *api.NodeStatus, out *NodeSt
 	} else {
 		out.Images = nil
 	}
-	if in.Taints != nil {
-		in, out := &in.Taints, &out.Taints
-		*out = make([]Taint, len(*in))
-		for i := range *in {
-			if err := Convert_api_Taint_To_v1_Taint(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Taints = nil
-	}
+
 	return nil
 }
 
@@ -5405,17 +5363,7 @@ func autoConvert_api_PodSpec_To_v1_PodSpec(in *api.PodSpec, out *PodSpec, s conv
 	} else {
 		out.ImagePullSecrets = nil
 	}
-	if in.Tolerations != nil {
-		in, out := &in.Tolerations, &out.Tolerations
-		*out = make([]Toleration, len(*in))
-		for i := range *in {
-			if err := Convert_api_Toleration_To_v1_Toleration(&(*in)[i], &(*out)[i], s); err != nil {
-				return err
-			}
-		}
-	} else {
-		out.Tolerations = nil
-	}
+
 	return nil
 }
 

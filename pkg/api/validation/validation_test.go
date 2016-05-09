@@ -4062,7 +4062,6 @@ func TestValidateNode(t *testing.T) {
 			},
 		},
 		"bad-taint-key": {
-
 			ObjectMeta: api.ObjectMeta{
 				Name: "dedicated-node1",
 				// Add a taint with an empty key to a node
@@ -4140,11 +4139,11 @@ func TestValidateNode(t *testing.T) {
 		for i := range errs {
 			field := errs[i].Field
 			expectedFields := map[string]bool{
-				"metadata.name":         true,
-				"metadata.labels":       true,
-				"metadata.annotations":  true,
-				"metadata.namespace":    true,
-				"spec.externalID":       true,
+				"metadata.name":                                                       true,
+				"metadata.labels":                                                     true,
+				"metadata.annotations":                                                true,
+				"metadata.namespace":                                                  true,
+				"spec.externalID":                                                     true,
 				"metadata.annotations.scheduler.alpha.kubernetes.io/taints[0].key":    true,
 				"metadata.annotations.scheduler.alpha.kubernetes.io/taints[0].value":  true,
 				"metadata.annotations.scheduler.alpha.kubernetes.io/taints[0].effect": true,

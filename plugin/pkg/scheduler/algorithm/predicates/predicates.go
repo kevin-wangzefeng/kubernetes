@@ -943,7 +943,7 @@ func (t *TolerationMatch) PodToleratesNodeTaints(pod *api.Pod, nodeInfo *schedul
 		return false, err
 	}
 
-	if tolerationsToleratesTaints(pod.Spec.Tolerations, node.Status.Taints) {
+	if tolerationsToleratesTaints(tolerations, taints) {
 		return true, nil
 	}
 	return false, ErrTaintsTolerationsNotMatch
@@ -960,29 +960,16 @@ func tolerationsToleratesTaints(tolerations []api.Toleration, taints []api.Taint
 		return false
 	}
 
-	for _, toleration := range tolerations {
-		if toleration.Effect == api.TaintEffectNoSchedule {
-			// if toleration.Effect == api.TaintEffectNoSchedule || toleration.Effect == api.TaintEffectNoScheduleNoAdmit || toleration.Effect == api.TaintEffectNoScheduleNoAdmitNoExecute {
-			if match := tolerationMatchTaints(toleration, taints); !match {
-				return false
-			}
-		}
-	}
-	return true
-}
-
-func tolerationMatchTaints(toleration api.Toleration, taints []api.Taint) bool {
 	for _, taint := range taints {
-		if toleration.Effect == taint.Effect && toleration.Key == taint.Key {
-			switch toleration.Operator {
-			case "", api.TolerationOpEqual:
-				if toleration.Value == taint.Value {
-					return true
-				}
-			case api.TolerationOpExists:
-				return true
-			}
+		// check only on taints that have effect NoSchedule
+		if taint.Effect != api.TaintEffectNoSchedule {
+			continue
+		}
+
+		if !api.TaintToleratedByTolerations(taint, tolerations) {
+			return false
 		}
 	}
-	return false
+
+	return true
 }

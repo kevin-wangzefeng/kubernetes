@@ -463,3 +463,38 @@ func GetTaintsFromNodeAnnotations(annotations map[string]string) ([]Taint, error
 	}
 	return taints, nil
 }
+
+// TolerationToleratesTaint checks if the toleration tolerates the taint.
+func TolerationToleratesTaint(toleration Toleration, taint Taint) bool {
+	if len(toleration.Effect) != 0 && toleration.Effect != taint.Effect {
+		return false
+	}
+
+	//	return toleration.Key == taint.Key &&
+	//		(toleration.Operator == TolerationOpExists ||
+	//			((len(toleration.Effect) == 0 || toleration.Operator == TolerationOpEqual) &&
+	//				taint.Value == toleration.Value))
+	if toleration.Key != taint.Key {
+		return false
+	}
+	if (len(toleration.Operator) == 0 || toleration.Operator == TolerationOpEqual) && toleration.Value == taint.Value {
+		return true
+	}
+	if toleration.Operator == TolerationOpExists {
+		return true
+	}
+	return false
+
+}
+
+// TaintToleratedByTolerations checks if taint is tolerated by any of the tolerations.
+func TaintToleratedByTolerations(taint Taint, tolerations []Toleration) bool {
+	tolerated := false
+	for _, toleration := range tolerations {
+		if TolerationToleratesTaint(toleration, taint) {
+			tolerated = true
+			break
+		}
+	}
+	return tolerated
+}

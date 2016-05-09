@@ -2361,7 +2361,7 @@ func TestPodToleratesTaints(t *testing.T) {
 		nodeInfo.SetNode(&test.node)
 		fits, err := tolerationMatch.PodToleratesNodeTaints(test.pod, nodeInfo)
 		if fits == false && !reflect.DeepEqual(err, ErrTaintsTolerationsNotMatch) {
-			t.Errorf("unexpected error: %v", err)
+			t.Errorf("%s, unexpected error: %v", test.test, err)
 		}
 		if fits != test.fits {
 			t.Errorf("%s, expected: %v got %v", test.test, test.fits, fits)

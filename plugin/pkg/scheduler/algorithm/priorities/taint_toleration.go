@@ -39,26 +39,12 @@ func NewTaintTolerationPriority(nodeLister algorithm.NodeLister) algorithm.Prior
 // CountIntolerableTaintsPreferNoSchedule gives the count of intolerable taints of a pod with effect PreferNoSchedule
 func countIntolerableTaintsPreferNoSchedule(taints []api.Taint, tolerations []api.Toleration) (intolerableTaints int) {
 	for _, taint := range taints {
+		// check only on taints that have effect PreferNoSchedule
 		if taint.Effect != api.TaintEffectPreferNoSchedule {
 			continue
 		}
-		intolerable := true
-		for _, toleration := range tolerations {
-			if toleration.Key != taint.Key {
-				continue
-			}
-			switch toleration.Operator {
-			case "", api.TolerationOpEqual:
-				if toleration.Value == taint.Value {
-					intolerable = false
-					break
-				}
-			case api.TolerationOpExists:
-				intolerable = false
-				break
-			}
-		}
-		if intolerable {
+
+		if !api.TaintToleratedByTolerations(taint, tolerations) {
 			intolerableTaints++
 		}
 	}
@@ -68,7 +54,7 @@ func countIntolerableTaintsPreferNoSchedule(taints []api.Taint, tolerations []ap
 // getAllTolerationEffectPreferNoSchedule gets the list of all Toleration with Effect PreferNoSchedule
 func getAllTolerationPreferNoSchedule(tolerations []api.Toleration) (tolerationList []api.Toleration) {
 	for _, toleration := range tolerations {
-		if toleration.Effect == api.TaintEffectPreferNoSchedule {
+		if len(toleration.Effect) == 0 || toleration.Effect == api.TaintEffectPreferNoSchedule {
 			tolerationList = append(tolerationList, toleration)
 		}
 	}

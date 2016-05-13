@@ -21,17 +21,17 @@ import (
 	"io"
 	"strings"
 
+	"encoding/json"
 	"github.com/spf13/cobra"
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/meta"
 	cmdutil "k8s.io/kubernetes/pkg/kubectl/cmd/util"
 	utilerrors "k8s.io/kubernetes/pkg/util/errors"
 	"k8s.io/kubernetes/pkg/util/validation"
-	"encoding/json"
 )
 
 const (
-	taint_long = `Update the taints on a resource.
+	taint_long = `Update the taints on a or more nodes.
 
 A taint must begin with a letter or number, and may contain letters, numbers, hyphens, dots, and underscores, up to %[1]d characters.`
 	taint_example = `# Update node 'foo' with a taint with key 'dedicated' and value 'special-user' and effect 'NoScheduleNoAdmitNoExecute'.
@@ -52,7 +52,7 @@ func NewCmdTaint(f *cmdutil.Factory, out io.Writer) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:     "taint NODE NAME KEY_1=VAL_1:TAINT_EFFECT_1 ... KEY_N=VAL_N:TAINT_EFFECT_N",
-		Short:   "Update the taints on a node",
+		Short:   "Update the taints on a or more nodes",
 		Long:    fmt.Sprintf(taint_long, validation.LabelValueMaxLength),
 		Example: taint_example,
 		Run: func(cmd *cobra.Command, args []string) {
@@ -67,7 +67,7 @@ func NewCmdTaint(f *cmdutil.Factory, out io.Writer) *cobra.Command {
 	//cmd.Flags().String("resource-version", "", "If non-empty, the labels update will only succeed if this is the current resource-version for the object. Only valid when specifying a single resource.")
 	//kubectl.AddJsonFilenameFlag(cmd, &options.Filenames, "Filename, directory, or URL to a file identifying the resource to update the labels")
 	//cmdutil.AddRecursiveFlag(cmd, &options.Recursive)
-	cmd.Flags().Bool("dry-run", false, "If true, only print the object that would be sent, without sending it.")
+	//cmd.Flags().Bool("dry-run", false, "If true, only print the object that would be sent, without sending it.")
 
 	cmdutil.AddValidateFlags(cmd)
 	cmdutil.AddPrinterFlags(cmd)
@@ -216,56 +216,59 @@ func RunTaint(f *cmdutil.Factory, out io.Writer, cmd *cobra.Command, args []stri
 		return err
 	}
 
-	targetNode, err := client.Nodes().Get(resources[1])
-	if err != nil {
-		return err
-	}
-
-	taints, remove, err := parseTaints(taintArgs)
-	if err != nil {
-		return cmdutil.UsageError(cmd, err.Error())
-	}
-
-	overwrite := cmdutil.GetFlagBool(cmd, "overwrite")
-	if !overwrite {
-		if err := validateNoTaintOverwrites(targetNode, taints); err != nil {
+	for i := 1; i < len(resources); i++ {
+		targetNode, err := client.Nodes().Get(resources[i])
+		if err != nil {
 			return err
 		}
+
+		taints, remove, err := parseTaints(taintArgs)
+		if err != nil {
+			return cmdutil.UsageError(cmd, err.Error())
+		}
+
+		overwrite := cmdutil.GetFlagBool(cmd, "overwrite")
+		if !overwrite {
+			if err := validateNoTaintOverwrites(targetNode, taints); err != nil {
+				return err
+			}
+		}
+
+		newTaints, err := reorganizeTaints(targetNode, overwrite, taints, remove)
+		if err != nil {
+			return err
+		}
+
+		taintsData, err := json.Marshal(newTaints)
+		if err != nil {
+			return err
+		}
+
+		if targetNode.Annotations == nil {
+			targetNode.Annotations = map[string]string{}
+		}
+		targetNode.Annotations[api.TaintsAnnotationKey] = string(taintsData)
+
+		newNode, err := client.Nodes().Update(targetNode)
+		if err != nil {
+			return err
+		}
+
+		mapper, _ := f.Object(cmdutil.GetIncludeThirdPartyAPIs(cmd))
+
+		message := "tainted"
+		if len(targetNode.Annotations) != len(newNode.Annotations) ||
+			targetNode.Annotations[api.TaintsAnnotationKey] != newNode.Annotations[api.TaintsAnnotationKey] {
+			message = "taint failed"
+		}
+
+		gvk, err := api.Scheme.ObjectKind(targetNode)
+		if err != nil {
+			return err
+		}
+		_, res := meta.KindToResource(gvk)
+		cmdutil.PrintSuccess(mapper, false, out, res.Resource, targetNode.Name, message)
 	}
 
-	newTaints, err := reorganizeTaints(targetNode, overwrite, taints, remove)
-	if err != nil {
-		return err
-	}
-
-	taintsData, err := json.Marshal(newTaints)
-	if err != nil {
-		return err
-	}
-
-	if targetNode.Annotations == nil {
-		targetNode.Annotations = map[string]string{}
-	}
-	targetNode.Annotations[api.TaintsAnnotationKey] = string(taintsData)
-
-	newNode, err := client.Nodes().Update(targetNode)
-	if err != nil {
-		return err
-	}
-
-	mapper, _ := f.Object(cmdutil.GetIncludeThirdPartyAPIs(cmd))
-
-	message := "tainted"
-	if len(targetNode.Annotations) != len(newNode.Annotations) ||
-		targetNode.Annotations[api.TaintsAnnotationKey] != newNode.Annotations[api.TaintsAnnotationKey] {
-		message = "taint failed"
-	}
-
-	gvk, err := api.Scheme.ObjectKind(targetNode)
-	if err != nil {
-		return err
-	}
-	_, res := meta.KindToResource(gvk)
-	cmdutil.PrintSuccess(mapper, false, out, res.Resource, targetNode.Name, message)
 	return nil
 }

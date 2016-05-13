@@ -49,14 +49,27 @@ func TestParseTaints(t *testing.T) {
 			expectErr: false,
 		},
 		{
-			test:   "only one valid taint input",
-			taints: []string{"dedicated=bigData:NoSchedule"},
+			test:   "two valid taint input, one is new, another is to remove the existing",
+			taints: []string{"dedicated=bigData:NoSchedule", "foo-"},
 			expected: []api.Taint{{
 				Key:    "dedicated",
 				Value:  "bigData",
 				Effect: api.TaintEffectNoSchedule,
 			}},
+			expectedRemove: []string{"foo"},
 			expectErr: false,
+		},
+		{
+			test:   "invalid taint key",
+			taints: []string{"Foo=bar:NoSchedule"},
+			expected: []api.Taint{},
+			expectErr: true,
+		},
+		{
+			test:   "invalid taint effect",
+			taints: []string{"foo=bar:NoExecute"},
+			expected: []api.Taint{},
+			expectErr: true,
 		},
 	}
 	for _, test := range tests {

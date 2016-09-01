@@ -2861,7 +2861,7 @@ func AddOrUpdateTaintOnNode(c *client.Client, nodeName string, taint api.Taint) 
 		var newTaints []api.Taint
 		updated := false
 		for _, existingTaint := range nodeTaints {
-			if existingTaint.Key == taint.Key {
+			if existingTaint.Key == taint.Key && existingTaint.Effect == taint.Effect {
 				newTaints = append(newTaints, taint)
 				updated = true
 				continue

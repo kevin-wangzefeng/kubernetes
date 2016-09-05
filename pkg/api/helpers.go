@@ -526,6 +526,12 @@ func TaintToleratedByTolerations(taint *Taint, tolerations []Toleration) bool {
 	return tolerated
 }
 
+// TaintsMatch checks if two taints match. Taints are unique by key:effect,
+// if two taints have the same key:effect, regard as they match.
+func TaintsMatch(taintA *Taint, taintB *Taint) bool {
+	return taintA.Key == taintB.Key && taintA.Effect == taintB.Effect
+}
+
 func GetAvoidPodsFromNodeAnnotations(annotations map[string]string) (AvoidPods, error) {
 	var avoidPods AvoidPods
 	if len(annotations) > 0 && annotations[PreferAvoidPodsAnnotationKey] != "" {

@@ -1224,18 +1224,18 @@ var _ = framework.KubeDescribe("Kubectl client", func() {
 			node := nodes.Items[0]
 			nodeName := node.Name
 
-			By("adding the taint " + framework.TaintToString(testTaint) + " to a node")
-			framework.RunKubectlOrDie("taint", "nodes", nodeName, framework.TaintToString(testTaint))
-			By("verifying the node has the taint " + framework.TaintToString(testTaint))
+			By("adding the taint " + api.TaintToString(testTaint) + " to a node")
+			framework.RunKubectlOrDie("taint", "nodes", nodeName, api.TaintToString(testTaint))
+			By("verifying the node has the taint " + api.TaintToString(testTaint))
 			output := framework.RunKubectlOrDie("describe", "node", nodeName)
 			requiredStrings := [][]string{
 				{"Name:", nodeName},
 				{"Taints:"},
-				{framework.TaintToString(testTaint)},
+				{api.TaintToString(testTaint)},
 			}
 			checkOutput(output, requiredStrings)
 
-			By("removing the taint " + framework.TaintToString(testTaint) + " of a node")
+			By("removing the taint " + api.TaintToString(testTaint) + " of a node")
 			framework.RunKubectlOrDie("taint", "nodes", nodeName, testTaint.Key+":"+string(testTaint.Effect)+"-")
 			By("verifying the node doesn't have the taint " + testTaint.Key)
 			output = framework.RunKubectlOrDie("describe", "node", nodeName)
@@ -1257,14 +1257,14 @@ var _ = framework.KubeDescribe("Kubectl client", func() {
 			node := nodes.Items[0]
 			nodeName := node.Name
 
-			By("adding the taint " + framework.TaintToString(testTaint) + " to a node")
-			framework.RunKubectlOrDie("taint", "nodes", nodeName, framework.TaintToString(testTaint))
-			By("verifying the node has the taint " + framework.TaintToString(testTaint))
+			By("adding the taint " + api.TaintToString(testTaint) + " to a node")
+			framework.RunKubectlOrDie("taint", "nodes", nodeName, api.TaintToString(testTaint))
+			By("verifying the node has the taint " + api.TaintToString(testTaint))
 			output := framework.RunKubectlOrDie("describe", "node", nodeName)
 			requiredStrings := [][]string{
 				{"Name:", nodeName},
 				{"Taints:"},
-				{framework.TaintToString(testTaint)},
+				{api.TaintToString(testTaint)},
 			}
 			checkOutput(output, requiredStrings)
 
@@ -1273,14 +1273,14 @@ var _ = framework.KubeDescribe("Kubectl client", func() {
 				Value:  "another-testing-taint-value",
 				Effect: fmt.Sprintf("%s", api.TaintEffectPreferNoSchedule),
 			}
-			By("adding another taint " + framework.TaintToString(newTestTaint) + " to the node")
-			framework.RunKubectlOrDie("taint", "nodes", nodeName, framework.TaintToString(newTestTaint))
-			By("verifying the node has the taint " + framework.TaintToString(newTestTaint))
+			By("adding another taint " + api.TaintToString(newTestTaint) + " to the node")
+			framework.RunKubectlOrDie("taint", "nodes", nodeName, api.TaintToString(newTestTaint))
+			By("verifying the node has the taint " + api.TaintToString(newTestTaint))
 			output = framework.RunKubectlOrDie("describe", "node", nodeName)
 			requiredStrings = [][]string{
 				{"Name:", nodeName},
 				{"Taints:"},
-				{framework.TaintToString(newTestTaint)},
+				{api.TaintToString(newTestTaint)},
 			}
 			checkOutput(output, requiredStrings)
 

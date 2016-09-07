@@ -532,6 +532,14 @@ func TaintsMatch(taintA *Taint, taintB *Taint) bool {
 	return taintA.Key == taintB.Key && taintA.Effect == taintB.Effect
 }
 
+// TaintToString converts taint struct to string in format key=value:effect or key:effect.
+func TaintToString(taint Taint) string {
+	if len(taint.Value) == 0 {
+		return fmt.Sprintf("%v:%v", taint.Key, taint.Effect)
+	}
+	return fmt.Sprintf("%v=%v:%v", taint.Key, taint.Value, taint.Effect)
+}
+
 func GetAvoidPodsFromNodeAnnotations(annotations map[string]string) (AvoidPods, error) {
 	var avoidPods AvoidPods
 	if len(annotations) > 0 && annotations[PreferAvoidPodsAnnotationKey] != "" {

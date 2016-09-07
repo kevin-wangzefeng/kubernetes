@@ -150,7 +150,7 @@ func reorganizeTaints(accessor meta.Object, overwrite bool, taintsToAdd []api.Ta
 	for _, oldTaint := range oldTaints {
 		existsInNew := false
 		for _, taint := range newTaints {
-			if api.TaintsMatch(taint, oldTaint) {
+			if api.TaintsMatch(&taint, &oldTaint) {
 				existsInNew = true
 				break
 			}

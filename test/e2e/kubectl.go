@@ -1271,7 +1271,7 @@ var _ = framework.KubeDescribe("Kubectl client", func() {
 			newTestTaint := api.Taint{
 				Key:    testTaint.Key,
 				Value:  "another-testing-taint-value",
-				Effect: fmt.Sprintf("%s", api.TaintEffectPreferNoSchedule),
+				Effect: api.TaintEffectPreferNoSchedule,
 			}
 			By("adding another taint " + api.TaintToString(newTestTaint) + " to the node")
 			framework.RunKubectlOrDie("taint", "nodes", nodeName, api.TaintToString(newTestTaint))

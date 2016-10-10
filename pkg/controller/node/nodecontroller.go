@@ -490,19 +490,28 @@ func (nc *NodeController) monitorNodeStatus() error {
 			// Check eviction timeout against decisionTimestamp
 			if observedReadyCondition.Status == api.ConditionFalse &&
 				decisionTimestamp.After(nc.nodeStatusMap[node.Name].readyTransitionTimestamp.Add(nc.podEvictionTimeout)) {
-				if nc.evictPods(node) {
-					glog.V(4).Infof("Evicting pods on node %s: %v is later than %v + %v", node.Name, decisionTimestamp, nc.nodeStatusMap[node.Name].readyTransitionTimestamp, nc.podEvictionTimeout)
+
+				// TODO: kevin-wangzefeng, change to add nodeNotReady taint
+				nodeNotReadyTaint := api.Taint{Key: unversioned.TaintNodeNotReady, Effect:api.TaintEffectNoExecute}
+				if checkOrAddTaint(nc.kubeClient, node, &nodeNotReadyTaint) {
+					glog.V(4).Infof("Added nodeNotReady taint to node %s: %v is later than %v + %v", node.Name, decisionTimestamp, nc.nodeStatusMap[node.Name].readyTransitionTimestamp, nc.podEvictionTimeout)
 				}
 			}
 			if observedReadyCondition.Status == api.ConditionUnknown &&
 				decisionTimestamp.After(nc.nodeStatusMap[node.Name].probeTimestamp.Add(nc.podEvictionTimeout)) {
-				if nc.evictPods(node) {
-					glog.V(4).Infof("Evicting pods on node %s: %v is later than %v + %v", node.Name, decisionTimestamp, nc.nodeStatusMap[node.Name].readyTransitionTimestamp, nc.podEvictionTimeout-gracePeriod)
+
+				// TODO: kevin-wangzefeng, change to add nodeUnreachable taint
+				nodeUnreachableTaint := api.Taint{Key: unversioned.TaintNodeUnreachable, Effect:api.TaintEffectNoExecute}
+				if checkOrAddTaint(nc.kubeClient, node, &nodeUnreachableTaint) {
+					glog.V(4).Infof("Added unreachable taint to node %s: %v is later than %v + %v", node.Name, decisionTimestamp, nc.nodeStatusMap[node.Name].readyTransitionTimestamp, nc.podEvictionTimeout-gracePeriod)
 				}
 			}
 			if observedReadyCondition.Status == api.ConditionTrue {
-				if nc.cancelPodEviction(node) {
-					glog.V(2).Infof("Node %s is ready again, cancelled pod eviction", node.Name)
+				// TODO: kevin-wangzefeng, change to remove both nodeNotReady and nodeUnreachable taints
+				nodeNotReadyTaint := api.Taint{Key: unversioned.TaintNodeNotReady, Effect:api.TaintEffectNoExecute}
+				nodeUnreachableTaint := api.Taint{Key: unversioned.TaintNodeUnreachable, Effect:api.TaintEffectNoExecute}
+				if removeTaintsOffNode(nc.kubeClient, node, &nodeNotReadyTaint, &nodeUnreachableTaint) {
+					glog.V(2).Infof("Node %s is ready again, removed notReady and unreachable taints", node.Name)
 				}
 			}
 
@@ -896,4 +905,14 @@ func (nc *NodeController) ComputeZoneState(nodeReadyConditions []*api.NodeCondit
 	default:
 		return notReadyNodes, stateNormal
 	}
+}
+
+func checkOrAddTaint(kubeClient clientset.Interface, node *api.Node, taint *api.Taint) bool {
+	// TODO: kevin-wangzefeng, to be implemented.
+	return false
+}
+
+func removeTaintsOffNode(kubeClient clientset.Interface, node *api.Node, taint... *api.Taint) bool {
+	// TODO: kevin-wangzefeng, to be implemented.
+	return false
 }

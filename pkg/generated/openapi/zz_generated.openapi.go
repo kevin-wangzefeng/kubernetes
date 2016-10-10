@@ -12509,7 +12509,7 @@ var OpenAPIDefinitions *common.OpenAPIDefinitions = &common.OpenAPIDefinitions{
 					},
 					"effect": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Required. The effect of the taint on pods that do not tolerate the taint. Valid effects are NoSchedule and PreferNoSchedule.",
+							Description: "Required. The effect of the taint on pods that do not tolerate the taint. Valid effects are NoSchedule, PreferNoSchedule, and NoExecute.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -12607,9 +12607,16 @@ var OpenAPIDefinitions *common.OpenAPIDefinitions = &common.OpenAPIDefinitions{
 					},
 					"effect": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Effect indicates the taint effect to match. Empty means match all taint effects. When specified, allowed values are NoSchedule and PreferNoSchedule.",
+							Description: "Effect indicates the taint effect to match. Empty means match all taint effects. When specified, allowed values are NoSchedule, PreferNoSchedule, and NoExecute.",
 							Type:        []string{"string"},
 							Format:      "",
+						},
+					},
+					"forgivenessSeconds": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ForgivenessSeconds represents the period of time the toleration (which must be of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default, it is not set, which means tolerate the taint forever (do not evict). Zero and negative values are not allowed.",
+							Type:        []string{"integer"},
+							Format:      "int64",
 						},
 					},
 				},

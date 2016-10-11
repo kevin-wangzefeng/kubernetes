@@ -17,6 +17,7 @@ limitations under the License.
 package node
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -492,8 +493,12 @@ func (nc *NodeController) monitorNodeStatus() error {
 				decisionTimestamp.After(nc.nodeStatusMap[node.Name].readyTransitionTimestamp.Add(nc.podEvictionTimeout)) {
 
 				// TODO: kevin-wangzefeng, change to add nodeNotReady taint
-				nodeNotReadyTaint := api.Taint{Key: unversioned.TaintNodeNotReady, Effect:api.TaintEffectNoExecute}
-				if checkOrAddTaint(nc.kubeClient, node, &nodeNotReadyTaint) {
+				nodeNotReadyTaint := api.Taint{Key: unversioned.TaintNodeNotReady, Effect: api.TaintEffectNoExecute}
+				added, err := tryAddTaintToNode(nc.kubeClient, node.Name, &nodeNotReadyTaint)
+				if err != nil {
+					glog.Errorf("Failed to try add taint %s to node %s: %v", nodeNotReadyTaint.ToString(), node.Name, err)
+				}
+				if added {
 					glog.V(4).Infof("Added nodeNotReady taint to node %s: %v is later than %v + %v", node.Name, decisionTimestamp, nc.nodeStatusMap[node.Name].readyTransitionTimestamp, nc.podEvictionTimeout)
 				}
 			}
@@ -501,16 +506,24 @@ func (nc *NodeController) monitorNodeStatus() error {
 				decisionTimestamp.After(nc.nodeStatusMap[node.Name].probeTimestamp.Add(nc.podEvictionTimeout)) {
 
 				// TODO: kevin-wangzefeng, change to add nodeUnreachable taint
-				nodeUnreachableTaint := api.Taint{Key: unversioned.TaintNodeUnreachable, Effect:api.TaintEffectNoExecute}
-				if checkOrAddTaint(nc.kubeClient, node, &nodeUnreachableTaint) {
+				nodeUnreachableTaint := api.Taint{Key: unversioned.TaintNodeUnreachable, Effect: api.TaintEffectNoExecute}
+				added, err := tryAddTaintToNode(nc.kubeClient, node.Name, &nodeUnreachableTaint)
+				if err != nil {
+					glog.Errorf("Failed to try add taint %s to node %s: %v", nodeUnreachableTaint.ToString(), node.Name, err)
+				}
+				if added {
 					glog.V(4).Infof("Added unreachable taint to node %s: %v is later than %v + %v", node.Name, decisionTimestamp, nc.nodeStatusMap[node.Name].readyTransitionTimestamp, nc.podEvictionTimeout-gracePeriod)
 				}
 			}
 			if observedReadyCondition.Status == api.ConditionTrue {
 				// TODO: kevin-wangzefeng, change to remove both nodeNotReady and nodeUnreachable taints
-				nodeNotReadyTaint := api.Taint{Key: unversioned.TaintNodeNotReady, Effect:api.TaintEffectNoExecute}
-				nodeUnreachableTaint := api.Taint{Key: unversioned.TaintNodeUnreachable, Effect:api.TaintEffectNoExecute}
-				if removeTaintsOffNode(nc.kubeClient, node, &nodeNotReadyTaint, &nodeUnreachableTaint) {
+				nodeNotReadyTaint := api.Taint{Key: unversioned.TaintNodeNotReady, Effect: api.TaintEffectNoExecute}
+				nodeUnreachableTaint := api.Taint{Key: unversioned.TaintNodeUnreachable, Effect: api.TaintEffectNoExecute}
+				removed, err := tryRemoveTaintsOffNode(nc.kubeClient, node.Name, &nodeNotReadyTaint, &nodeUnreachableTaint)
+				if err != nil {
+					glog.Errorf("Failed to remove taints %s and %s off node %s: %v", nodeNotReadyTaint.ToString(), nodeUnreachableTaint.ToString(), node.Name, err)
+				}
+				if removed {
 					glog.V(2).Infof("Node %s is ready again, removed notReady and unreachable taints", node.Name)
 				}
 			}
@@ -907,12 +920,72 @@ func (nc *NodeController) ComputeZoneState(nodeReadyConditions []*api.NodeCondit
 	}
 }
 
-func checkOrAddTaint(kubeClient clientset.Interface, node *api.Node, taint *api.Taint) bool {
-	// TODO: kevin-wangzefeng, to be implemented.
-	return false
+func tryAddTaintToNode(kubeClient clientset.Interface, nodeName string, taintToAdd *api.Taint) (bool, error) {
+	node, err := kubeClient.Core().Nodes().Get(nodeName)
+	if err != nil {
+		return false, err
+	}
+
+	oldTaints, err := api.GetTaintsFromNodeAnnotations(node.Annotations)
+	if err != nil {
+		return false, err
+	}
+
+	for _, oldTaint := range oldTaints {
+		if taintToAdd.MatchTaint(oldTaint) {
+			return false, nil
+		}
+	}
+
+	newTaints := append(oldTaints, taintToAdd)
+	taintsData, err := json.Marshal(newTaints)
+	if err != nil {
+		return false, err
+	}
+
+	node.Annotations[api.TaintsAnnotationKey] = string(taintsData)
+
+	_, err = kubeClient.Core().Nodes().Update(node)
+	return err == nil, err
 }
 
-func removeTaintsOffNode(kubeClient clientset.Interface, node *api.Node, taint... *api.Taint) bool {
-	// TODO: kevin-wangzefeng, to be implemented.
-	return false
+// tryRemoveTaintsOffNode tries to remove taints off a node,
+// return true if taints removed, or return false if taints don't exist.
+func tryRemoveTaintsOffNode(kubeClient clientset.Interface, nodeName string, taintsToRemove ...*api.Taint) (bool, error) {
+	node, err := kubeClient.Core().Nodes().Get(nodeName)
+	if err != nil {
+		return false, err
+	}
+
+	oldTaints, err := api.GetTaintsFromNodeAnnotations(node.Annotations)
+	if err != nil {
+		return false, err
+	}
+
+	removed := false
+	newTaints := []api.Taint{}
+	for _, taintToRemove := range taintsToRemove {
+		for _, oldTaint := range oldTaints {
+			// if taintToRemove doesn't indicate effect, remove all the taints that have the same key
+			if (len(taintToRemove.Effect) == 0 && oldTaint.Key == taintToRemove.Key) || oldTaint.MatchTaint(taintToRemove) {
+				removed = true
+				continue
+			}
+			newTaints = append(newTaints, taintToRemove)
+		}
+	}
+
+	if !removed {
+		return false, nil
+	}
+
+	taintsData, err := json.Marshal(newTaints)
+	if err != nil {
+		return false, err
+	}
+
+	node.Annotations[api.TaintsAnnotationKey] = string(taintsData)
+
+	_, err = kubeClient.Core().Nodes().Update(node)
+	return err == nil, err
 }

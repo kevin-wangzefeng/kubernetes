@@ -4028,7 +4028,7 @@ func TestValidatePod(t *testing.T) {
 			},
 			Spec: validPodSpec,
 		},
-		"forgivenessSeconds must be greater than zero when set":{
+		"forgivenessSeconds must be greater than zero when set": {
 			ObjectMeta: api.ObjectMeta{
 				Name:      "pod-forgiveness-invalid",
 				Namespace: "ns",

@@ -495,7 +495,7 @@ func GetTaintsFromNodeAnnotations(annotations map[string]string) ([]Taint, error
 }
 
 // TolerationToleratesTaint checks if the toleration tolerates the taint.
-func TolerationToleratesTaint(toleration *Toleration, taint *Taint) bool {
+func (toleration *Toleration) ToleratesTaint(taint *Taint) bool {
 	if len(toleration.Effect) != 0 && toleration.Effect != taint.Effect {
 		return false
 	}
@@ -514,16 +514,46 @@ func TolerationToleratesTaint(toleration *Toleration, taint *Taint) bool {
 
 }
 
-// TaintToleratedByTolerations checks if taint is tolerated by any of the tolerations.
-func TaintToleratedByTolerations(taint *Taint, tolerations []Toleration) bool {
+// TolerationsTolerateTaint checks if taint is tolerated by any of the tolerations.
+func TolerationsTolerateTaint(tolerations []Toleration, taint *Taint) bool {
 	tolerated := false
 	for i := range tolerations {
-		if TolerationToleratesTaint(&tolerations[i], taint) {
+		if tolerations[i].ToleratesTaint(taint) {
 			tolerated = true
 			break
 		}
 	}
 	return tolerated
+}
+
+type taintsFilterFunc func(Taint) bool
+
+// TolerationsTolerateTaintsWithFilter checks if given tolerations tolerates
+// all the interested taints in given taint list.
+// isInterestedTaint judges whether the taints is an interested one or not.
+func TolerationsTolerateTaintsWithFilter(tolerations []Toleration, taints []Taint, isInterestedTaint taintsFilterFunc) bool {
+	// If the taint list is nil/empty, it is tolerated by all tolerations by default.
+	if len(taints) == 0 {
+		return true
+	}
+
+	// The taint list isn't nil/empty, a nil/empty toleration list can't tolerate them.
+	if len(tolerations) == 0 {
+		return false
+	}
+
+	for _, taint := range taints {
+		// skip taints that is not interested
+		if !isInterestedTaint(taint) {
+			continue
+		}
+
+		if !TolerationsTolerateTaint(tolerations, &taint) {
+			return false
+		}
+	}
+
+	return true
 }
 
 // MatchTaint checks if the taint matches taintToMatch. Taints are unique by key:effect,

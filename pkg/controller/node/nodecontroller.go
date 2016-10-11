@@ -378,7 +378,7 @@ func (nc *NodeController) Run() {
 					return false, 0
 				}
 
-				remaining, err := deletePod(nc.kubeClient, nc.recorder, pod, nodeUID, nc.daemonSetStore)
+				remaining, err := deletePod(nc.kubeClient, nc.recorder, pod, string(nodeUID), nc.daemonSetStore)
 				if err != nil {
 					utilruntime.HandleError(fmt.Errorf("unable to evict pod %q: %v", pod, err))
 					return false, 0
@@ -473,11 +473,12 @@ func (nc *NodeController) monitorNodeStatus() error {
 
 	zoneToNodeConditions := map[string][]*api.NodeCondition{}
 	for i := range nodes.Items {
+		var gracePeriod time.Duration
 		var observedReadyCondition api.NodeCondition
 		var currentReadyCondition *api.NodeCondition
 		node := &nodes.Items[i]
 		for rep := 0; rep < nodeStatusUpdateRetry; rep++ {
-			_, observedReadyCondition, currentReadyCondition, err = nc.tryUpdateNodeStatus(node)
+			gracePeriod, observedReadyCondition, currentReadyCondition, err = nc.tryUpdateNodeStatus(node)
 			if err == nil {
 				break
 			}

@@ -2067,7 +2067,7 @@ func TestMonitorNodeTaints(t *testing.T) {
 		if item.podsToCancel != nil {
 			queueLth := nodeController.zonePodEvictor[""].queue.queue.Len()
 			if queueLth != len(item.expectedPods)+len(item.podsToCancel) {
-				t.Errorf("Queue length before cancellation should be equal to number of pods to evict: %v", queueLth)
+				t.Errorf("Queue length before cancellation should be equal to number of pods to evict: expected %v, got %v", len(item.expectedPods)+len(item.podsToCancel), queueLth)
 			}
 			for _, podName := range item.podsToCancel {
 				for _, pod := range item.podList {
@@ -2084,7 +2084,7 @@ func TestMonitorNodeTaints(t *testing.T) {
 
 		queueLth := nodeController.zonePodEvictor[""].queue.queue.Len()
 		if queueLth != len(item.expectedPods) {
-			t.Errorf("Queue length should be equal to number of pods to evict: %v", queueLth)
+			t.Errorf("Queue length should be equal to number of pods to evict: expected %v, got %v", item.expectedPods, queueLth)
 		}
 
 		var evictedPods []string
@@ -2097,7 +2097,7 @@ func TestMonitorNodeTaints(t *testing.T) {
 
 		}
 		if !reflect.DeepEqual(evictedPods, item.expectedPods) {
-			t.Errorf("mismatch between expected and evicted pods %v != %v", item.expectedPods, evictedPods)
+			t.Errorf("mismatch between expected and evicted pods expected %v, got %v", item.expectedPods, evictedPods)
 		}
 	}
 }

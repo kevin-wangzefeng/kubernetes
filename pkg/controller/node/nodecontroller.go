@@ -530,7 +530,7 @@ func (nc *NodeController) monitorNodeStatus() error {
 				}
 			}
 			if observedReadyCondition.Status == api.ConditionTrue {
-				nc.removeNodeUnreachableAndNotReadyTaints(added[i].Name)
+				nc.removeNodeUnreachableAndNotReadyTaints(node.Name)
 			}
 
 			// Report node event.
@@ -988,6 +988,9 @@ func tryAddTaintToNode(kubeClient clientset.Interface, nodeName string, taintToA
 		return false, err
 	}
 
+	if len(node.Annotations) == 0 {
+		node.Annotations = map[string]string{}
+	}
 	node.Annotations[api.TaintsAnnotationKey] = string(taintsData)
 
 	_, err = kubeClient.Core().Nodes().Update(node)

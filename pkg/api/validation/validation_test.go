@@ -3499,7 +3499,7 @@ func TestValidatePod(t *testing.T) {
 				Annotations: map[string]string{
 					api.TolerationsAnnotationKey: `
 					[{
-						"key": "taint.alpha.kubernetes.io/nodedown",
+						"key": "` + unversioned.TaintNodeNotReady + `",
 						"operator": "Exists",
 						"value": "",
 						"effect": "NoExecute",
@@ -5960,7 +5960,7 @@ func TestValidateNode(t *testing.T) {
 					[{
 						"key": "dedicated",
 						"value": "special-user-3",
-						"effect": "NoExecute"
+						"effect": "NoAdmitNoExecute"
 					}]`,
 				},
 			},

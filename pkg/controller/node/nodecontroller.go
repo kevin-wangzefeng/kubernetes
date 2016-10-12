@@ -506,7 +506,7 @@ func (nc *NodeController) monitorNodeStatus() error {
 				decisionTimestamp.After(nc.nodeStatusMap[node.Name].readyTransitionTimestamp.Add(nc.podEvictionTimeout)) {
 
 				// TODO: kevin-wangzefeng, change to add nodeNotReady taint
-				nodeNotReadyTaint := api.Taint{Key: unversioned.TaintNodeNotReady, Effect: api.TaintEffectNoExecute}
+				nodeNotReadyTaint := api.Taint{Key: unversioned.TaintNodeNotReady, Effect: api.TaintEffectNoExecute, AddedTime: nc.now()}
 				added, err := tryAddTaintToNode(nc.kubeClient, node.Name, nodeNotReadyTaint)
 				if err != nil {
 					glog.Errorf("Failed to try add taint %s to node %s: %v", nodeNotReadyTaint.ToString(), node.Name, err)
@@ -519,7 +519,7 @@ func (nc *NodeController) monitorNodeStatus() error {
 				decisionTimestamp.After(nc.nodeStatusMap[node.Name].probeTimestamp.Add(nc.podEvictionTimeout)) {
 
 				// TODO: kevin-wangzefeng, change to add nodeUnreachable taint
-				nodeUnreachableTaint := api.Taint{Key: unversioned.TaintNodeUnreachable, Effect: api.TaintEffectNoExecute}
+				nodeUnreachableTaint := api.Taint{Key: unversioned.TaintNodeUnreachable, Effect: api.TaintEffectNoExecute, AddedTime: nc.now()}
 				added, err := tryAddTaintToNode(nc.kubeClient, node.Name, nodeUnreachableTaint)
 				if err != nil {
 					glog.Errorf("Failed to try add taint %s to node %s: %v", nodeUnreachableTaint.ToString(), node.Name, err)

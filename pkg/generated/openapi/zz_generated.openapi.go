@@ -12514,11 +12514,18 @@ var OpenAPIDefinitions *common.OpenAPIDefinitions = &common.OpenAPIDefinitions{
 							Format:      "",
 						},
 					},
+					"addedTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "AddedTime represents the time at which the taint was added. Taint's effect must be NoExecute, otherwise this field is ignored. Toleration with forgivenessSeconds will tolerate the taint for only a duration (indicated with toleration.forgivenessSeconds) that starts at addedTime. By default, it is not set, which means the taint can only be tolerated by toleration that tolerates infinite duration.",
+							Ref:         spec.MustCreateRef("#/definitions/unversioned.Time"),
+						},
+					},
 				},
 				Required: []string{"key", "effect"},
 			},
 		},
-		Dependencies: []string{},
+		Dependencies: []string{
+			"unversioned.Time"},
 	},
 	"v1.TestType": {
 		Schema: spec.Schema{

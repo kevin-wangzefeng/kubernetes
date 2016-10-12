@@ -3465,6 +3465,13 @@ func DeepCopy_v1_Taint(in interface{}, out interface{}, c *conversion.Cloner) er
 		out.Key = in.Key
 		out.Value = in.Value
 		out.Effect = in.Effect
+		if in.AddedTime != nil {
+			in, out := &in.AddedTime, &out.AddedTime
+			*out = new(unversioned.Time)
+			**out = (*in).DeepCopy()
+		} else {
+			out.AddedTime = nil
+		}
 		return nil
 	}
 }

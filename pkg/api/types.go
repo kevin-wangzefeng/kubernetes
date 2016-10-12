@@ -1466,6 +1466,14 @@ type Taint struct {
 	// that do not tolerate the taint.
 	// Valid effects are NoSchedule, PreferNoSchedule and NoExecute.
 	Effect TaintEffect `json:"effect"`
+	// AddedTime represents the time at which the taint was added.
+	// Taint's effect must be NoExecute, otherwise this field is ignored.
+	// Toleration with forgivenessSeconds will tolerate the taint for
+	// only a duration (indicated with toleration.forgivenessSeconds)
+	// that starts at addedTime. By default, it is not set, which means
+	// the taint can only be tolerated by toleration that tolerates
+	// infinite duration.
+	AddedTime *unversioned.Time `json:"addedTime,omitempty"`
 }
 
 type TaintEffect string

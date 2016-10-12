@@ -462,7 +462,6 @@ func (nc *NodeController) monitorNodeStatus() error {
 			nc.zoneTerminationEvictor[zone] = NewRateLimitedTimedQueue(
 				flowcontrol.NewTokenBucketRateLimiter(nc.evictionLimiterQPS, evictionRateLimiterBurst))
 		}
-		nc.removeNodeUnreachableAndNotReadyTaints(added[i].Name)
 	}
 
 	for i := range deleted {
@@ -530,7 +529,16 @@ func (nc *NodeController) monitorNodeStatus() error {
 				}
 			}
 			if observedReadyCondition.Status == api.ConditionTrue {
-				nc.removeNodeUnreachableAndNotReadyTaints(node.Name)
+				// TODO: kevin-wangzefeng, change to remove both nodeNotReady and nodeUnreachable taints
+				nodeNotReadyTaint := api.Taint{Key: unversioned.TaintNodeNotReady, Effect: api.TaintEffectNoExecute}
+				nodeUnreachableTaint := api.Taint{Key: unversioned.TaintNodeUnreachable, Effect: api.TaintEffectNoExecute}
+				removed, err := tryRemoveTaintsOffNode(nc.kubeClient, node.Name, nodeNotReadyTaint, nodeUnreachableTaint)
+				if err != nil {
+					glog.Errorf("Failed to remove taints %s and %s off node %s: %v", nodeNotReadyTaint.ToString(), nodeUnreachableTaint.ToString(), node.Name, err)
+				}
+				if removed {
+					glog.V(2).Infof("Node %s is ready again, removed notReady and unreachable taints", node.Name)
+				}
 			}
 
 			// Report node event.
@@ -653,7 +661,11 @@ func (nc *NodeController) handleDisruption(zoneToNodeConditions map[string][]*ap
 		if allAreFullyDisrupted {
 			glog.V(0).Info("NodeController detected that all Nodes are not-Ready. Entering master disruption mode.")
 			for i := range nodes.Items {
-				nc.removeNodeUnreachableAndNotReadyTaints(nodes.Items[i].Name)
+				pods, err := getPodsForANode(nc.kubeClient, nodes.Items[i].Name)
+				if err != nil {
+					continue
+				}
+				nc.cancelPodsEviction(&nodes.Items[i], pods.Items...)
 			}
 			// We stop all evictions.
 			for k := range nc.zonePodEvictor {
@@ -1036,17 +1048,4 @@ func tryRemoveTaintsOffNode(kubeClient clientset.Interface, nodeName string, tai
 
 	_, err = kubeClient.Core().Nodes().Update(node)
 	return err == nil, err
-}
-
-func (nc *NodeController) removeNodeUnreachableAndNotReadyTaints(nodeName string) {
-	// TODO: kevin-wangzefeng, change to remove both nodeNotReady and nodeUnreachable taints
-	nodeNotReadyTaint := api.Taint{Key: unversioned.TaintNodeNotReady, Effect: api.TaintEffectNoExecute}
-	nodeUnreachableTaint := api.Taint{Key: unversioned.TaintNodeUnreachable, Effect: api.TaintEffectNoExecute}
-	removed, err := tryRemoveTaintsOffNode(nc.kubeClient, nodeName, nodeNotReadyTaint, nodeUnreachableTaint)
-	if err != nil {
-		glog.Errorf("Failed to remove taints %s and %s off node %s: %v", nodeNotReadyTaint.ToString(), nodeUnreachableTaint.ToString(), nodeName, err)
-	}
-	if removed {
-		glog.V(2).Infof("Node %s is ready again, removed notReady and unreachable taints", nodeName)
-	}
 }

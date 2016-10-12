@@ -22,8 +22,8 @@ import (
 	"testing"
 
 	"k8s.io/kubernetes/pkg/api/resource"
-	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/api/unversioned"
+	"k8s.io/kubernetes/pkg/labels"
 )
 
 func TestConversionError(t *testing.T) {
@@ -513,7 +513,7 @@ func TestTolerationsTolerateTaintsWithFilter(t *testing.T) {
 				}
 				filteredTaints = append(filteredTaints, taint)
 			}
-			t.Errorf("[%s] expect tolerations %v tolerate filtered taints %v in taints %v", tc.description, tc.tolerations, filteredTaints, tc.taints)
+			t.Errorf("[%s] expect tolerations %+v tolerate filtered taints %+v in taints %+v", tc.description, tc.tolerations, filteredTaints, tc.taints)
 		}
 	}
 }

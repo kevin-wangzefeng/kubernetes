@@ -40,7 +40,7 @@ const (
 	LargeClusterThreshold = 20
 )
 
-func getPodsForANode(kubeClient clientset.Interface, nodeName string) (*api.PodList, error) {
+func getPodsOfNode(kubeClient clientset.Interface, nodeName string) (*api.PodList, error) {
 	selector := fields.OneTermEqualSelector(api.PodHostField, nodeName)
 	options := api.ListOptions{FieldSelector: selector}
 	pods, err := kubeClient.Core().Pods(api.NamespaceAll).List(options)

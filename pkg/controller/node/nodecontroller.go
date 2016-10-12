@@ -596,7 +596,7 @@ func (nc *NodeController) monitorNodeTaints() error {
 		if len(taints) == 0 {
 			continue
 		}
-		pods, err := getPodsForANode(nc.kubeClient, node.Name)
+		pods, err := getPodsOfNode(nc.kubeClient, node.Name)
 		if err != nil {
 			return err
 		}
@@ -663,7 +663,7 @@ func (nc *NodeController) handleDisruption(zoneToNodeConditions map[string][]*ap
 		if allAreFullyDisrupted {
 			glog.V(0).Info("NodeController detected that all Nodes are not-Ready. Entering master disruption mode.")
 			for i := range nodes.Items {
-				pods, err := getPodsForANode(nc.kubeClient, nodes.Items[i].Name)
+				pods, err := getPodsOfNode(nc.kubeClient, nodes.Items[i].Name)
 				if err != nil {
 					continue
 				}
@@ -918,11 +918,15 @@ func (nc *NodeController) checkForNodeAddedDeleted(nodes *api.NodeList) (added, 
 	return
 }
 
+func namespacedPodKey(pod api.Pod) string {
+	return pod.Namespace + "/" + pod.Name
+}
+
 // cancelPodEviction removes any queued evictions, typically because some taints on node are removed.
 func (nc *NodeController) cancelPodsEviction(node *api.Node, pods ...api.Pod) {
 	for _, pod := range pods {
 		zone := utilnode.GetZoneKey(node)
-		namespacedPodKey, _ := cache.MetaNamespaceKeyFunc(pod)
+		namespacedPodKey := namespacedPodKey(pod)
 		wasDeleting := nc.zonePodEvictor[zone].Remove(namespacedPodKey)
 		wasTerminating := nc.zoneTerminationEvictor[zone].Remove(namespacedPodKey)
 		if wasDeleting || wasTerminating {
@@ -936,7 +940,7 @@ func (nc *NodeController) evictPods(node *api.Node, pods ...api.Pod) {
 	for _, pod := range pods {
 		glog.Infof("pod %v:%v will be sent for eviction", pod.Namespace, pod.Name)
 		message := evictionMessage{pod.Name, pod.Namespace, node.UID}
-		namespacedPodKey, _ := cache.MetaNamespaceKeyFunc(pod)
+		namespacedPodKey := namespacedPodKey(pod)
 		nc.zonePodEvictor[utilnode.GetZoneKey(node)].Add(namespacedPodKey, message)
 	}
 }

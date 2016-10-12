@@ -23,6 +23,7 @@ import (
 
 	"k8s.io/kubernetes/pkg/api/resource"
 	"k8s.io/kubernetes/pkg/labels"
+	"k8s.io/kubernetes/pkg/api/unversioned"
 )
 
 func TestConversionError(t *testing.T) {
@@ -393,6 +394,126 @@ func TestMatchTaint(t *testing.T) {
 	for _, tc := range testCases {
 		if tc.expectMatch != tc.taint.MatchTaint(tc.taintToMatch) {
 			t.Errorf("[%s] expect taint %s match taint %s", tc.description, tc.taint.ToString(), tc.taintToMatch.ToString())
+		}
+	}
+}
+
+func TestTolerationsTolerateTaintsWithFilter(t *testing.T) {
+	testCases := []struct {
+		description       string
+		tolerations       []Toleration
+		taints            []Taint
+		isInterestedTaint taintsFilterFunc
+		expectTolerated   bool
+	}{
+		{
+			description:       "empty tolerations tolerate emtpy taints",
+			tolerations:       []Toleration{},
+			taints:            []Taint{},
+			isInterestedTaint: func(t Taint) bool { return true },
+			expectTolerated:   true,
+		},
+		{
+			description: "non-empty tolerations tolerate emtpy taints",
+			tolerations: []Toleration{
+				{
+					Key:      "foo",
+					Operator: "Exists",
+					Effect:   TaintEffectNoSchedule,
+				},
+			},
+			taints:            []Taint{},
+			isInterestedTaint: func(t Taint) bool { return true },
+			expectTolerated:   true,
+		},
+		{
+			description: "tolerations match all taints, expect tolerated",
+			tolerations: []Toleration{
+				{
+					Key:      "foo",
+					Operator: "Exists",
+					Effect:   TaintEffectNoSchedule,
+				},
+			},
+			taints: []Taint{
+				{
+					Key:    "foo",
+					Effect: TaintEffectNoSchedule,
+				},
+			},
+			isInterestedTaint: func(t Taint) bool { return true },
+			expectTolerated:   true,
+		},
+		{
+			description: "tolerations don't match taints, but no taint is interested, expect tolerated",
+			tolerations: []Toleration{
+				{
+					Key:      "foo",
+					Operator: "Exists",
+					Effect:   TaintEffectNoSchedule,
+				},
+			},
+			taints: []Taint{
+				{
+					Key:    "bar",
+					Effect: TaintEffectNoSchedule,
+				},
+			},
+			isInterestedTaint: func(t Taint) bool { return false },
+			expectTolerated:   true,
+		},
+		{
+			description: "no isInterestedTaint indicated, means all taints are interested, tolerations don't match taints, expect untolerated",
+			tolerations: []Toleration{
+				{
+					Key:      "foo",
+					Operator: "Exists",
+					Effect:   TaintEffectNoSchedule,
+				},
+			},
+			taints: []Taint{
+				{
+					Key:    "bar",
+					Effect: TaintEffectNoSchedule,
+				},
+			},
+			isInterestedTaint: nil,
+			expectTolerated:   false,
+		},
+		{
+			description: "tolerations match interested taints, expect tolerated",
+			tolerations: []Toleration{
+				{
+					Key:      unversioned.TaintNodeNotReady,
+					Operator: "Exists",
+					Effect:   TaintEffectNoExecute,
+				},
+			},
+			taints: []Taint{
+				{
+					Key:    unversioned.TaintNodeNotReady,
+					Effect: TaintEffectNoExecute,
+				},
+				{
+					Key:    "bar",
+					Effect: TaintEffectNoSchedule,
+				},
+			},
+			isInterestedTaint: func(t Taint) bool { return t.Effect == TaintEffectNoExecute },
+			expectTolerated:   true,
+		},
+	}
+
+	for _, tc := range testCases {
+		if tc.expectTolerated != TolerationsTolerateTaintsWithFilter(tc.tolerations, tc.taints, tc.isInterestedTaint) {
+			filteredTaints := []Taint{}
+			for _, taint := range tc.taints {
+				if tc.isInterestedTaint != nil && !tc.isInterestedTaint(taint) {
+					continue
+				}
+				filteredTaints = append(filteredTaints, taint)
+			}
+			t.Errorf("[%s] expect tolerations %v tolerate filtered taints %v in taints %v", tc.description, tc.tolerations, filteredTaints, tc.taints)
 		}
 	}
 }

@@ -511,7 +511,6 @@ func (toleration *Toleration) ToleratesTaint(taint *Taint) bool {
 		return true
 	}
 	return false
-
 }
 
 // TolerationsTolerateTaint checks if taint is tolerated by any of the tolerations.
@@ -544,7 +543,8 @@ func TolerationsTolerateTaintsWithFilter(tolerations []Toleration, taints []Tain
 
 	for _, taint := range taints {
 		// skip taints that is not interested
-		if !isInterestedTaint(taint) {
+		// if isInterestedTaint is nil, regards all taints are interested
+		if isInterestedTaint != nil && !isInterestedTaint(taint) {
 			continue
 		}
 

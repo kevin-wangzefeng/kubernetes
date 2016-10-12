@@ -1928,11 +1928,11 @@ func TestMonitorNodeTaints(t *testing.T) {
 						CreationTimestamp: unversioned.Date(2012, 1, 1, 0, 0, 0, 0, time.UTC),
 						Annotations: map[string]string{
 							api.TaintsAnnotationKey: `
-						[{
-							"key": "test",
-							"value": "test",
-							"effect": "NoExecute"
-						}]`,
+								[{
+									"key": "test",
+									"value": "test",
+									"effect": "NoExecute"
+								}]`,
 						},
 					},
 					Status: api.NodeStatus{
@@ -1960,9 +1960,17 @@ func TestMonitorNodeTaints(t *testing.T) {
 				},
 				{
 					ObjectMeta: api.ObjectMeta{
-						Name:        "pod2",
-						Namespace:   "default",
-						Annotations: annotationsWithTolerance,
+						Name:      "pod2",
+						Namespace: "default",
+						Annotations: map[string]string{
+							api.TolerationsAnnotationKey: `
+								[{
+									"key": "test",
+									"operator": "Equal",
+									"value": "test",
+									"effect": "NoExecute"
+								}]`,
+						},
 					},
 					Spec: api.PodSpec{
 						Containers: []api.Container{{Image: "pod2:V1"}},

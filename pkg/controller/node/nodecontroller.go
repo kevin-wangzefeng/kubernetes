@@ -607,9 +607,11 @@ func (nc *NodeController) monitorNodeTaints() error {
 				return err
 			}
 
-			if !api.TolerationsTolerateTaintsWithFilter(tolerations, taints, func(taint api.Taint) bool {
-				return taint.Effect == api.TaintEffectNoExecute
-			}) {
+			if !api.TolerationsTolerateTaintsWithFilter(tolerations, taints,
+				func(taint api.Taint) bool {
+					return taint.Effect == api.TaintEffectNoExecute
+				},
+			) {
 				nc.evictPods(&node, pod)
 			} else {
 				nc.cancelPodsEviction(&node, pod)

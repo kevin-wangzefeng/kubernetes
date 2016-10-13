@@ -1036,15 +1036,16 @@ func tryRemoveTaintsOffNode(kubeClient clientset.Interface, nodeName string, tai
 
 	removed := false
 	newTaints := []api.Taint{}
-	for _, taintToRemove := range taintsToRemove {
-		for _, oldTaint := range oldTaints {
+removeTaintLoop:
+	for _, oldTaint := range oldTaints {
+		for _, taintToRemove := range taintsToRemove {
 			// if taintToRemove doesn't indicate effect, remove all the taints that have the same key
 			if (len(taintToRemove.Effect) == 0 && oldTaint.Key == taintToRemove.Key) || oldTaint.MatchTaint(taintToRemove) {
 				removed = true
-				continue
+				continue removeTaintLoop
 			}
-			newTaints = append(newTaints, taintToRemove)
 		}
+		newTaints = append(newTaints, oldTaint)
 	}
 
 	if !removed {

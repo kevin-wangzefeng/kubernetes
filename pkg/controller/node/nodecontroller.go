@@ -375,6 +375,7 @@ func (nc *NodeController) Run() {
 
 				pod, err := nc.kubeClient.Core().Pods(podNamespace).Get(podName)
 				if err != nil {
+					glog.Errorf("Error getting pod %s/%s: %v, eviction aborted", podNamespace, podName, err)
 					return false, 0
 				}
 
@@ -930,7 +931,7 @@ func (nc *NodeController) cancelPodsEviction(node *api.Node, pods ...api.Pod) {
 		wasDeleting := nc.zonePodEvictor[zone].Remove(namespacedPodKey)
 		wasTerminating := nc.zoneTerminationEvictor[zone].Remove(namespacedPodKey)
 		if wasDeleting || wasTerminating {
-			glog.V(2).Infof("Cancelling pod %v:%v Eviction on Node: %v", pod.Namespace, pod.Name, node.Name)
+			glog.V(2).Infof("Cancelling pod %s Eviction on Node: %v", namespacedPodKey, node.Name)
 		}
 	}
 }
@@ -938,9 +939,9 @@ func (nc *NodeController) cancelPodsEviction(node *api.Node, pods ...api.Pod) {
 // evictPods queues evictions for the pods that run on the node.
 func (nc *NodeController) evictPods(node *api.Node, pods ...api.Pod) {
 	for _, pod := range pods {
-		glog.Infof("pod %v:%v will be sent for eviction", pod.Namespace, pod.Name)
 		message := evictionMessage{pod.Name, pod.Namespace, node.UID}
 		namespacedPodKey := namespacedPodKey(pod)
+		glog.Infof("pod %s will be sent for eviction", namespacedPodKey)
 		nc.zonePodEvictor[utilnode.GetZoneKey(node)].Add(namespacedPodKey, message)
 	}
 }

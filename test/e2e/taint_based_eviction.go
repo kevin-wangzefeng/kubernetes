@@ -22,6 +22,7 @@ import (
 
 	"k8s.io/kubernetes/pkg/api"
 	apierrs "k8s.io/kubernetes/pkg/api/errors"
+	"k8s.io/kubernetes/pkg/api/unversioned"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/util/uuid"
 	"k8s.io/kubernetes/test/e2e/framework"
@@ -39,17 +40,34 @@ var _ = framework.KubeDescribe("Eviction based on taints [Serial] [Slow] [Destru
 
 	BeforeEach(func() {
 		c = f.Client
-		ns = f.Namespace.Name
-		nodeList = &api.NodeList{}
-
-		framework.WaitForAllNodesHealthy(c, time.Minute)
-		masterNodes, nodeList = framework.GetMasterAndWorkerNodesOrDie(c)
-
-		err := framework.CheckTestingNSDeletedExcept(c, ns)
-		framework.ExpectNoError(err)
 	})
 
-	It("validates that pod evictec by nodecontroller when NoExectue taint added to node", func() {
+	It("validates that unreachable taint can be auto added/removed", func() {
+		nodeName := getNodeThatCanRunPod(f)
+
+		node, err := c.Nodes().Get(nodeName)
+		framework.ExpectNoError(err)
+
+		// switch the network interface off for a while to simulate a network outage
+		// We sleep 10 seconds to give some time for ssh command to cleanly finish before network is down.
+		executeCmd := "nohup sh -c 'sleep 10 && (sudo ifdown eth0 || sudo ip link set eth0 down) &" +
+			"& sleep 120 && (sudo ifup eth0 || sudo ip link set eth0 up)' >/dev/null 2>&1 &"
+		err = framework.IssueSSHCommand(executeCmd, framework.TestContext.Provider, node)
+		framework.ExpectNoError(err, "Error while issuing ssh command")
+
+		unreachableTaint := api.Taint{
+			Key:    unversioned.TaintNodeUnreachable,
+			Effect: api.TaintEffectNoExecute,
+		}
+		framework.ExpectNodeHasTaint(c, nodeName, unreachableTaint)
+
+		isNodeReady := !framework.WaitForNodeToBeReady(c, nodeName, framework.NodeReadyInitialTimeout)
+		Expect(isNodeReady).To(Equal(true))
+
+		framework.ExpectNodeDoesNotHaveTaint(c, nodeName, unreachableTaint)
+	})
+
+	It("validates that pod evicted by nodecontroller when NoExectue taint added to node", func() {
 		nodeName, podName := runAndKeepPodWithLabelAndGetNodeName(f)
 
 		By("Trying to apply a NoExectue taint on the found node.")
@@ -69,7 +87,7 @@ var _ = framework.KubeDescribe("Eviction based on taints [Serial] [Slow] [Destru
 
 		_, err := f.PodClient().Get(podName)
 		if !apierrs.IsNotFound(err) {
-			ExpectNoError(err)
+			framework.ExpectNoError(err)
 		}
 	})
 })

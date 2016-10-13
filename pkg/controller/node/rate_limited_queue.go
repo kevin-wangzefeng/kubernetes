@@ -192,6 +192,7 @@ func NewRateLimitedTimedQueue(limiter flowcontrol.RateLimiter) *RateLimitedTimed
 // time.Duration if some minimum wait interval should be used.
 type ActionFunc func(TimedValue) (bool, time.Duration)
 
+// TODO: kevin-wangzefeng needs update description
 // Try processes the queue. Ends prematurely if RateLimiter forbids an action and leak is true.
 // Otherwise, requeues the item to be processed. Each value is processed once if fn returns true,
 // otherwise it is added back to the queue. The returned remaining is used to identify the minimum
@@ -221,7 +222,12 @@ func (q *RateLimitedTimedQueue) Try(fn ActionFunc) {
 			val.ProcessAt = now.Add(wait + 1)
 			q.queue.Replace(val)
 		} else {
-			q.queue.RemoveFromQueue(val.Value)
+			// use Remove() instead of RemoveFromQueue(),
+			// otherwise pod with same namespace/pod.name
+			// can never be added to queue again
+
+			//q.queue.RemoveFromQueue(val.Value)
+			q.queue.Remove(val.Value)
 		}
 		val, ok = q.queue.Head()
 	}

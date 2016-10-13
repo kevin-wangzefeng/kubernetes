@@ -26,6 +26,7 @@ import (
 
 	"github.com/golang/glog"
 	"k8s.io/kubernetes/pkg/api"
+	apierrors "k8s.io/kubernetes/pkg/api/errors"
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/client/cache"
 	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
@@ -375,13 +376,14 @@ func (nc *NodeController) Run() {
 
 				pod, err := nc.kubeClient.Core().Pods(podNamespace).Get(podName)
 				if err != nil {
-					glog.Errorf("Error getting pod %s/%s: %v, eviction aborted", podNamespace, podName, err)
-					return false, 0
+					// pod may have been deleted
+					glog.V(10).Infof("Failed to get pod %s/%s, err: %v, pod may have been deleted.", podNamespace, podName, err)
+					return apierrors.IsNotFound(err), 0
 				}
 
 				remaining, err := deletePod(nc.kubeClient, nc.recorder, pod, string(nodeUID), nc.daemonSetStore)
 				if err != nil {
-					utilruntime.HandleError(fmt.Errorf("unable to evict pod %q: %v", pod, err))
+					utilruntime.HandleError(fmt.Errorf("unable to evict pod %s: %v", namespacedPodName(*pod), err))
 					return false, 0
 				}
 
@@ -407,22 +409,24 @@ func (nc *NodeController) Run() {
 
 				pod, err := nc.kubeClient.Core().Pods(podNamespace).Get(podName)
 				if err != nil {
-					return false, 0
+					// pod may have been deleted
+					glog.V(10).Infof("Failed to get pod %s/%s, err: %v, pod may have been deleted.", podNamespace, podName, err)
+					return apierrors.IsNotFound(err), 0
 				}
 				nodeName := pod.Spec.NodeName
 
 				deleted, remaining, err := terminatePod(nc.kubeClient, nc.recorder, pod, string(nodeUID), value.AddedAt, nc.maximumGracePeriod)
 				if err != nil {
-					utilruntime.HandleError(fmt.Errorf("unable to terminate pod %s on node %q: %v", podName, value.Value, err))
+					utilruntime.HandleError(fmt.Errorf("unable to terminate pod %s on node %q: %v", namespacedPodName(*pod), nodeName, err))
 					return false, 0
 				}
 
 				if deleted {
-					glog.V(2).Infof("Pod %s terminated on %s", podName, value.Value)
+					glog.V(2).Infof("Pod %s terminated on %q", namespacedPodName(*pod), nodeName)
 					return true, 0
 				}
 
-				glog.V(2).Infof("Pod %s terminating since %s on %q, estimated completion %s", podName, value.AddedAt, nodeName, remaining)
+				glog.V(2).Infof("Pod %s terminating since %s on %q, estimated completion %s", namespacedPodName(*pod), value.AddedAt, nodeName, remaining)
 				// clamp very short intervals
 				if remaining < nodeEvictionPeriod {
 					remaining = nodeEvictionPeriod
@@ -452,9 +456,8 @@ func (nc *NodeController) monitorNodeStatus() error {
 		// When adding new Nodes we need to check if new zone appeared, and if so add new evictor.
 		zone := utilnode.GetZoneKey(added[i])
 		if _, found := nc.zonePodEvictor[zone]; !found {
-			nc.zonePodEvictor[zone] =
-				NewRateLimitedTimedQueue(
-					flowcontrol.NewTokenBucketRateLimiter(nc.evictionLimiterQPS, evictionRateLimiterBurst))
+			nc.zonePodEvictor[zone] = NewRateLimitedTimedQueue(
+				flowcontrol.NewTokenBucketRateLimiter(nc.evictionLimiterQPS, evictionRateLimiterBurst))
 			// Init the metric for the new zone.
 			glog.Infof("Initilizing eviction metric for zone: %v", zone)
 			EvictionsNumber.WithLabelValues(zone).Add(0)
@@ -919,7 +922,7 @@ func (nc *NodeController) checkForNodeAddedDeleted(nodes *api.NodeList) (added, 
 	return
 }
 
-func namespacedPodKey(pod api.Pod) string {
+func namespacedPodName(pod api.Pod) string {
 	return pod.Namespace + "/" + pod.Name
 }
 
@@ -927,7 +930,7 @@ func namespacedPodKey(pod api.Pod) string {
 func (nc *NodeController) cancelPodsEviction(node *api.Node, pods ...api.Pod) {
 	for _, pod := range pods {
 		zone := utilnode.GetZoneKey(node)
-		namespacedPodKey := namespacedPodKey(pod)
+		namespacedPodKey := namespacedPodName(pod)
 		wasDeleting := nc.zonePodEvictor[zone].Remove(namespacedPodKey)
 		wasTerminating := nc.zoneTerminationEvictor[zone].Remove(namespacedPodKey)
 		if wasDeleting || wasTerminating {
@@ -939,10 +942,12 @@ func (nc *NodeController) cancelPodsEviction(node *api.Node, pods ...api.Pod) {
 // evictPods queues evictions for the pods that run on the node.
 func (nc *NodeController) evictPods(node *api.Node, pods ...api.Pod) {
 	for _, pod := range pods {
+		zone := utilnode.GetZoneKey(node)
 		message := evictionMessage{pod.Name, pod.Namespace, node.UID}
-		namespacedPodKey := namespacedPodKey(pod)
-		glog.Infof("pod %s will be sent for eviction", namespacedPodKey)
-		nc.zonePodEvictor[utilnode.GetZoneKey(node)].Add(namespacedPodKey, message)
+		namespacedPodKey := namespacedPodName(pod)
+		if nc.zonePodEvictor[zone].Add(namespacedPodKey, message) {
+			glog.V(2).Infof("pod %s is queued for eviction", namespacedPodKey)
+		}
 	}
 }
 

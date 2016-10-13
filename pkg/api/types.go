@@ -1473,7 +1473,7 @@ type Taint struct {
 	// that starts at addedTime. By default, it is not set, which means
 	// the taint can only be tolerated by toleration that tolerates
 	// infinite duration.
-	AddedTime *unversioned.Time `json:"addedTime,omitempty"`
+	AddedTime unversioned.Time `json:"addedTime,omitempty"`
 }
 
 type TaintEffect string

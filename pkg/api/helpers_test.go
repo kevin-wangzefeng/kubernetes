@@ -398,6 +398,156 @@ func TestMatchTaint(t *testing.T) {
 	}
 }
 
+func genForgivenssSeconds(f int64) *int64 {
+	return &f
+}
+
+func TestTolerationToleratesTaint(t *testing.T) {
+
+	testCases := []struct {
+		description     string
+		toleration      Toleration
+		taint           Taint
+		expectTolerated bool
+	}{
+		{
+			description: "toleration and taint have the same key and effect, and operator is Exists, and taint has no value, expect tolerated",
+			toleration: Toleration{
+				Key:      "foo",
+				Operator: TolerationOpExists,
+				Effect:   TaintEffectNoSchedule,
+			},
+			taint: Taint{
+				Key:    "foo",
+				Effect: TaintEffectNoSchedule,
+			},
+			expectTolerated: true,
+		},
+		{
+			description: "toleration and taint have the same key and effect, and operator is Exists, and taint has some value, expect tolerated",
+			toleration: Toleration{
+				Key:      "foo",
+				Operator: TolerationOpExists,
+				Effect:   TaintEffectNoSchedule,
+			},
+			taint: Taint{
+				Key:    "foo",
+				Value:  "bar",
+				Effect: TaintEffectNoSchedule,
+			},
+			expectTolerated: true,
+		},
+		{
+			description: "toleration and taint have the same key, effect and value, and operator is Equal, expect tolerated",
+			toleration: Toleration{
+				Key:      "foo",
+				Operator: TolerationOpEqual,
+				Value:    "bar",
+				Effect:   TaintEffectNoSchedule,
+			},
+			taint: Taint{
+				Key:    "foo",
+				Value:  "bar",
+				Effect: TaintEffectNoSchedule,
+			},
+			expectTolerated: true,
+		},
+		{
+			description: "toleration and taint have the same key and effect, but different values, and operator is Equal, expect not tolerated",
+			toleration: Toleration{
+				Key:      "foo",
+				Operator: TolerationOpEqual,
+				Value:    "value1",
+				Effect:   TaintEffectNoSchedule,
+			},
+			taint: Taint{
+				Key:    "foo",
+				Value:  "value2",
+				Effect: TaintEffectNoSchedule,
+			},
+			expectTolerated: false,
+		},
+		{
+			description: "toleration and taint have the same key and value, but different effects, and operator is Equal, expect not tolerated",
+			toleration: Toleration{
+				Key:      "foo",
+				Operator: TolerationOpEqual,
+				Value:    "bar",
+				Effect:   TaintEffectNoSchedule,
+			},
+			taint: Taint{
+				Key:    "foo",
+				Value:  "bar",
+				Effect: TaintEffectNoExecute,
+			},
+			expectTolerated: false,
+		},
+		{
+			description: "expect toleration with nil forgivenessSeconds tolerats taint that is newly added",
+			toleration: Toleration{
+				Key:      "foo",
+				Operator: TolerationOpExists,
+				Effect:   TaintEffectNoExecute,
+			},
+			taint: Taint{
+				Key:       "foo",
+				Effect:    TaintEffectNoExecute,
+				AddedTime: unversioned.Now(),
+			},
+			expectTolerated: true,
+		},
+		{
+			description: "forgiveness toleration is not time out, expect tolerated",
+			toleration: Toleration{
+				Key:                "foo",
+				Operator:           TolerationOpExists,
+				Effect:             TaintEffectNoExecute,
+				ForgivenessSeconds: genForgivenssSeconds(300),
+			},
+			taint: Taint{
+				Key:       "foo",
+				Effect:    TaintEffectNoExecute,
+				AddedTime: unversioned.Unix(unversioned.Now().Unix()-100, 0),
+			},
+			expectTolerated: true,
+		},
+		{
+			description: "forgiveness toleration is time out, expect not tolerated",
+			toleration: Toleration{
+				Key:                "foo",
+				Operator:           TolerationOpExists,
+				Effect:             TaintEffectNoExecute,
+				ForgivenessSeconds: genForgivenssSeconds(300),
+			},
+			taint: Taint{
+				Key:       "foo",
+				Effect:    TaintEffectNoExecute,
+				AddedTime: unversioned.Unix(unversioned.Now().Unix()-1000, 0),
+			},
+			expectTolerated: false,
+		},
+		{
+			description: "toleration with explicit forgiveness can't tolerate taint with no added time, expect not tolerated",
+			toleration: Toleration{
+				Key:                "foo",
+				Operator:           TolerationOpExists,
+				Effect:             TaintEffectNoExecute,
+				ForgivenessSeconds: genForgivenssSeconds(300),
+			},
+			taint: Taint{
+				Key:    "foo",
+				Effect: TaintEffectNoExecute,
+			},
+			expectTolerated: false,
+		},
+	}
+	for _, tc := range testCases {
+		if tolerated := tc.toleration.ToleratesTaint(&tc.taint); tc.expectTolerated != tolerated {
+			t.Errorf("[%s] expect %v, got %v: toleration %+v, taint %s", tc.description, tc.expectTolerated, tolerated, tc.toleration, tc.taint.ToString())
+		}
+	}
+}
+
 func TestTolerationsTolerateTaintsWithFilter(t *testing.T) {
 	testCases := []struct {
 		description       string

@@ -495,22 +495,36 @@ func GetTaintsFromNodeAnnotations(annotations map[string]string) ([]Taint, error
 }
 
 // TolerationToleratesTaint checks if the toleration tolerates the taint.
-func (toleration *Toleration) ToleratesTaint(taint *Taint) bool {
-	if len(toleration.Effect) != 0 && toleration.Effect != taint.Effect {
+func (t *Toleration) ToleratesTaint(taint *Taint) bool {
+	if len(t.Effect) != 0 && t.Effect != taint.Effect {
 		return false
 	}
 
-	if toleration.Key != taint.Key {
+	if t.Key != taint.Key {
 		return false
 	}
+
+	// check forgivenessSeconds time out
+	if t.ForgivenessSeconds != nil {
+		// taint with no added time indicated can only be tolerated
+		// by toleration with no forgivenessSeconds.
+		if taint.AddedTime.IsZero() {
+			return false
+		}
+		if unversioned.Now().After(taint.AddedTime.Add(time.Second * time.Duration(*t.ForgivenessSeconds))) {
+			return false
+		}
+	}
+
 	// TODO: Use proper defaulting when Toleration becomes a field of PodSpec
-	if (len(toleration.Operator) == 0 || toleration.Operator == TolerationOpEqual) && toleration.Value == taint.Value {
+	switch t.Operator {
+	case "", TolerationOpEqual:
+		return t.Value == taint.Value
+	case TolerationOpExists:
 		return true
+	default:
+		return false
 	}
-	if toleration.Operator == TolerationOpExists {
-		return true
-	}
-	return false
 }
 
 // TolerationsTolerateTaint checks if taint is tolerated by any of the tolerations.

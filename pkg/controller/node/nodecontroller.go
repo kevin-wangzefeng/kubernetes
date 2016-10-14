@@ -351,8 +351,7 @@ func (nc *NodeController) Run() {
 		}
 	}, nc.nodeMonitorPeriod, wait.NeverStop)
 
-	// TODO: kevin-wangzefeng description needs update
-	// Managing eviction of nodes:
+	// Managing eviction of pods:
 	// 1. when we delete pods off a node, if the node was not empty at the time we then
 	//    queue a termination watcher
 	//    a. If we hit an error, retry deletion
@@ -376,9 +375,12 @@ func (nc *NodeController) Run() {
 
 				pod, err := nc.kubeClient.Core().Pods(podNamespace).Get(podName)
 				if err != nil {
-					// pod may have been deleted
-					glog.V(10).Infof("Failed to get pod %s/%s, err: %v, pod may have been deleted.", podNamespace, podName, err)
-					return apierrors.IsNotFound(err), 0
+					// pod has been deleted, no more action needed
+					if apierrors.IsNotFound(err) {
+						return true, 0
+					}
+					glog.V(10).Infof("Failed to get pod %s/%s, err: %v.", podNamespace, podName, err)
+					return false, 0
 				}
 
 				remaining, err := deletePod(nc.kubeClient, nc.recorder, pod, string(nodeUID), nc.daemonSetStore)
@@ -409,9 +411,12 @@ func (nc *NodeController) Run() {
 
 				pod, err := nc.kubeClient.Core().Pods(podNamespace).Get(podName)
 				if err != nil {
-					// pod may have been deleted
-					glog.V(10).Infof("Failed to get pod %s/%s, err: %v, pod may have been deleted.", podNamespace, podName, err)
-					return apierrors.IsNotFound(err), 0
+					// pod has been deleted, no more action needed
+					if apierrors.IsNotFound(err) {
+						return true, 0
+					}
+					glog.V(10).Infof("Failed to get pod %s/%s, err: %v.", podNamespace, podName, err)
+					return false, 0
 				}
 				nodeName := pod.Spec.NodeName
 
@@ -508,9 +513,11 @@ func (nc *NodeController) monitorNodeStatus() error {
 			// Check eviction timeout against decisionTimestamp
 			if observedReadyCondition.Status == api.ConditionFalse &&
 				decisionTimestamp.After(nc.nodeStatusMap[node.Name].readyTransitionTimestamp.Add(nc.podEvictionTimeout)) {
-
-				// TODO: kevin-wangzefeng, change to add nodeNotReady taint
-				nodeNotReadyTaint := api.Taint{Key: unversioned.TaintNodeNotReady, Effect: api.TaintEffectNoExecute, AddedTime: nc.now()}
+				nodeNotReadyTaint := api.Taint{
+					Key:       unversioned.TaintNodeNotReady,
+					Effect:    api.TaintEffectNoExecute,
+					AddedTime: nc.now(),
+				}
 				added, err := tryAddTaintToNode(nc.kubeClient, node.Name, nodeNotReadyTaint)
 				if err != nil {
 					glog.Errorf("Failed to try add taint %s to node %s: %v", nodeNotReadyTaint.ToString(), node.Name, err)
@@ -521,9 +528,11 @@ func (nc *NodeController) monitorNodeStatus() error {
 			}
 			if observedReadyCondition.Status == api.ConditionUnknown &&
 				decisionTimestamp.After(nc.nodeStatusMap[node.Name].probeTimestamp.Add(nc.podEvictionTimeout)) {
-
-				// TODO: kevin-wangzefeng, change to add nodeUnreachable taint
-				nodeUnreachableTaint := api.Taint{Key: unversioned.TaintNodeUnreachable, Effect: api.TaintEffectNoExecute, AddedTime: nc.now()}
+				nodeUnreachableTaint := api.Taint{
+					Key:       unversioned.TaintNodeUnreachable,
+					Effect:    api.TaintEffectNoExecute,
+					AddedTime: nc.now(),
+				}
 				added, err := tryAddTaintToNode(nc.kubeClient, node.Name, nodeUnreachableTaint)
 				if err != nil {
 					glog.Errorf("Failed to try add taint %s to node %s: %v", nodeUnreachableTaint.ToString(), node.Name, err)
@@ -533,9 +542,14 @@ func (nc *NodeController) monitorNodeStatus() error {
 				}
 			}
 			if observedReadyCondition.Status == api.ConditionTrue {
-				// TODO: kevin-wangzefeng, change to remove both nodeNotReady and nodeUnreachable taints
-				nodeNotReadyTaint := api.Taint{Key: unversioned.TaintNodeNotReady, Effect: api.TaintEffectNoExecute}
-				nodeUnreachableTaint := api.Taint{Key: unversioned.TaintNodeUnreachable, Effect: api.TaintEffectNoExecute}
+				nodeNotReadyTaint := api.Taint{
+					Key:    unversioned.TaintNodeNotReady,
+					Effect: api.TaintEffectNoExecute,
+				}
+				nodeUnreachableTaint := api.Taint{
+					Key:    unversioned.TaintNodeUnreachable,
+					Effect: api.TaintEffectNoExecute,
+				}
 				removed, err := tryRemoveTaintsOffNode(nc.kubeClient, node.Name, nodeNotReadyTaint, nodeUnreachableTaint)
 				if err != nil {
 					glog.Errorf("Failed to remove taints %s and %s off node %s: %v", nodeNotReadyTaint.ToString(), nodeUnreachableTaint.ToString(), node.Name, err)
@@ -547,13 +561,6 @@ func (nc *NodeController) monitorNodeStatus() error {
 
 			// Report node event.
 			if currentReadyCondition.Status != api.ConditionTrue && observedReadyCondition.Status == api.ConditionTrue {
-				/*
-					recordNodeStatusChange(nc.recorder, node, "NodeNotReady")
-					if err = markAllPodsNotReady(nc.kubeClient, node); err != nil {
-						utilruntime.HandleError(fmt.Errorf("Unable to mark all pods NotReady on node %v: %v", node.Name, err))
-					}
-					//*/
-				// TODO: kevin-wangzefeng, change to add nodeUnreachable taint
 				nodeUnreachableTaint := api.Taint{Key: unversioned.TaintNodeUnreachable, Effect: api.TaintEffectNoExecute, AddedTime: nc.now()}
 				added, err := tryAddTaintToNode(nc.kubeClient, node.Name, nodeUnreachableTaint)
 				if err != nil {
@@ -594,8 +601,8 @@ func (nc *NodeController) monitorNodeStatus() error {
 	return nil
 }
 
-// monitorNodeTaints for all nodes compares taints with pods tolerations
-// and sends pods for eviction
+// monitorNodeTaints checks for all nodes if there's any pod that
+// doesn't tolerate NoExecute taints of node and send it for eviction.
 func (nc *NodeController) monitorNodeTaints() error {
 	nodes, err := nc.kubeClient.Core().Nodes().List(api.ListOptions{})
 	if err != nil {
@@ -603,7 +610,7 @@ func (nc *NodeController) monitorNodeTaints() error {
 	}
 
 	for _, node := range nodes.Items {
-		// node should be visited by monitorNodeStatus first, so that zonePodeEvictor will be initialized
+		// node should be visited by monitorNodeStatus first, so that zonePodEvictor will be initialized
 		if _, ok := nc.knownNodeSet[node.Name]; !ok {
 			continue
 		}
@@ -627,10 +634,10 @@ func (nc *NodeController) monitorNodeTaints() error {
 					return taint.Effect == api.TaintEffectNoExecute
 				},
 			) {
-				nc.evictPods(&node, pod)
-			} else {
-				nc.cancelPodsEviction(&node, pod)
+				nc.queuePodsForEviction(&node, pod)
+				continue
 			}
+			nc.cancelQueuedPodsEviction(&node, pod)
 		}
 	}
 	return nil
@@ -682,7 +689,7 @@ func (nc *NodeController) handleDisruption(zoneToNodeConditions map[string][]*ap
 				if err != nil {
 					continue
 				}
-				nc.cancelPodsEviction(&nodes.Items[i], pods.Items...)
+				nc.cancelQueuedPodsEviction(&nodes.Items[i], pods.Items...)
 			}
 			// We stop all evictions.
 			for k := range nc.zonePodEvictor {
@@ -937,8 +944,9 @@ func namespacedPodName(pod api.Pod) string {
 	return pod.Namespace + "/" + pod.Name
 }
 
-// cancelPodEviction removes any queued evictions, typically because some taints on node are removed.
-func (nc *NodeController) cancelPodsEviction(node *api.Node, pods ...api.Pod) {
+// cancelQueuedPodsEviction ensures pod not queued for eviction, typically because
+// the pods now tolerate all NoExecute taints on the node.
+func (nc *NodeController) cancelQueuedPodsEviction(node *api.Node, pods ...api.Pod) {
 	for _, pod := range pods {
 		zone := utilnode.GetZoneKey(node)
 		namespacedPodKey := namespacedPodName(pod)
@@ -950,11 +958,15 @@ func (nc *NodeController) cancelPodsEviction(node *api.Node, pods ...api.Pod) {
 	}
 }
 
-// evictPods queues evictions for the pods that run on the node.
-func (nc *NodeController) evictPods(node *api.Node, pods ...api.Pod) {
+// queuePodsForEviction queues evictions for the pods that run on the node.
+func (nc *NodeController) queuePodsForEviction(node *api.Node, pods ...api.Pod) {
 	for _, pod := range pods {
 		zone := utilnode.GetZoneKey(node)
-		message := evictionMessage{pod.Name, pod.Namespace, node.UID}
+		message := evictionMessage{
+			podName:      pod.Name,
+			podNamespace: pod.Namespace,
+			nodeUID:      node.UID,
+		}
 		namespacedPodKey := namespacedPodName(pod)
 		if nc.zonePodEvictor[zone].Add(namespacedPodKey, message) {
 			glog.V(2).Infof("pod %s is queued for eviction", namespacedPodKey)

@@ -567,8 +567,8 @@ func (nc *NodeController) monitorNodeStatus() error {
 				}
 
 				nodeUnreachableTaint := api.Taint{
-					Key: unversioned.TaintNodeUnreachable,
-					Effect: api.TaintEffectNoExecute,
+					Key:       unversioned.TaintNodeUnreachable,
+					Effect:    api.TaintEffectNoExecute,
 					AddedTime: nc.now(),
 				}
 				added, err := tryAddTaintToNode(nc.kubeClient, node.Name, nodeUnreachableTaint)

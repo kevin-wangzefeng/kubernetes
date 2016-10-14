@@ -17,6 +17,7 @@ limitations under the License.
 package node
 
 import (
+	"encoding/json"
 	"net"
 	"reflect"
 	"strings"
@@ -1167,6 +1168,17 @@ func TestCloudProviderNoRateLimit(t *testing.T) {
 
 func TestMonitorNodeStatusUpdateStatus(t *testing.T) {
 	fakeNow := unversioned.Date(2015, 1, 1, 12, 0, 0, 0, time.UTC)
+
+	fakeUnreachableTaintJson := func(t unversioned.Time) string {
+		taints := []api.Taint{{
+			Key:       unversioned.TaintNodeUnreachable,
+			Effect:    api.TaintEffectNoExecute,
+			AddedTime: t,
+		}}
+		taintsJson, _ := json.Marshal(taints)
+		return string(taintsJson)
+	}
+
 	table := []struct {
 		fakeNodeHandler      *FakeNodeHandler
 		timeToPass           time.Duration
@@ -1239,16 +1251,6 @@ func TestMonitorNodeStatusUpdateStatus(t *testing.T) {
 					ObjectMeta: api.ObjectMeta{
 						Name:              "node0",
 						CreationTimestamp: fakeNow,
-						Annotations: map[string]string{
-							api.TaintsAnnotationKey: `
-								[
-								  {
-								    "key": "` + unversioned.TaintNodeUnreachable + `",
-								    "effect": "` + string(api.TaintEffectNoExecute) + `",
-								    "addedTime": "` + fakeNow.String() + `"
-								  }
-								]`,
-						},
 					},
 				},
 			},
@@ -1292,7 +1294,7 @@ func TestMonitorNodeStatusUpdateStatus(t *testing.T) {
 				},
 				Clientset: fake.NewSimpleClientset(&api.PodList{Items: []api.Pod{*newPod("pod0", "node0")}}),
 			},
-			expectedRequestCount: 3, // (List+)List+Update
+			expectedRequestCount: 7, // List+Get+List+UpdateStatus+Get+Get+Update
 			timeToPass:           time.Hour,
 			newNodeStatus: api.NodeStatus{
 				Conditions: []api.NodeCondition{
@@ -1321,6 +1323,9 @@ func TestMonitorNodeStatusUpdateStatus(t *testing.T) {
 					ObjectMeta: api.ObjectMeta{
 						Name:              "node0",
 						CreationTimestamp: unversioned.Date(2012, 1, 1, 0, 0, 0, 0, time.UTC),
+						Annotations: map[string]string{
+							api.TaintsAnnotationKey: fakeUnreachableTaintJson(unversioned.Time{Time: fakeNow.Add(time.Hour)}),
+						},
 					},
 					Status: api.NodeStatus{
 						Conditions: []api.NodeCondition{
@@ -1384,8 +1389,33 @@ func TestMonitorNodeStatusUpdateStatus(t *testing.T) {
 				},
 				Clientset: fake.NewSimpleClientset(&api.PodList{Items: []api.Pod{*newPod("pod0", "node0")}}),
 			},
-			expectedRequestCount: 1, // List
-			expectedNodes:        nil,
+			expectedRequestCount: 2, // List+Get
+			expectedNodes: []*api.Node{
+				{
+					ObjectMeta: api.ObjectMeta{
+						Name:              "node0",
+						CreationTimestamp: unversioned.Date(2012, 1, 1, 0, 0, 0, 0, time.UTC),
+					},
+					Status: api.NodeStatus{
+						Conditions: []api.NodeCondition{
+							{
+								Type:   api.NodeReady,
+								Status: api.ConditionTrue,
+								// Node status has just been updated.
+								LastHeartbeatTime:  fakeNow,
+								LastTransitionTime: fakeNow,
+							},
+						},
+						Capacity: api.ResourceList{
+							api.ResourceName(api.ResourceCPU):    resource.MustParse("10"),
+							api.ResourceName(api.ResourceMemory): resource.MustParse("10G"),
+						},
+					},
+					Spec: api.NodeSpec{
+						ExternalID: "node0",
+					},
+				},
+			},
 		},
 	}
 
@@ -1408,10 +1438,11 @@ func TestMonitorNodeStatusUpdateStatus(t *testing.T) {
 			t.Errorf("Case[%d] expected %v call, but got %v.", i, item.expectedRequestCount, item.fakeNodeHandler.RequestCount)
 		}
 		if len(item.fakeNodeHandler.UpdatedNodes) > 0 && !api.Semantic.DeepEqual(item.expectedNodes, item.fakeNodeHandler.UpdatedNodes) {
+
 			t.Errorf("Case[%d] unexpected nodes: %s", i, diff.ObjectDiff(item.expectedNodes[0], item.fakeNodeHandler.UpdatedNodes[0]))
 		}
-		if len(item.fakeNodeHandler.UpdatedNodeStatuses) > 0 && !api.Semantic.DeepEqual(item.expectedNodes, item.fakeNodeHandler.UpdatedNodeStatuses) {
-			t.Errorf("Case[%d] unexpected nodes: %s", i, diff.ObjectDiff(item.expectedNodes[0], item.fakeNodeHandler.UpdatedNodeStatuses[0]))
+		if len(item.fakeNodeHandler.UpdatedNodeStatuses) > 0 && !api.Semantic.DeepEqual(item.expectedNodes[0].Status, item.fakeNodeHandler.UpdatedNodeStatuses[0].Status) {
+			t.Errorf("Case[%d] unexpected node statuses: %s", i, diff.ObjectDiff(item.expectedNodes[0], item.fakeNodeHandler.UpdatedNodeStatuses[0]))
 		}
 	}
 }

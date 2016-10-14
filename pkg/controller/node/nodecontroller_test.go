@@ -1234,7 +1234,24 @@ func TestMonitorNodeStatusUpdateStatus(t *testing.T) {
 				Clientset: fake.NewSimpleClientset(&api.PodList{Items: []api.Pod{*newPod("pod0", "node0")}}),
 			},
 			expectedRequestCount: 1, // List
-			expectedNodes:        nil,
+			expectedNodes: []*api.Node{
+				{
+					ObjectMeta: api.ObjectMeta{
+						Name:              "node0",
+						CreationTimestamp: fakeNow,
+						Annotations: map[string]string{
+							api.TaintsAnnotationKey: `
+								[
+								  {
+								    "key": "` + unversioned.TaintNodeUnreachable + `",
+								    "effect": "` + string(api.TaintEffectNoExecute) + `",
+								    "addedTime": "` + fakeNow.String() + `"
+								  }
+								]`,
+						},
+					},
+				},
+			},
 		},
 		// Node created long time ago, with status updated by kubelet exceeds grace period.
 		// Expect Unknown status posted from node controller.
@@ -1378,17 +1395,17 @@ func TestMonitorNodeStatusUpdateStatus(t *testing.T) {
 			testNodeMonitorGracePeriod, testNodeStartupGracePeriod, testNodeMonitorPeriod, nil, nil, 0, false)
 		nodeController.now = func() unversioned.Time { return fakeNow }
 		if err := nodeController.monitorNodeStatus(); err != nil {
-			t.Errorf("unexpected error: %v", err)
+			t.Errorf("Case[%d] unexpected error: %v", i, err)
 		}
 		if item.timeToPass > 0 {
 			nodeController.now = func() unversioned.Time { return unversioned.Time{Time: fakeNow.Add(item.timeToPass)} }
 			item.fakeNodeHandler.Existing[0].Status = item.newNodeStatus
 			if err := nodeController.monitorNodeStatus(); err != nil {
-				t.Errorf("unexpected error: %v", err)
+				t.Errorf("Case[%d] unexpected error: %v", i, err)
 			}
 		}
 		if item.expectedRequestCount != item.fakeNodeHandler.RequestCount {
-			t.Errorf("expected %v call, but got %v.", item.expectedRequestCount, item.fakeNodeHandler.RequestCount)
+			t.Errorf("Case[%d] expected %v call, but got %v.", i, item.expectedRequestCount, item.fakeNodeHandler.RequestCount)
 		}
 		if len(item.fakeNodeHandler.UpdatedNodes) > 0 && !api.Semantic.DeepEqual(item.expectedNodes, item.fakeNodeHandler.UpdatedNodes) {
 			t.Errorf("Case[%d] unexpected nodes: %s", i, diff.ObjectDiff(item.expectedNodes[0], item.fakeNodeHandler.UpdatedNodes[0]))

@@ -1813,25 +1813,7 @@ func validateTolerations(tolerations []api.Toleration, fldPath *field.Path) fiel
 			if toleration.Operator != api.TolerationOpExists {
 				allErrors = append(allErrors, field.Invalid(idxPath.Child("operator"), toleration.Operator, "operator must be Exists when `key` is 'nodeNotReady'"))
 			}
-			/*
-			// TODO: Remove this once ForgivenessSeconds is fully supported
-			if toleration.Key != unversioned.TaintNodeNotReady && toleration.Key != unversioned.TaintNodeUnreachable {
-				errorMsg := fmt.Sprintf("key must be %s or %s, currently only these two types of tolerations support ForgivenessSeconds", unversioned.TaintNodeNotReady, unversioned.TaintNodeUnreachable)
-				allErrors = append(allErrors, field.Invalid(idxPath.Child("key"), toleration.Operator, errorMsg))
-			}
-			*/
 		}
-		/*
-		// TODO: Remove this block once ForgivenessSeconds is fully supported
-		if toleration.Key == unversioned.TaintNodeNotReady || toleration.Key == unversioned.TaintNodeUnreachable {
-			if toleration.Operator != api.TolerationOpExists {
-				allErrors = append(allErrors, field.Invalid(idxPath.Child("operator"), toleration.Operator, "operator must be Exists when `key` is 'nodeNotReady'"))
-			}
-			if toleration.Effect != api.TaintEffectNoExecute {
-				allErrors = append(allErrors, field.Invalid(idxPath.Child("effect"), toleration.Effect, "effect must be NoExecute when `key` is 'nodeNotReady'"))
-			}
-		}
-		*/
 
 		// validate toleration operator and value
 		switch toleration.Operator {

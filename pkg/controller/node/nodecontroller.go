@@ -561,7 +561,16 @@ func (nc *NodeController) monitorNodeStatus() error {
 
 			// Report node event.
 			if currentReadyCondition.Status != api.ConditionTrue && observedReadyCondition.Status == api.ConditionTrue {
-				nodeUnreachableTaint := api.Taint{Key: unversioned.TaintNodeUnreachable, Effect: api.TaintEffectNoExecute, AddedTime: nc.now()}
+				recordNodeStatusChange(nc.recorder, node, "NodeNotReady")
+				if err = markAllPodsNotReady(nc.kubeClient, node); err != nil {
+					utilruntime.HandleError(fmt.Errorf("Unable to mark all pods NotReady on node %v: %v", node.Name, err))
+				}
+
+				nodeUnreachableTaint := api.Taint{
+					Key: unversioned.TaintNodeUnreachable,
+					Effect: api.TaintEffectNoExecute,
+					AddedTime: nc.now(),
+				}
 				added, err := tryAddTaintToNode(nc.kubeClient, node.Name, nodeUnreachableTaint)
 				if err != nil {
 					glog.Errorf("Failed to try add taint %s to node %s: %v", nodeUnreachableTaint.ToString(), node.Name, err)

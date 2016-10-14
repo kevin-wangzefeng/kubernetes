@@ -192,13 +192,10 @@ func NewRateLimitedTimedQueue(limiter flowcontrol.RateLimiter) *RateLimitedTimed
 // time.Duration if some minimum wait interval should be used.
 type ActionFunc func(TimedValue) (bool, time.Duration)
 
-// TODO: kevin-wangzefeng needs update description
 // Try processes the queue. Ends prematurely if RateLimiter forbids an action and leak is true.
 // Otherwise, requeues the item to be processed. Each value is processed once if fn returns true,
 // otherwise it is added back to the queue. The returned remaining is used to identify the minimum
-// time to execute the next item in the queue. The same value is processed only once unless
-// Remove is explicitly called on it (it's done by the cancelPodEviction function in NodeController
-// when Node becomes Ready again)
+// time to execute the next item in the queue.
 // TODO: figure out a good way to do garbage collection for all Nodes that were removed from
 // the cluster.
 func (q *RateLimitedTimedQueue) Try(fn ActionFunc) {

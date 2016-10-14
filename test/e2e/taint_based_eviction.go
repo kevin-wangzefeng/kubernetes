@@ -33,16 +33,10 @@ import (
 
 var _ = framework.KubeDescribe("Eviction based on taints [Serial] [Slow] [Destructive]", func() {
 	var c *client.Client
-	var nodeList *api.NodeList
-	var ns string
 	f := framework.NewDefaultFramework("pod-eviction")
-	ignoreLabels := framework.ImagePullerLabels
-
-	BeforeEach(func() {
-		c = f.Client
-	})
 
 	It("validates that unreachable taint can be auto added/removed", func() {
+		c = f.Client
 		nodeName := getNodeThatCanRunPod(f)
 
 		node, err := c.Nodes().Get(nodeName)
@@ -68,6 +62,7 @@ var _ = framework.KubeDescribe("Eviction based on taints [Serial] [Slow] [Destru
 	})
 
 	It("validates that pod evicted by nodecontroller when NoExectue taint added to node", func() {
+		c = f.Client
 		nodeName, podName := runAndKeepPodWithLabelAndGetNodeName(f)
 
 		By("Trying to apply a NoExectue taint on the found node.")

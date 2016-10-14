@@ -516,7 +516,7 @@ func (nc *NodeController) monitorNodeStatus() error {
 					glog.Errorf("Failed to try add taint %s to node %s: %v", nodeNotReadyTaint.ToString(), node.Name, err)
 				}
 				if added {
-					glog.V(4).Infof("Added nodeNotReady taint to node %s: %v is later than %v + %v", node.Name, decisionTimestamp, nc.nodeStatusMap[node.Name].readyTransitionTimestamp, nc.podEvictionTimeout)
+					glog.V(2).Infof("Added nodeNotReady taint to node %s: %v is later than %v + %v", node.Name, decisionTimestamp, nc.nodeStatusMap[node.Name].readyTransitionTimestamp, nc.podEvictionTimeout)
 				}
 			}
 			if observedReadyCondition.Status == api.ConditionUnknown &&
@@ -529,7 +529,7 @@ func (nc *NodeController) monitorNodeStatus() error {
 					glog.Errorf("Failed to try add taint %s to node %s: %v", nodeUnreachableTaint.ToString(), node.Name, err)
 				}
 				if added {
-					glog.V(4).Infof("Added unreachable taint to node %s: %v is later than %v + %v", node.Name, decisionTimestamp, nc.nodeStatusMap[node.Name].readyTransitionTimestamp, nc.podEvictionTimeout-gracePeriod)
+					glog.V(2).Infof("Added unreachable taint to node %s: %v is later than %v + %v", node.Name, decisionTimestamp, nc.nodeStatusMap[node.Name].readyTransitionTimestamp, nc.podEvictionTimeout-gracePeriod)
 				}
 			}
 			if observedReadyCondition.Status == api.ConditionTrue {
@@ -547,9 +547,20 @@ func (nc *NodeController) monitorNodeStatus() error {
 
 			// Report node event.
 			if currentReadyCondition.Status != api.ConditionTrue && observedReadyCondition.Status == api.ConditionTrue {
-				recordNodeStatusChange(nc.recorder, node, "NodeNotReady")
-				if err = markAllPodsNotReady(nc.kubeClient, node); err != nil {
-					utilruntime.HandleError(fmt.Errorf("Unable to mark all pods NotReady on node %v: %v", node.Name, err))
+				/*
+					recordNodeStatusChange(nc.recorder, node, "NodeNotReady")
+					if err = markAllPodsNotReady(nc.kubeClient, node); err != nil {
+						utilruntime.HandleError(fmt.Errorf("Unable to mark all pods NotReady on node %v: %v", node.Name, err))
+					}
+					//*/
+				// TODO: kevin-wangzefeng, change to add nodeUnreachable taint
+				nodeUnreachableTaint := api.Taint{Key: unversioned.TaintNodeUnreachable, Effect: api.TaintEffectNoExecute, AddedTime: nc.now()}
+				added, err := tryAddTaintToNode(nc.kubeClient, node.Name, nodeUnreachableTaint)
+				if err != nil {
+					glog.Errorf("Failed to try add taint %s to node %s: %v", nodeUnreachableTaint.ToString(), node.Name, err)
+				}
+				if added {
+					glog.V(2).Infof("Added unreachable taint to node %s: %v is later than %v + %v", node.Name, decisionTimestamp, nc.nodeStatusMap[node.Name].readyTransitionTimestamp, nc.podEvictionTimeout-gracePeriod)
 				}
 			}
 

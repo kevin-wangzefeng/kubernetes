@@ -398,11 +398,10 @@ func TestMatchTaint(t *testing.T) {
 	}
 }
 
-func genForgivenssSeconds(f int64) *int64 {
-	return &f
-}
-
 func TestTolerationToleratesTaint(t *testing.T) {
+	genForgivenessSeconds := func(f int64) *int64 {
+		return &f
+	}
 
 	testCases := []struct {
 		description     string
@@ -502,7 +501,7 @@ func TestTolerationToleratesTaint(t *testing.T) {
 				Key:                "foo",
 				Operator:           TolerationOpExists,
 				Effect:             TaintEffectNoExecute,
-				ForgivenessSeconds: genForgivenssSeconds(300),
+				ForgivenessSeconds: genForgivenessSeconds(300),
 			},
 			taint: Taint{
 				Key:       "foo",
@@ -517,7 +516,7 @@ func TestTolerationToleratesTaint(t *testing.T) {
 				Key:                "foo",
 				Operator:           TolerationOpExists,
 				Effect:             TaintEffectNoExecute,
-				ForgivenessSeconds: genForgivenssSeconds(300),
+				ForgivenessSeconds: genForgivenessSeconds(300),
 			},
 			taint: Taint{
 				Key:       "foo",
@@ -532,7 +531,7 @@ func TestTolerationToleratesTaint(t *testing.T) {
 				Key:                "foo",
 				Operator:           TolerationOpExists,
 				Effect:             TaintEffectNoExecute,
-				ForgivenessSeconds: genForgivenssSeconds(300),
+				ForgivenessSeconds: genForgivenessSeconds(300),
 			},
 			taint: Taint{
 				Key:    "foo",

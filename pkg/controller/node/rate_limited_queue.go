@@ -219,11 +219,6 @@ func (q *RateLimitedTimedQueue) Try(fn ActionFunc) {
 			val.ProcessAt = now.Add(wait + 1)
 			q.queue.Replace(val)
 		} else {
-			// use Remove() instead of RemoveFromQueue(),
-			// otherwise pod with same namespace/pod.name
-			// can never be added to queue again
-
-			//q.queue.RemoveFromQueue(val.Value)
 			q.queue.Remove(val.Value)
 		}
 		val, ok = q.queue.Head()

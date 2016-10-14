@@ -35,7 +35,7 @@ var _ = framework.KubeDescribe("Eviction based on taints [Serial] [Slow] [Destru
 	var c *client.Client
 	f := framework.NewDefaultFramework("pod-eviction")
 
-	It("validates that unreachable taint can be auto added/removed", func() {
+	It("validates that unreachable taint can be auto added/removed [Feature:forgiveness]", func() {
 		c = f.Client
 		nodeName := getNodeThatCanRunPod(f)
 

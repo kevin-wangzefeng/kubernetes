@@ -547,7 +547,6 @@ func TestMonitorNodeStatusEvictPods(t *testing.T) {
 				podNamespace := message.podNamespace
 				nodeUID := message.nodeUID
 				pod, _ := nodeController.kubeClient.Core().Pods(podNamespace).Get(podName)
-
 				terminatePod(item.fakeNodeHandler, nodeController.recorder, pod, string(nodeUID), value.AddedAt, nodeController.maximumGracePeriod)
 				return true, 0
 			})
@@ -1094,7 +1093,6 @@ func TestMonitorNodeStatusEvictPodsWithDisruption(t *testing.T) {
 				podNamespace := message.podNamespace
 				nodeUID := message.nodeUID
 				pod, _ := nodeController.kubeClient.Core().Pods(podNamespace).Get(podName)
-
 				terminatePod(nodeController.kubeClient, nodeController.recorder, pod, string(nodeUID), value.AddedAt, nodeController.maximumGracePeriod)
 				return true, 0
 			})

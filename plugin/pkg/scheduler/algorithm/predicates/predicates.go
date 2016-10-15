@@ -1062,7 +1062,7 @@ func PodToleratesNodeTaints(pod *api.Pod, meta interface{}, nodeInfo *schedulerc
 	}
 
 	if api.TolerationsTolerateTaintsWithFilter(tolerations, taints, func(t api.Taint) bool {
-		// PodToleratesNodeTaints only interests NoSchedule taints.
+		// PodToleratesNodeTaints is only interested in NoSchedule taints.
 		return t.Effect == api.TaintEffectNoSchedule
 	}) {
 		return true, nil, nil

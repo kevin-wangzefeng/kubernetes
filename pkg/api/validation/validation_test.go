@@ -3544,6 +3544,20 @@ func TestValidatePod(t *testing.T) {
 			},
 			Spec: validPodSpec,
 		},
+		{ // empty key with Exists operator is ok for toleration
+			ObjectMeta: api.ObjectMeta{
+				Name:      "123",
+				Namespace: "ns",
+				Annotations: map[string]string{
+					api.TolerationsAnnotationKey: `
+					[{
+						"operator": "Exists",
+						"effect": "NoSchedule"
+					}]`,
+				},
+			},
+			Spec: validPodSpec,
+		},
 		{ // empty operator is ok for toleration
 			ObjectMeta: api.ObjectMeta{
 				Name:      "123",
@@ -3559,7 +3573,7 @@ func TestValidatePod(t *testing.T) {
 			},
 			Spec: validPodSpec,
 		},
-		{ // empty efffect is ok for toleration
+		{ // empty effect is ok for toleration
 			ObjectMeta: api.ObjectMeta{
 				Name:      "123",
 				Namespace: "ns",
@@ -4012,7 +4026,22 @@ func TestValidatePod(t *testing.T) {
 			},
 			Spec: validPodSpec,
 		},
-		"effect must be NoExecute when `ForgivenessSeconds` is set": {
+		"operator must be 'Exists' when `key` is empty": {
+			ObjectMeta: api.ObjectMeta{
+				Name:      "123",
+				Namespace: "ns",
+				Annotations: map[string]string{
+					api.TolerationsAnnotationKey: `
+					[{
+						"operator": "Equal",
+						"value": "bar",
+						"effect": "NoSchedule"
+					}]`,
+				},
+			},
+			Spec: validPodSpec,
+		},
+		"effect must be 'NoExecute' when `ForgivenessSeconds` is set": {
 			ObjectMeta: api.ObjectMeta{
 				Name:      "pod-forgiveness-invalid",
 				Namespace: "ns",
@@ -4022,6 +4051,23 @@ func TestValidatePod(t *testing.T) {
 						"key": ` + unversioned.TaintNodeNotReady + `,
 						"operator": "Exists",
 						"effect": "NoSchedule",
+						"forgivenessSeconds": 20
+					}]`,
+				},
+			},
+			Spec: validPodSpec,
+		},
+		"operator must be 'Exists' when `forgivenessSeconds` is set": {
+			ObjectMeta: api.ObjectMeta{
+				Name:      "pod-forgiveness-invalid",
+				Namespace: "ns",
+				Annotations: map[string]string{
+					api.TolerationsAnnotationKey: `
+					[{
+						"key": ` + unversioned.TaintNodeNotReady + `,
+						"operator": "Equal",
+						"value": "bar",
+						"effect": "NoExecute",
 						"forgivenessSeconds": 20
 					}]`,
 				},

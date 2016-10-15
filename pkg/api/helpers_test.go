@@ -437,6 +437,20 @@ func TestTolerationToleratesTaint(t *testing.T) {
 			expectTolerated: true,
 		},
 		{
+			description: "toleration and taint have the same effect, toleration has empty key and operator is Exists, means match all taints, expect tolerated",
+			toleration: Toleration{
+				Key:      "",
+				Operator: TolerationOpExists,
+				Effect:   TaintEffectNoSchedule,
+			},
+			taint: Taint{
+				Key:    "foo",
+				Value:  "bar",
+				Effect: TaintEffectNoSchedule,
+			},
+			expectTolerated: true,
+		},
+		{
 			description: "toleration and taint have the same key, effect and value, and operator is Equal, expect tolerated",
 			toleration: Toleration{
 				Key:      "foo",
@@ -491,7 +505,7 @@ func TestTolerationToleratesTaint(t *testing.T) {
 			taint: Taint{
 				Key:       "foo",
 				Effect:    TaintEffectNoExecute,
-				AddedTime: unversioned.Now(),
+				TimeAdded: unversioned.Now(),
 			},
 			expectTolerated: true,
 		},
@@ -506,7 +520,7 @@ func TestTolerationToleratesTaint(t *testing.T) {
 			taint: Taint{
 				Key:       "foo",
 				Effect:    TaintEffectNoExecute,
-				AddedTime: unversioned.Unix(unversioned.Now().Unix()-100, 0),
+				TimeAdded: unversioned.Unix(unversioned.Now().Unix()-100, 0),
 			},
 			expectTolerated: true,
 		},
@@ -521,7 +535,7 @@ func TestTolerationToleratesTaint(t *testing.T) {
 			taint: Taint{
 				Key:       "foo",
 				Effect:    TaintEffectNoExecute,
-				AddedTime: unversioned.Unix(unversioned.Now().Unix()-1000, 0),
+				TimeAdded: unversioned.Unix(unversioned.Now().Unix()-1000, 0),
 			},
 			expectTolerated: false,
 		},

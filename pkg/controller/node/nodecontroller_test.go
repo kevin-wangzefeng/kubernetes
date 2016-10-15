@@ -1167,11 +1167,11 @@ func TestCloudProviderNoRateLimit(t *testing.T) {
 func TestMonitorNodeStatusUpdateStatus(t *testing.T) {
 	fakeNow := unversioned.Date(2015, 1, 1, 12, 0, 0, 0, time.UTC)
 
-	fakeUnreachableTaintJson := func(t unversioned.Time) string {
+	fakeNotReadyTaintJson := func(t unversioned.Time) string {
 		taints := []api.Taint{{
-			Key:       unversioned.TaintNodeUnreachable,
+			Key:       unversioned.TaintNodeNotReady,
 			Effect:    api.TaintEffectNoExecute,
-			AddedTime: t,
+			TimeAdded: t,
 		}}
 		taintsJson, _ := json.Marshal(taints)
 		return string(taintsJson)
@@ -1322,7 +1322,7 @@ func TestMonitorNodeStatusUpdateStatus(t *testing.T) {
 						Name:              "node0",
 						CreationTimestamp: unversioned.Date(2012, 1, 1, 0, 0, 0, 0, time.UTC),
 						Annotations: map[string]string{
-							api.TaintsAnnotationKey: fakeUnreachableTaintJson(unversioned.Time{Time: fakeNow.Add(time.Hour)}),
+							api.TaintsAnnotationKey: fakeNotReadyTaintJson(unversioned.Time{Time: fakeNow.Add(time.Hour)}),
 						},
 					},
 					Status: api.NodeStatus{

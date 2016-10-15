@@ -53,15 +53,15 @@ func getPodsOfNode(kubeClient clientset.Interface, nodeName string) (*api.PodLis
 // deletePod will delete pod that is running on given node from master,
 // and return true if pod was deleted, or was found pending deletion.
 func deletePod(kubeClient clientset.Interface, recorder record.EventRecorder, pod *api.Pod, nodeUID string, daemonStore cache.StoreToDaemonSetLister) (bool, error) {
-	recordNodeEvent(recorder, pod.Spec.NodeName, nodeUID, api.EventTypeNormal, "EvictingPod", fmt.Sprintf("Evicting Pod %s from Node %s.", pod.Name, pod.Spec.NodeName))
+	recordNodeEvent(recorder, pod.Spec.NodeName, nodeUID, api.EventTypeNormal, "DeletingPod", fmt.Sprintf("Deleting Pod %s from Node %s.", pod.Name, pod.Spec.NodeName))
 
 	// if the pod has already been marked for deletion, we still return true that there are remaining pods.
 	if pod.DeletionGracePeriodSeconds != nil {
 		return true, nil
 	}
-	// if the pod is managed by a daemonset, ignore it
+	// if the pod is managed by a daemon set, ignore it
 	_, err := daemonStore.GetPodDaemonSets(pod)
-	if err == nil { // No error means at least one daemonset was found
+	if err == nil {
 		return false, nil
 	}
 
@@ -268,11 +268,9 @@ func recordNodeStatusChange(recorder record.EventRecorder, node *api.Node, new_s
 }
 
 // terminatePod will ensure given pod that is in terminating state is eventually
-// cleaned up. Returns true if the pod is not in terminating state, a duration that indicates how
-// long before we should check again (the next deadline for a pod to complete), or an error.
+// cleaned up. Returns true if the pod is not in terminating state, a duration that indicates
+// the next deadline for the pod to complete.
 func terminatePod(kubeClient clientset.Interface, recorder record.EventRecorder, pod *api.Pod, nodeUID string, since time.Time, maxGracePeriod time.Duration) (bool, time.Duration, error) {
-	// the time before we should try again
-	nextAttempt := time.Duration(0)
 	// if the pod terminated
 	terminated := true
 	now := time.Now()
@@ -280,7 +278,7 @@ func terminatePod(kubeClient clientset.Interface, recorder record.EventRecorder,
 
 	// only clean terminated pod
 	if pod.DeletionGracePeriodSeconds == nil {
-		return terminated, nextAttempt, nil
+		return terminated, time.Duration(0), nil
 	}
 
 	// the user's requested grace period
@@ -289,7 +287,7 @@ func terminatePod(kubeClient clientset.Interface, recorder record.EventRecorder,
 		grace = maxGracePeriod
 	}
 
-	// the time remaining before the pod should have been deleted
+	// the time remaining before the pod should be deleted
 	remaining := grace - elapsed
 	if remaining < 0 {
 		remaining = 0
@@ -304,10 +302,7 @@ func terminatePod(kubeClient clientset.Interface, recorder record.EventRecorder,
 		terminated = false
 	}
 
-	if nextAttempt < remaining {
-		nextAttempt = remaining
-	}
-	return terminated, nextAttempt, nil
+	return terminated, remaining, nil
 }
 
 type evictionMessage struct {

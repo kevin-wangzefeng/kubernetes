@@ -17,8 +17,10 @@ limitations under the License.
 package node
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/errors"
@@ -114,6 +116,30 @@ func setPodTerminationReason(kubeClient clientset.Interface, pod *api.Pod, nodeN
 		return nil, err
 	}
 	return updatedPod, nil
+}
+
+// deleteSinglePod will delete the pod that is running on given node from master,
+// and return true if the pod was deleted, or was found pending deletion.
+func deleteSinglePod(kubeClient clientset.Interface, recorder record.EventRecorder, pod *api.Pod, daemonStore cache.StoreToDaemonSetLister) (bool, error) {
+	// if the pod has already been marked for deletion, we still return true that there are remaining pods.
+	if pod.DeletionGracePeriodSeconds != nil {
+		return true, nil
+	}
+	// if the pod is managed by a daemon set, ignore it
+	// TODO: instead of having a special case here,
+	// make all daemon sets tolerate taints `notReady:NoExecute`
+	// and `unreachable:NoExecute`.
+	_, err := daemonStore.GetPodDaemonSets(pod)
+	if err == nil {
+		return false, nil
+	}
+
+	glog.V(0).Infof("Starting deletion of pod %v", pod.Name)
+	recorder.Eventf(pod, api.EventTypeNormal, "NodeControllerEviction", "Marking for deletion Pod %s from Node %s", pod.Name, pod.Spec.NodeName)
+	if err := kubeClient.Core().Pods(pod.Namespace).Delete(pod.Name, nil); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func forcefullyDeletePod(c clientset.Interface, pod *api.Pod) error {
@@ -285,4 +311,44 @@ func recordNodeStatusChange(recorder record.EventRecorder, node *api.Node, new_s
 	// TODO: This requires a transaction, either both node status is updated
 	// and event is recorded or neither should happen, see issue #6055.
 	recorder.Eventf(ref, api.EventTypeNormal, new_status, "Node %s status is now: %s", node.Name, new_status)
+}
+
+type modifyTaintsFunc func(oldTaints []api.Taint) ([]api.Taint, bool, error)
+
+func tryModifyNodeTaints(kubeClient clientset.Interface, nodeName string, modifyTaints modifyTaintsFunc) (bool, error) {
+	var updateErr error
+	for attempt := 0; attempt < nodeStatusUpdateRetry; attempt++ {
+		node, err := kubeClient.Core().Nodes().Get(nodeName)
+		if err != nil {
+			return false, err
+		}
+
+		oldTaints, err := api.GetNodeTaints(node)
+		if err != nil {
+			return false, err
+		}
+
+		newTaints, updated, err := modifyTaints(oldTaints)
+		if err != nil || !updated {
+			return false, err
+		}
+
+		taintsData, err := json.Marshal(newTaints)
+		if err != nil {
+			return false, err
+		}
+
+		patch := `{"metadata":{"annotations":{` + api.TaintsAnnotationKey + ":" + string(taintsData) + `}}`
+		_, updateErr = kubeClient.Core().Nodes().Patch(node.Name, api.MergePatchType, []byte(patch))
+		if updateErr != nil {
+			if !errors.IsConflict(updateErr) {
+				return false, updateErr
+			}
+		} else {
+			return true, nil
+		}
+		time.Sleep(retrySleepTime)
+	}
+
+	return false, updateErr
 }

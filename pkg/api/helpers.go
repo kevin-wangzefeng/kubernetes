@@ -495,7 +495,7 @@ func GetTaintsFromNodeAnnotations(annotations map[string]string) ([]Taint, error
 	return taints, nil
 }
 
-// TolerationToleratesTaint checks if the toleration tolerates the taint.
+// ToleratesTaint checks if the toleration tolerates the taint.
 func (t *Toleration) ToleratesTaint(taint *Taint) bool {
 	if len(t.Effect) != 0 && t.Effect != taint.Effect {
 		return false
@@ -539,7 +539,7 @@ func TolerationsTolerateTaint(tolerations []Toleration, taint *Taint) bool {
 	return false
 }
 
-type taintsFilterFunc func(Taint) bool
+type taintsFilterFunc func(*Taint) bool
 
 // TolerationsTolerateTaintsWithFilter checks if given tolerations tolerates
 // all the interesting taints in given taint list.
@@ -548,12 +548,12 @@ func TolerationsTolerateTaintsWithFilter(tolerations []Toleration, taints []Tain
 		return true
 	}
 
-	for _, taint := range taints {
-		if isInterestingTaint != nil && !isInterestingTaint(taint) {
+	for i := range taints {
+		if isInterestingTaint != nil && !isInterestingTaint(&taints[i]) {
 			continue
 		}
 
-		if !TolerationsTolerateTaint(tolerations, &taint) {
+		if !TolerationsTolerateTaint(tolerations, &taints[i]) {
 			return false
 		}
 	}
@@ -564,13 +564,13 @@ func TolerationsTolerateTaintsWithFilter(tolerations []Toleration, taints []Tain
 func DeleteTaint(taints []Taint, taintToDelete Taint) ([]Taint, bool) {
 	newTaints := []Taint{}
 	deleted := false
-	for _, taint := range taints {
+	for i := range taints {
 		// if taintToRemove doesn't indicate effect, remove all the taints that have the same key
-		if (len(taintToDelete.Effect) == 0 && taintToDelete.Key == taint.Key) || taintToDelete.MatchTaint(taint) {
+		if (len(taintToDelete.Effect) == 0 && taintToDelete.Key == taints[i].Key) || taintToDelete.MatchTaint(taints[i]) {
 			deleted = true
 			continue
 		}
-		newTaints = append(newTaints, taint)
+		newTaints = append(newTaints, taints[i])
 	}
 	return newTaints, deleted
 }

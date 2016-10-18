@@ -219,7 +219,7 @@ func (q *RateLimitedTimedQueue) Try(fn ActionFunc) {
 			val.ProcessAt = now.Add(wait + 1)
 			q.queue.Replace(val)
 		} else {
-			q.queue.Remove(val.Value)
+			q.queue.RemoveFromQueue(val.Value)
 		}
 		val, ok = q.queue.Head()
 	}

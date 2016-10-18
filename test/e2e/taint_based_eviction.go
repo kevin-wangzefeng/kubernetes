@@ -18,12 +18,11 @@ package e2e
 
 import (
 	"fmt"
-	"time"
 
 	"k8s.io/kubernetes/pkg/api"
-	apierrs "k8s.io/kubernetes/pkg/api/errors"
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	client "k8s.io/kubernetes/pkg/client/unversioned"
+	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/util/uuid"
 	"k8s.io/kubernetes/test/e2e/framework"
 
@@ -56,7 +55,7 @@ var _ = framework.KubeDescribe("Eviction based on taints [Serial] [Slow] [Destru
 		framework.ExpectNodeHasTaint(c, nodeName, unreachableTaint)
 
 		isNodeReady := !framework.WaitForNodeToBeReady(c, nodeName, framework.NodeReadyInitialTimeout)
-		Expect(isNodeReady).To(Equal(true))
+		Expect(isNodeReady).To(BeTrue())
 
 		framework.ExpectNodeDoesNotHaveTaint(c, nodeName, unreachableTaint)
 	})
@@ -75,14 +74,6 @@ var _ = framework.KubeDescribe("Eviction based on taints [Serial] [Slow] [Destru
 		framework.ExpectNodeHasTaint(c, nodeName, testTaint)
 		defer framework.RemoveTaintOffNode(c, nodeName, testTaint)
 
-		// Wait a bit to allow node controller monitor taints can evict pods
-		// TODO: this is brittle; there's no guarantee the node controller will have run in 10 seconds.
-		framework.Logf("Sleeping 15 seconds to wait for pod to be evicted")
-		time.Sleep(15 * time.Second)
-
-		_, err := f.PodClient().Get(podName)
-		if !apierrs.IsNotFound(err) {
-			framework.ExpectNoError(err)
-		}
+		Expect(framework.WaitForPodToDisappear(c, f.Namespace.Name, podName, labels.Everything(), pollInterval, pollTimeout)).To(Succeed())
 	})
 })

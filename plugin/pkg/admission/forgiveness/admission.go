@@ -17,17 +17,16 @@ limitations under the License.
 package forgiveness
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 
-	"encoding/json"
 	"github.com/golang/glog"
 	"k8s.io/kubernetes/pkg/admission"
 	"k8s.io/kubernetes/pkg/api"
 	apierrors "k8s.io/kubernetes/pkg/api/errors"
 	"k8s.io/kubernetes/pkg/api/unversioned"
 	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
-	"time"
 )
 
 func init() {
@@ -46,6 +45,8 @@ type plugin struct {
 	*admission.Handler
 	client clientset.Interface
 }
+
+var defaultForgivenessSeconds int64 = 300
 
 // NewDefaultForgivenessSeconds creates a new instance of the DefaultForgivenessSeconds admission controller
 func NewDefaultForgivenessSeconds(client clientset.Interface) admission.Interface {
@@ -86,7 +87,8 @@ func (p *plugin) Admit(attributes admission.Attributes) (err error) {
 		tolerations = append(tolerations, api.Toleration{
 			Key:                unversioned.TaintNodeNotReady,
 			Operator:           api.TolerationOpExists,
-			ForgivenessSeconds: 5 * time.Minute,
+			Effect:             api.TaintEffectNoExecute,
+			ForgivenessSeconds: &defaultForgivenessSeconds,
 		})
 	}
 
@@ -94,7 +96,8 @@ func (p *plugin) Admit(attributes admission.Attributes) (err error) {
 		tolerations = append(tolerations, api.Toleration{
 			Key:                unversioned.TaintNodeUnreachable,
 			Operator:           api.TolerationOpExists,
-			ForgivenessSeconds: 5 * time.Minute,
+			Effect:             api.TaintEffectNoExecute,
+			ForgivenessSeconds: &defaultForgivenessSeconds,
 		})
 	}
 

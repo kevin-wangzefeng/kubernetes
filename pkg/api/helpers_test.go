@@ -563,18 +563,18 @@ func TestTolerationToleratesTaint(t *testing.T) {
 
 func TestTolerationsTolerateTaintsWithFilter(t *testing.T) {
 	testCases := []struct {
-		description       string
-		tolerations       []Toleration
-		taints            []Taint
-		isInterestedTaint taintsFilterFunc
-		expectTolerated   bool
+		description        string
+		tolerations        []Toleration
+		taints             []Taint
+		isInterestingTaint taintsFilterFunc
+		expectTolerated    bool
 	}{
 		{
-			description:       "empty tolerations tolerate emtpy taints",
-			tolerations:       []Toleration{},
-			taints:            []Taint{},
-			isInterestedTaint: func(t *Taint) bool { return true },
-			expectTolerated:   true,
+			description:        "empty tolerations tolerate emtpy taints",
+			tolerations:        []Toleration{},
+			taints:             []Taint{},
+			isInterestingTaint: func(t *Taint) bool { return true },
+			expectTolerated:    true,
 		},
 		{
 			description: "non-empty tolerations tolerate emtpy taints",
@@ -585,9 +585,9 @@ func TestTolerationsTolerateTaintsWithFilter(t *testing.T) {
 					Effect:   TaintEffectNoSchedule,
 				},
 			},
-			taints:            []Taint{},
-			isInterestedTaint: func(t *Taint) bool { return true },
-			expectTolerated:   true,
+			taints:             []Taint{},
+			isInterestingTaint: func(t *Taint) bool { return true },
+			expectTolerated:    true,
 		},
 		{
 			description: "tolerations match all taints, expect tolerated",
@@ -604,8 +604,8 @@ func TestTolerationsTolerateTaintsWithFilter(t *testing.T) {
 					Effect: TaintEffectNoSchedule,
 				},
 			},
-			isInterestedTaint: func(t *Taint) bool { return true },
-			expectTolerated:   true,
+			isInterestingTaint: func(t *Taint) bool { return true },
+			expectTolerated:    true,
 		},
 		{
 			description: "tolerations don't match taints, but no taint is interested, expect tolerated",
@@ -622,8 +622,8 @@ func TestTolerationsTolerateTaintsWithFilter(t *testing.T) {
 					Effect: TaintEffectNoSchedule,
 				},
 			},
-			isInterestedTaint: func(t *Taint) bool { return false },
-			expectTolerated:   true,
+			isInterestingTaint: func(t *Taint) bool { return false },
+			expectTolerated:    true,
 		},
 		{
 			description: "no isInterestedTaint indicated, means all taints are interested, tolerations don't match taints, expect untolerated",
@@ -640,8 +640,8 @@ func TestTolerationsTolerateTaintsWithFilter(t *testing.T) {
 					Effect: TaintEffectNoSchedule,
 				},
 			},
-			isInterestedTaint: nil,
-			expectTolerated:   false,
+			isInterestingTaint: nil,
+			expectTolerated:    false,
 		},
 		{
 			description: "tolerations match interested taints, expect tolerated",
@@ -662,16 +662,16 @@ func TestTolerationsTolerateTaintsWithFilter(t *testing.T) {
 					Effect: TaintEffectNoSchedule,
 				},
 			},
-			isInterestedTaint: func(t *Taint) bool { return t.Effect == TaintEffectNoExecute },
-			expectTolerated:   true,
+			isInterestingTaint: func(t *Taint) bool { return t.Effect == TaintEffectNoExecute },
+			expectTolerated:    true,
 		},
 	}
 
 	for _, tc := range testCases {
-		if tc.expectTolerated != TolerationsTolerateTaintsWithFilter(tc.tolerations, tc.taints, tc.isInterestedTaint) {
+		if tc.expectTolerated != TolerationsTolerateTaintsWithFilter(tc.tolerations, tc.taints, tc.isInterestingTaint) {
 			filteredTaints := []Taint{}
 			for _, taint := range tc.taints {
-				if tc.isInterestedTaint != nil && !tc.isInterestedTaint(&taint) {
+				if tc.isInterestingTaint != nil && !tc.isInterestingTaint(&taint) {
 					continue
 				}
 				filteredTaints = append(filteredTaints, taint)

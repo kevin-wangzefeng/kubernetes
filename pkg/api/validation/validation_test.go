@@ -3492,7 +3492,7 @@ func TestValidatePod(t *testing.T) {
 			},
 			Spec: validPodSpec,
 		},
-		{ // populate forgiverness tolerations in annotations.
+		{ // populate forgiveness tolerations with exists operator in annotations.
 			ObjectMeta: api.ObjectMeta{
 				Name:      "123",
 				Namespace: "ns",
@@ -3502,6 +3502,27 @@ func TestValidatePod(t *testing.T) {
 						"key": "` + unversioned.TaintNodeNotReady + `",
 						"operator": "Exists",
 						"value": "",
+						"effect": "NoExecute",
+						"forgivenessSeconds": 60
+					}]`,
+				},
+			},
+			Spec: api.PodSpec{
+				Containers:    []api.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent"}},
+				RestartPolicy: api.RestartPolicyAlways,
+				DNSPolicy:     api.DNSClusterFirst,
+			},
+		},
+		{ // populate forgiveness tolerations with equal operator in annotations.
+			ObjectMeta: api.ObjectMeta{
+				Name:      "123",
+				Namespace: "ns",
+				Annotations: map[string]string{
+					api.TolerationsAnnotationKey: `
+					[{
+						"key": "foo",
+						"operator": "Equal",
+						"value": "bar",
 						"effect": "NoExecute",
 						"forgivenessSeconds": 60
 					}]`,
@@ -4051,23 +4072,6 @@ func TestValidatePod(t *testing.T) {
 						"key": ` + unversioned.TaintNodeNotReady + `,
 						"operator": "Exists",
 						"effect": "NoSchedule",
-						"forgivenessSeconds": 20
-					}]`,
-				},
-			},
-			Spec: validPodSpec,
-		},
-		"operator must be 'Exists' when `forgivenessSeconds` is set": {
-			ObjectMeta: api.ObjectMeta{
-				Name:      "pod-forgiveness-invalid",
-				Namespace: "ns",
-				Annotations: map[string]string{
-					api.TolerationsAnnotationKey: `
-					[{
-						"key": ` + unversioned.TaintNodeNotReady + `,
-						"operator": "Equal",
-						"value": "bar",
-						"effect": "NoExecute",
 						"forgivenessSeconds": 20
 					}]`,
 				},

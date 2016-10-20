@@ -36,8 +36,6 @@ import (
 const (
 	// Interval to framework.Poll /runningpods on a node
 	pollInterval = 1 * time.Second
-
-	pollTimeout    = 1 * time.Minute
 	// Interval to framework.Poll /stats/container on a node
 	containerStatsPollingInterval = 5 * time.Second
 	// Maximum number of nodes that we constraint to

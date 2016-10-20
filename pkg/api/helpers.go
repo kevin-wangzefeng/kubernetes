@@ -513,6 +513,8 @@ func (t *Toleration) ToleratesTaint(taint *Taint) bool {
 		if taint.TimeAdded.IsZero() {
 			return false
 		}
+
+		// TODO: need to take time skew into consideration, make sure we don't evict pods earlier than we promised.
 		if unversioned.Now().After(taint.TimeAdded.Add(time.Second * time.Duration(*t.ForgivenessSeconds))) {
 			return false
 		}

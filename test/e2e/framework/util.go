@@ -2513,23 +2513,6 @@ func ExpectNodeDoesNotHaveTaint(c *client.Client, nodeName string, taint api.Tai
 	}
 }
 
-func deleteTaint(oldTaints []api.Taint, taintToDelete api.Taint) ([]api.Taint, error) {
-	newTaints := []api.Taint{}
-	found := false
-	for _, oldTaint := range oldTaints {
-		if oldTaint.MatchTaint(taintToDelete) {
-			found = true
-			continue
-		}
-		newTaints = append(newTaints, taintToDelete)
-	}
-
-	if !found {
-		return nil, fmt.Errorf("taint %s not found.", taintToDelete.ToString())
-	}
-	return newTaints, nil
-}
-
 // RemoveTaintOffNode is for cleaning up taints temporarily added to node,
 // won't fail if target taint doesn't exist or has been removed.
 func RemoveTaintOffNode(c *client.Client, nodeName string, taint api.Taint) {

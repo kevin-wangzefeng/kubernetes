@@ -18,6 +18,7 @@ package e2e
 
 import (
 	"fmt"
+	"time"
 
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/unversioned"
@@ -31,6 +32,7 @@ import (
 )
 
 var _ = framework.KubeDescribe("Eviction based on taints [Serial] [Slow] [Destructive]", func() {
+	const pollTimeout = 1 * time.Minute
 	var c *client.Client
 	f := framework.NewDefaultFramework("pod-eviction")
 

@@ -399,44 +399,46 @@ func (nc *NodeController) Run() {
 			}
 		}, nc.nodeMonitorPeriod, wait.NeverStop)
 
-		go wait.Until(func() {
-			if err := nc.monitorNodeTaints(); err != nil {
-				glog.Errorf("Error monitoring node taints: %v", err)
-			}
-		}, nc.nodeMonitorPeriod, wait.NeverStop)
+		//go wait.Until(func() {
+		//	if err := nc.monitorNodeTaints(); err != nil {
+		//		glog.Errorf("Error monitoring node taints: %v", err)
+		//	}
+		//}, nc.nodeMonitorPeriod, wait.NeverStop)
 
 		go wait.Until(func() {
 			nc.evictorLock.Lock()
 			defer nc.evictorLock.Unlock()
 			for k := range nc.zoneIntolerablePodEvictor {
-				nc.zoneIntolerablePodEvictor[k].Try(func(value TimedValue) (bool, time.Duration) {
-					message, _ := value.UID.(evictionMessage)
-					podName := message.podName
-					podNamespace := message.podNamespace
-					nodeUID := message.nodeUID
+				func(k string) {
+					nc.zoneIntolerablePodEvictor[k].Try(func(value TimedValue) (bool, time.Duration) {
+						message, _ := value.UID.(evictionMessage)
+						podName := message.podName
+						podNamespace := message.podNamespace
+						nodeUID := message.nodeUID
 
-					pod, err := nc.kubeClient.Core().Pods(podNamespace).Get(podName)
-					if err != nil {
-						// pod has been deleted, no more action needed
-						if apierrors.IsNotFound(err) {
-							return true, 0
+						pod, err := nc.kubeClient.Core().Pods(podNamespace).Get(podName)
+						if err != nil {
+							// pod has been deleted, no more action needed
+							if apierrors.IsNotFound(err) {
+								return true, 0
+							}
+							glog.V(10).Infof("Failed to get pod %s/%s, err: %v.", podNamespace, podName, err)
+							return false, 0
 						}
-						glog.V(10).Infof("Failed to get pod %s/%s, err: %v.", podNamespace, podName, err)
-						return false, 0
-					}
-					EvictionsNumber.WithLabelValues(k).Inc()
+						EvictionsNumber.WithLabelValues(k).Inc()
 
-					remaining, err := deletePod(nc.kubeClient, nc.recorder, pod, string(nodeUID), nc.daemonSetStore)
-					if err != nil {
-						utilruntime.HandleError(fmt.Errorf("unable to evict pod %s: %v", value.Value, err))
-						return false, 0
-					}
+						remaining, err := deletePod(nc.kubeClient, nc.recorder, pod, string(nodeUID), nc.daemonSetStore)
+						if err != nil {
+							utilruntime.HandleError(fmt.Errorf("unable to evict pod %s: %v", value.Value, err))
+							return false, 0
+						}
 
-					if remaining {
-						nc.zoneTerminationEvictor[k].Add(pod.Spec.NodeName, string(nodeUID))
-					}
-					return true, 0
-				})
+						if remaining {
+							nc.zoneTerminationEvictor[k].Add(pod.Spec.NodeName, string(nodeUID))
+						}
+						return true, 0
+					})
+				}(k)
 			}
 		}, nodeEvictionPeriod, wait.NeverStop)
 
@@ -458,8 +460,7 @@ func (nc *NodeController) Run() {
 			for k := range nc.zonePodEvictor {
 				nc.zonePodEvictor[k].Try(func(value TimedValue) (bool, time.Duration) {
 
-					if false {
-						var node *api.Node
+					if true {
 
 						obj, exists, err := nc.nodeStore.GetByKey(value.Value)
 						if err != nil {
@@ -467,10 +468,10 @@ func (nc *NodeController) Run() {
 						} else if !exists {
 							glog.Warningf("Node %v no longer present in nodeStore!", value.Value)
 						} else {
-							node, _ = obj.(*api.Node)
+							node, _ := obj.(*api.Node)
 							zone := utilnode.GetZoneKey(node)
 							EvictionsNumber.WithLabelValues(zone).Inc()
-							err = nc.evictIntolerablePods(node)
+							_, err = nc.evictIntolerablePods(node)
 							if err != nil {
 								utilruntime.HandleError(fmt.Errorf("unable to evict node %q: %v", value.Value, err))
 							}
@@ -478,30 +479,33 @@ func (nc *NodeController) Run() {
 
 						// check if and evict intolerable pods after nodeEvictionPeriod
 						return false, nodeEvictionPeriod
-					}
 
-					obj, exists, err := nc.nodeStore.GetByKey(value.Value)
-					if err != nil {
-						glog.Warningf("Failed to get Node %v from the nodeStore: %v", value.Value, err)
-					} else if !exists {
-						glog.Warningf("Node %v no longer present in nodeStore!", value.Value)
 					} else {
-						node, _ := obj.(*api.Node)
-						zone := utilnode.GetZoneKey(node)
-						EvictionsNumber.WithLabelValues(zone).Inc()
+
+						obj, exists, err := nc.nodeStore.GetByKey(value.Value)
+						if err != nil {
+							glog.Warningf("Failed to get Node %v from the nodeStore: %v", value.Value, err)
+						} else if !exists {
+							glog.Warningf("Node %v no longer present in nodeStore!", value.Value)
+						} else {
+							node, _ := obj.(*api.Node)
+							zone := utilnode.GetZoneKey(node)
+							EvictionsNumber.WithLabelValues(zone).Inc()
+						}
+
+						nodeUid, _ := value.UID.(string)
+						remaining, err := deletePods(nc.kubeClient, nc.recorder, value.Value, nodeUid, nc.daemonSetStore)
+						if err != nil {
+							utilruntime.HandleError(fmt.Errorf("unable to evict node %q: %v", value.Value, err))
+							return false, 0
+						}
+
+						if remaining {
+							nc.zoneTerminationEvictor[k].Add(value.Value, value.UID)
+						}
+						return true, 0
 					}
 
-					nodeUid, _ := value.UID.(string)
-					remaining, err := deletePods(nc.kubeClient, nc.recorder, value.Value, nodeUid, nc.daemonSetStore)
-					if err != nil {
-						utilruntime.HandleError(fmt.Errorf("unable to evict node %q: %v", value.Value, err))
-						return false, 0
-					}
-
-					if remaining {
-						nc.zoneTerminationEvictor[k].Add(value.Value, value.UID)
-					}
-					return true, 0
 				})
 			}
 		}, nodeEvictionPeriod, wait.NeverStop)
@@ -514,42 +518,42 @@ func (nc *NodeController) Run() {
 			for k := range nc.zoneTerminationEvictor {
 				nc.zoneTerminationEvictor[k].Try(func(value TimedValue) (bool, time.Duration) {
 
-					// TODO: kevin-wangzefeng
-					if false {
-						message, _ := value.UID.(evictionMessage)
-						podName := message.podName
-						podNamespace := message.podNamespace
-						nodeUID := message.nodeUID
-
-						pod, err := nc.kubeClient.Core().Pods(podNamespace).Get(podName)
-						if err != nil {
-							// pod has been deleted, no more action needed
-							if apierrors.IsNotFound(err) {
-								return true, 0
-							}
-							glog.V(10).Infof("Failed to get pod %s/%s, err: %v.", podNamespace, podName, err)
-							return false, 0
-						}
-						nodeName := pod.Spec.NodeName
-
-						deleted, remaining, err := terminatePod(nc.kubeClient, nc.recorder, pod, string(nodeUID), value.AddedAt, nc.maximumGracePeriod)
-						if err != nil {
-							utilruntime.HandleError(fmt.Errorf("unable to terminate pod %s on node %q: %v", value.Value, nodeName, err))
-							return false, 0
-						}
-
-						if deleted {
-							glog.V(2).Infof("Pod %s terminated on %q", value.Value, nodeName)
-							return true, 0
-						}
-
-						glog.V(2).Infof("Pod %s terminating since %s on %q, estimated completion %s", value.Value, value.AddedAt, nodeName, remaining)
-						// clamp very short intervals
-						if remaining < nodeEvictionPeriod {
-							remaining = nodeEvictionPeriod
-						}
-						return false, remaining
-					}
+					//// TODO: kevin-wangzefeng
+					//if false {
+					//	message, _ := value.UID.(evictionMessage)
+					//	podName := message.podName
+					//	podNamespace := message.podNamespace
+					//	nodeUID := message.nodeUID
+					//
+					//	pod, err := nc.kubeClient.Core().Pods(podNamespace).Get(podName)
+					//	if err != nil {
+					//		// pod has been deleted, no more action needed
+					//		if apierrors.IsNotFound(err) {
+					//			return true, 0
+					//		}
+					//		glog.V(10).Infof("Failed to get pod %s/%s, err: %v.", podNamespace, podName, err)
+					//		return false, 0
+					//	}
+					//	nodeName := pod.Spec.NodeName
+					//
+					//	deleted, remaining, err := terminatePod(nc.kubeClient, nc.recorder, pod, string(nodeUID), value.AddedAt, nc.maximumGracePeriod)
+					//	if err != nil {
+					//		utilruntime.HandleError(fmt.Errorf("unable to terminate pod %s on node %q: %v", value.Value, nodeName, err))
+					//		return false, 0
+					//	}
+					//
+					//	if deleted {
+					//		glog.V(2).Infof("Pod %s terminated on %q", value.Value, nodeName)
+					//		return true, 0
+					//	}
+					//
+					//	glog.V(2).Infof("Pod %s terminating since %s on %q, estimated completion %s", value.Value, value.AddedAt, nodeName, remaining)
+					//	// clamp very short intervals
+					//	if remaining < nodeEvictionPeriod {
+					//		remaining = nodeEvictionPeriod
+					//	}
+					//	return false, remaining
+					//}
 
 					// TODO: kevin-wangzefeng update messages and logs
 					nodeUid, _ := value.UID.(string)
@@ -657,9 +661,6 @@ func (nc *NodeController) monitorNodeStatus() error {
 			// Check eviction timeout against decisionTimestamp
 			if observedReadyCondition.Status == api.ConditionFalse &&
 				decisionTimestamp.After(nc.nodeStatusMap[node.Name].readyTransitionTimestamp.Add(nc.podEvictionTimeout)) {
-				if nc.evictPods(node) {
-					glog.V(2).Infof("Evicting pods on node %s: %v is later than %v + %v", node.Name, decisionTimestamp, nc.nodeStatusMap[node.Name].readyTransitionTimestamp, nc.podEvictionTimeout)
-				}
 
 				nodeNotReadyTaint := api.Taint{
 					Key:       unversioned.TaintNodeNotReady,
@@ -673,12 +674,13 @@ func (nc *NodeController) monitorNodeStatus() error {
 				if added {
 					glog.V(4).Infof("Added nodeNotReady taint to node %s: %v is later than %v + %v", node.Name, decisionTimestamp, nc.nodeStatusMap[node.Name].readyTransitionTimestamp, nc.podEvictionTimeout)
 				}
+
+				if nc.evictPods(node) {
+					glog.V(2).Infof("Evicting pods on node %s: %v is later than %v + %v", node.Name, decisionTimestamp, nc.nodeStatusMap[node.Name].readyTransitionTimestamp, nc.podEvictionTimeout)
+				}
 			}
 			if observedReadyCondition.Status == api.ConditionUnknown &&
 				decisionTimestamp.After(nc.nodeStatusMap[node.Name].probeTimestamp.Add(nc.podEvictionTimeout)) {
-				if nc.evictPods(node) {
-					glog.V(2).Infof("Evicting pods on node %s: %v is later than %v + %v", node.Name, decisionTimestamp, nc.nodeStatusMap[node.Name].readyTransitionTimestamp, nc.podEvictionTimeout-gracePeriod)
-				}
 
 				nodeUnreachableTaint := api.Taint{
 					Key:       unversioned.TaintNodeUnreachable,
@@ -692,11 +694,11 @@ func (nc *NodeController) monitorNodeStatus() error {
 				if added {
 					glog.V(4).Infof("Added unreachable taint to node %s: %v is later than %v + %v", node.Name, decisionTimestamp, nc.nodeStatusMap[node.Name].readyTransitionTimestamp, nc.podEvictionTimeout-gracePeriod)
 				}
+				if nc.evictPods(node) {
+					glog.V(2).Infof("Evicting pods on node %s: %v is later than %v + %v", node.Name, decisionTimestamp, nc.nodeStatusMap[node.Name].readyTransitionTimestamp, nc.podEvictionTimeout-gracePeriod)
+				}
 			}
 			if observedReadyCondition.Status == api.ConditionTrue {
-				if nc.cancelPodEviction(node) {
-					glog.V(2).Infof("Node %s is ready again, cancelled pod eviction", node.Name)
-				}
 
 				nodeNotReadyTaint := api.Taint{
 					Key:    unversioned.TaintNodeNotReady,
@@ -713,14 +715,15 @@ func (nc *NodeController) monitorNodeStatus() error {
 				if removed {
 					glog.V(2).Infof("Node %s is ready again, removed notReady and unreachable taints", node.Name)
 				}
+
+				if nc.cancelPodEviction(node) {
+					glog.V(2).Infof("Node %s is ready again, cancelled pod eviction", node.Name)
+				}
 			}
 
 			// Report node event.
 			if currentReadyCondition.Status != api.ConditionTrue && observedReadyCondition.Status == api.ConditionTrue {
 				recordNodeStatusChange(nc.recorder, node, "NodeNotReady")
-				if err = markAllPodsNotReady(nc.kubeClient, node); err != nil {
-					utilruntime.HandleError(fmt.Errorf("Unable to mark all pods NotReady on node %v: %v", node.Name, err))
-				}
 
 				nodeNotReadyTaint := api.Taint{
 					Key:       unversioned.TaintNodeNotReady,
@@ -733,6 +736,10 @@ func (nc *NodeController) monitorNodeStatus() error {
 				}
 				if added {
 					glog.V(2).Infof("Added nodeNotReady taint to node %s: %v is later than %v + %v", node.Name, decisionTimestamp, nc.nodeStatusMap[node.Name].readyTransitionTimestamp, nc.podEvictionTimeout)
+				}
+
+				if err = markAllPodsNotReady(nc.kubeClient, node); err != nil {
+					utilruntime.HandleError(fmt.Errorf("Unable to mark all pods NotReady on node %v: %v", node.Name, err))
 				}
 			}
 
@@ -785,7 +792,7 @@ func (nc *NodeController) evictIntolerablePods(node *api.Node) (bool, error) {
 	for _, pod := range pods.Items {
 		tolerations, err := api.GetTolerationsFromPodAnnotations(pod.Annotations)
 		if err != nil {
-			return err
+			return false, err
 		}
 
 		if !api.TolerationsTolerateTaintsWithFilter(tolerations, taints,
@@ -793,11 +800,11 @@ func (nc *NodeController) evictIntolerablePods(node *api.Node) (bool, error) {
 				return taint.Effect == api.TaintEffectNoExecute
 			},
 		) {
-			nc.queuePodsForEviction(&node, pod)
+			nc.queuePodsForEviction(node, pod)
 			evicted = true
 			continue
 		}
-		nc.cancelQueuedPodsEviction(&node, pod)
+		nc.cancelQueuedPodsEviction(node, pod)
 	}
 	return evicted, nil
 }
@@ -1278,16 +1285,15 @@ func tryAddTaintToNode(kubeClient clientset.Interface, nodeName string, taintToA
 // tryRemoveTaintsOffNode tries to remove taints off a node,
 // return true if taints removed, or return false if taints don't exist.
 func tryRemoveTaintsOffNode(kubeClient clientset.Interface, nodeName string, taintsToRemove ...api.Taint) (bool, error) {
-	removeTaints := func(oldTaints []api.Taint) ([]api.Taint, bool, error) {
+	removeTaints := func(taints []api.Taint) ([]api.Taint, bool, error) {
 		removed := false
-		newTaints := []api.Taint{}
 		for _, taintToRemove := range taintsToRemove {
 			updated := false
-			newTaints, updated = api.DeleteTaint(newTaints, taintToRemove)
+			taints, updated = api.DeleteTaint(taints, taintToRemove)
 			removed = removed || updated
 		}
 
-		return newTaints, removed, nil
+		return taints, removed, nil
 	}
 
 	return tryModifyNodeTaints(kubeClient, nodeName, removeTaints)

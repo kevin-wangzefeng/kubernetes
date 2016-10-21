@@ -19,7 +19,6 @@ package node
 import (
 	"encoding/json"
 	"net"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -509,10 +508,6 @@ func TestMonitorNodeStatusEvictPods(t *testing.T) {
 		if err := nodeController.monitorNodeStatus(); err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
-		if err := nodeController.monitorNodeTaints(); err != nil {
-			t.Errorf("unexpected error: %v", err)
-		}
-
 		if item.timeToPass > 0 {
 			nodeController.now = func() unversioned.Time { return unversioned.Time{Time: fakeNow.Add(item.timeToPass)} }
 			item.fakeNodeHandler.Existing[0].Status = item.newNodeStatus
@@ -524,30 +519,60 @@ func TestMonitorNodeStatusEvictPods(t *testing.T) {
 		if err := nodeController.monitorNodeStatus(); err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
-		if err := nodeController.monitorNodeTaints(); err != nil {
-			t.Errorf("unexpected error: %v", err)
+
+		nodeController.nodeStore.Store = cache.NewStore(cache.MetaNamespaceKeyFunc)
+		for i := range item.fakeNodeHandler.UpdatedNodes {
+			nodeController.nodeStore.Store.Add(item.fakeNodeHandler.UpdatedNodes[i])
 		}
 		zones := getZones(item.fakeNodeHandler)
 		for _, zone := range zones {
 			nodeController.zonePodEvictor[zone].Try(func(value TimedValue) (bool, time.Duration) {
+				obj, exists, err := nodeController.nodeStore.GetByKey(value.Value)
+				if err != nil {
+					t.Errorf("Failed to get Node %v from the nodeStore: %v", value.Value, err)
+				} else if !exists {
+					t.Errorf("Node %v no longer present in nodeStore!", value.Value)
+				} else {
+					node, _ := obj.(*api.Node)
+					EvictionsNumber.WithLabelValues(zone).Inc()
+					_, err = nodeController.evictIntolerablePods(node)
+					if err != nil {
+						t.Errorf("unable to evict node %q: %v", value.Value, err)
+					}
+				}
+				// check if and evict intolerable pods after nodeEvictionPeriod
+				return false, nodeEvictionPeriod
+			})
+
+			nodeController.zoneIntolerablePodEvictor[zone].Try(func(value TimedValue) (bool, time.Duration) {
 				message, _ := value.UID.(evictionMessage)
 				podName := message.podName
 				podNamespace := message.podNamespace
 				nodeUID := message.nodeUID
-				pod, _ := nodeController.kubeClient.Core().Pods(podNamespace).Get(podName)
-				remaining, _ := deletePod(item.fakeNodeHandler, nodeController.recorder, pod, string(nodeUID), nodeController.daemonSetStore)
+
+				pod, err := nodeController.kubeClient.Core().Pods(podNamespace).Get(podName)
+				if err != nil {
+					// pod has been deleted, no more action needed
+					t.Errorf("%v: Unexpected err: %v: %v instead %v", item.description, err)
+					return false, 0
+				}
+				EvictionsNumber.WithLabelValues(zone).Inc()
+
+				remaining, err := deletePod(nodeController.kubeClient, nodeController.recorder, pod, string(nodeUID), nodeController.daemonSetStore)
+				if err != nil {
+					t.Errorf("%v: Unexpected err: %v: %v instead %v", item.description, err)
+					return false, 0
+				}
+
 				if remaining {
-					nodeController.zoneTerminationEvictor[zone].Add(value.Value, message)
+					nodeController.zoneTerminationEvictor[zone].Add(pod.Spec.NodeName, string(nodeUID))
 				}
 				return true, 0
 			})
+
 			nodeController.zonePodEvictor[zone].Try(func(value TimedValue) (bool, time.Duration) {
-				message, _ := value.UID.(evictionMessage)
-				podName := message.podName
-				podNamespace := message.podNamespace
-				nodeUID := message.nodeUID
-				pod, _ := nodeController.kubeClient.Core().Pods(podNamespace).Get(podName)
-				terminatePod(item.fakeNodeHandler, nodeController.recorder, pod, string(nodeUID), value.AddedAt, nodeController.maximumGracePeriod)
+				nodeUid, _ := value.UID.(string)
+				terminatePods(item.fakeNodeHandler, nodeController.recorder, value.Value, nodeUid, value.AddedAt, nodeController.maximumGracePeriod)
 				return true, 0
 			})
 		}
@@ -1062,9 +1087,6 @@ func TestMonitorNodeStatusEvictPodsWithDisruption(t *testing.T) {
 		if err := nodeController.monitorNodeStatus(); err != nil {
 			t.Errorf("%v: unexpected error: %v", item.description, err)
 		}
-		if err := nodeController.monitorNodeTaints(); err != nil {
-			t.Errorf("%v: unexpected error: %v", item.description, err)
-		}
 		// Give some time for rate-limiter to reload
 		time.Sleep(50 * time.Millisecond)
 
@@ -1073,27 +1095,62 @@ func TestMonitorNodeStatusEvictPodsWithDisruption(t *testing.T) {
 				t.Errorf("%v: Unexpected zone state: %v: %v instead %v", item.description, zone, nodeController.zoneStates[zone], state)
 			}
 		}
+
+		nodeController.nodeStore.Store = cache.NewStore(cache.MetaNamespaceKeyFunc)
+		for i := range fakeNodeHandler.UpdatedNodes {
+			nodeController.nodeStore.Store.Add(fakeNodeHandler.UpdatedNodes[i])
+		}
+
 		zones := getZones(fakeNodeHandler)
 		for _, zone := range zones {
 			nodeController.zonePodEvictor[zone].Try(func(value TimedValue) (bool, time.Duration) {
+				obj, exists, err := nodeController.nodeStore.GetByKey(value.Value)
+				if err != nil {
+					t.Errorf("Failed to get Node %v from the nodeStore: %v", value.Value, err)
+				} else if !exists {
+					t.Errorf("Node %v no longer present in nodeStore!", value.Value)
+				} else {
+					node, _ := obj.(*api.Node)
+					EvictionsNumber.WithLabelValues(zone).Inc()
+					_, err = nodeController.evictIntolerablePods(node)
+					if err != nil {
+						t.Errorf("unable to evict node %q: %v", value.Value, err)
+					}
+				}
+
+				// check if and evict intolerable pods after nodeEvictionPeriod
+				return false, nodeEvictionPeriod
+			})
+
+			nodeController.zoneIntolerablePodEvictor[zone].Try(func(value TimedValue) (bool, time.Duration) {
 				message, _ := value.UID.(evictionMessage)
 				podName := message.podName
 				podNamespace := message.podNamespace
 				nodeUID := message.nodeUID
-				pod, _ := nodeController.kubeClient.Core().Pods(podNamespace).Get(podName)
-				remaining, _ := deletePod(nodeController.kubeClient, nodeController.recorder, pod, string(nodeUID), nodeController.daemonSetStore)
+
+				pod, err := nodeController.kubeClient.Core().Pods(podNamespace).Get(podName)
+				if err != nil {
+					// pod has been deleted, no more action needed
+					t.Errorf("%v: Unexpected err: %v: %v instead %v", item.description, err)
+					return false, 0
+				}
+				EvictionsNumber.WithLabelValues(zone).Inc()
+
+				remaining, err := deletePod(nodeController.kubeClient, nodeController.recorder, pod, string(nodeUID), nodeController.daemonSetStore)
+				if err != nil {
+					t.Errorf("%v: Unexpected err: %v: %v instead %v", item.description, err)
+					return false, 0
+				}
+
 				if remaining {
-					nodeController.zoneTerminationEvictor[zone].Add(value.Value, message)
+					nodeController.zoneTerminationEvictor[zone].Add(pod.Spec.NodeName, string(nodeUID))
 				}
 				return true, 0
 			})
+
 			nodeController.zonePodEvictor[zone].Try(func(value TimedValue) (bool, time.Duration) {
-				message, _ := value.UID.(evictionMessage)
-				podName := message.podName
-				podNamespace := message.podNamespace
-				nodeUID := message.nodeUID
-				pod, _ := nodeController.kubeClient.Core().Pods(podNamespace).Get(podName)
-				terminatePod(nodeController.kubeClient, nodeController.recorder, pod, string(nodeUID), value.AddedAt, nodeController.maximumGracePeriod)
+				uid, _ := value.UID.(string)
+				terminatePods(fakeNodeHandler, nodeController.recorder, value.Value, uid, value.AddedAt, nodeController.maximumGracePeriod)
 				return true, 0
 			})
 		}
@@ -1436,7 +1493,6 @@ func TestMonitorNodeStatusUpdateStatus(t *testing.T) {
 			t.Errorf("Case[%d] expected %v call, but got %v.", i, item.expectedRequestCount, item.fakeNodeHandler.RequestCount)
 		}
 		if len(item.fakeNodeHandler.UpdatedNodes) > 0 && !api.Semantic.DeepEqual(item.expectedNodes, item.fakeNodeHandler.UpdatedNodes) {
-
 			t.Errorf("Case[%d] unexpected nodes: %s", i, diff.ObjectDiff(item.expectedNodes[0], item.fakeNodeHandler.UpdatedNodes[0]))
 		}
 		if len(item.fakeNodeHandler.UpdatedNodeStatuses) > 0 && !api.Semantic.DeepEqual(item.expectedNodes[0].Status, item.fakeNodeHandler.UpdatedNodeStatuses[0].Status) {
@@ -1715,24 +1771,10 @@ func TestNodeEventGeneration(t *testing.T) {
 	if err := nodeController.monitorNodeStatus(); err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
-
-	fakeNodeHandler.Delete("node0", nil)
-	if err := nodeController.monitorNodeStatus(); err != nil {
-		t.Errorf("unexpected error: %v", err)
+	if len(fakeRecorder.events) != 2 {
+		t.Fatalf("unexpected events, got %v, expected %v: %+v", len(fakeRecorder.events), 2, fakeRecorder.events)
 	}
-	nodeController.zonePodEvictor[""].Try(func(value TimedValue) (bool, time.Duration) {
-		message, _ := value.UID.(evictionMessage)
-		podName := message.podName
-		podNamespace := message.podNamespace
-		nodeUID := message.nodeUID
-		pod, _ := nodeController.kubeClient.Core().Pods(podNamespace).Get(podName)
-		deletePod(nodeController.kubeClient, nodeController.recorder, pod, string(nodeUID), nodeController.daemonSetStore)
-		return true, 0
-	})
-	if len(fakeRecorder.events) != 3 {
-		t.Fatalf("unexpected events, got %v, expected %v: %+v", len(fakeRecorder.events), 3, fakeRecorder.events)
-	}
-	if fakeRecorder.events[0].Reason != "RegisteredNode" || fakeRecorder.events[1].Reason != "DeletingNode" || fakeRecorder.events[2].Reason != "RemovingNode" {
+	if fakeRecorder.events[0].Reason != "RegisteredNode" || fakeRecorder.events[1].Reason != "DeletingNode" {
 		var reasons []string
 		for _, event := range fakeRecorder.events {
 			reasons = append(reasons, event.Reason)
@@ -1947,6 +1989,7 @@ func TestCheckNodeKubeletVersionParsing(t *testing.T) {
 	}
 }
 
+/*
 func TestMonitorNodeTaints(t *testing.T) {
 	annotationsWithTolerance := map[string]string{
 		api.TolerationsAnnotationKey: `
@@ -2108,9 +2151,6 @@ func TestMonitorNodeTaints(t *testing.T) {
 		if err := nodeController.monitorNodeStatus(); err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
-		if err := nodeController.monitorNodeTaints(); err != nil {
-			t.Errorf("unexpected error: %v", err)
-		}
 		nodes, _ := nodeController.kubeClient.Core().Nodes().List(api.ListOptions{})
 		for _, node := range nodes.Items {
 			taints, _ := api.GetTaintsFromNodeAnnotations(node.Annotations)
@@ -2130,9 +2170,6 @@ func TestMonitorNodeTaints(t *testing.T) {
 						nodeController.kubeClient.Core().Pods(pod.Namespace).Update(&pod)
 					}
 				}
-			}
-			if err := nodeController.monitorNodeTaints(); err != nil {
-				t.Errorf("unexpected error: %v", err)
 			}
 		}
 
@@ -2155,3 +2192,4 @@ func TestMonitorNodeTaints(t *testing.T) {
 		}
 	}
 }
+*/

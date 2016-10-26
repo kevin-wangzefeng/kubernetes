@@ -1224,9 +1224,9 @@ func TestCloudProviderNoRateLimit(t *testing.T) {
 func TestMonitorNodeStatusUpdateStatus(t *testing.T) {
 	fakeNow := unversioned.Date(2015, 1, 1, 12, 0, 0, 0, time.UTC)
 
-	fakeNotReadyTaintJson := func(t unversioned.Time) string {
+	fakeUnreachableTaintJson := func(t unversioned.Time) string {
 		taints := []api.Taint{{
-			Key:       unversioned.TaintNodeNotReady,
+			Key:       unversioned.TaintNodeUnreachable,
 			Effect:    api.TaintEffectNoExecute,
 			TimeAdded: t,
 		}}
@@ -1349,7 +1349,7 @@ func TestMonitorNodeStatusUpdateStatus(t *testing.T) {
 				},
 				Clientset: fake.NewSimpleClientset(&api.PodList{Items: []api.Pod{*newPod("pod0", "node0")}}),
 			},
-			expectedRequestCount: 7, // List+Get+List+UpdateStatus+Get+Get+Update
+			expectedRequestCount: 6, // List+Get+List+UpdateStatus+Get+Update
 			timeToPass:           time.Hour,
 			newNodeStatus: api.NodeStatus{
 				Conditions: []api.NodeCondition{
@@ -1379,7 +1379,7 @@ func TestMonitorNodeStatusUpdateStatus(t *testing.T) {
 						Name:              "node0",
 						CreationTimestamp: unversioned.Date(2012, 1, 1, 0, 0, 0, 0, time.UTC),
 						Annotations: map[string]string{
-							api.TaintsAnnotationKey: fakeNotReadyTaintJson(unversioned.Time{Time: fakeNow.Add(time.Hour)}),
+							api.TaintsAnnotationKey: fakeUnreachableTaintJson(unversioned.Time{Time: fakeNow.Add(time.Hour)}),
 						},
 					},
 					Status: api.NodeStatus{

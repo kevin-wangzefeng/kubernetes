@@ -81,9 +81,9 @@ func deletePods(kubeClient clientset.Interface, recorder record.EventRecorder, n
 	return remaining, nil
 }
 
-// deletePod will delete pod that is running on given node from master,
-// and return true if pod was deleted, or was found pending deletion.
-func deletePod(kubeClient clientset.Interface, recorder record.EventRecorder, pod *api.Pod, nodeUID string, daemonStore cache.StoreToDaemonSetLister) (bool, error) {
+// deleteSinglePod will delete the pod that is running on given node from master,
+// and return true if the pod was deleted, or was found pending deletion.
+func deleteSinglePod(kubeClient clientset.Interface, recorder record.EventRecorder, pod *api.Pod, nodeUID string, daemonStore cache.StoreToDaemonSetLister) (bool, error) {
 	// if the pod has already been marked for deletion, we still return true that there are remaining pods.
 	if pod.DeletionGracePeriodSeconds != nil {
 		return true, nil
@@ -350,44 +350,6 @@ func terminatePods(kubeClient clientset.Interface, recorder record.EventRecorder
 		}
 	}
 	return complete, nextAttempt, nil
-}
-
-// terminatePod will ensure given pod that is in terminating state is eventually
-// cleaned up. Returns true if the pod is not in terminating state, a duration that indicates
-// the next deadline for the pod to complete.
-func terminatePod(kubeClient clientset.Interface, recorder record.EventRecorder, pod *api.Pod, nodeUID string, since time.Time, maxGracePeriod time.Duration) (bool, time.Duration, error) {
-	// if the pod terminated
-	terminated := true
-	now := time.Now()
-	elapsed := now.Sub(since)
-
-	// only clean terminated pod
-	if pod.DeletionGracePeriodSeconds == nil {
-		return terminated, time.Duration(0), nil
-	}
-
-	// the user's requested grace period
-	grace := time.Duration(*pod.DeletionGracePeriodSeconds) * time.Second
-	if grace > maxGracePeriod {
-		grace = maxGracePeriod
-	}
-
-	// the time remaining before the pod should be deleted
-	remaining := grace - elapsed
-	if remaining < 0 {
-		remaining = 0
-		glog.V(2).Infof("Removing pod %v after %s grace period", pod.Name, grace)
-		recordNodeEvent(recorder, pod.Spec.NodeName, nodeUID, api.EventTypeNormal, "TerminatingEvictedPod", fmt.Sprintf("Pod %s has exceeded the grace period for deletion after being evicted from Node %q and is being force killed", pod.Name, pod.Spec.NodeName))
-		if err := kubeClient.Core().Pods(pod.Namespace).Delete(pod.Name, api.NewDeleteOptions(0)); err != nil {
-			glog.Errorf("Error completing deletion of pod %s: %v", pod.Name, err)
-			terminated = false
-		}
-	} else {
-		glog.V(2).Infof("Pod %v still terminating, requested grace period %s, %s remaining", pod.Name, grace, remaining)
-		terminated = false
-	}
-
-	return terminated, remaining, nil
 }
 
 type evictionMessage struct {

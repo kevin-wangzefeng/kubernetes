@@ -126,11 +126,8 @@ type NodeController struct {
 	now           func() unversioned.Time
 	// Lock to access evictor workers
 	evictorLock sync.Mutex
-
-	// TODO: kevin-wangzefeng
-	zoneIntolerablePodEvictor map[string]*RateLimitedTimedQueue
-
 	// workers that evicts pods from unresponsive nodes.
+	zoneIntolerablePodEvictor map[string]*RateLimitedTimedQueue
 	zonePodEvictor         map[string]*RateLimitedTimedQueue
 	zoneTerminationEvictor map[string]*RateLimitedTimedQueue
 	podEvictionTimeout     time.Duration
@@ -421,12 +418,11 @@ func (nc *NodeController) Run() {
 						}
 						EvictionsNumber.WithLabelValues(k).Inc()
 
-						remaining, err := deletePod(nc.kubeClient, nc.recorder, pod, string(nodeUID), nc.daemonSetStore)
+						remaining, err := deleteSinglePod(nc.kubeClient, nc.recorder, pod, string(nodeUID), nc.daemonSetStore)
 						if err != nil {
 							utilruntime.HandleError(fmt.Errorf("unable to evict pod %s: %v", value.Value, err))
 							return false, 0
 						}
-
 						if remaining {
 							nc.zoneTerminationEvictor[k].Add(pod.Spec.NodeName, string(nodeUID))
 						}
@@ -470,8 +466,7 @@ func (nc *NodeController) Run() {
 								utilruntime.HandleError(fmt.Errorf("unable to evict node %q: %v", value.Value, err))
 							}
 						}
-
-						// check if and evict intolerable pods after nodeEvictionPeriod
+						// check and evict intolerable pods after nodeEvictionPeriod
 						return false, nodeEvictionPeriod
 
 					} else {
@@ -612,7 +607,7 @@ func (nc *NodeController) monitorNodeStatus() error {
 		}
 
 		decisionTimestamp := nc.now()
-		nc.tryUpdateNodeTaintsAccordingToNodeStatus(node.Name, decisionTimestamp, &observedReadyCondition, currentReadyCondition)
+		nc.trySyncNodeTaintsWithNodeStatus(node.Name, decisionTimestamp, &observedReadyCondition, currentReadyCondition)
 		if currentReadyCondition != nil {
 			// Check eviction timeout against decisionTimestamp
 			if observedReadyCondition.Status == api.ConditionFalse &&
@@ -1197,7 +1192,12 @@ func tryRemoveTaintsOffNode(kubeClient clientset.Interface, nodeName string, tai
 	return tryModifyNodeTaints(kubeClient, nodeName, removeTaints)
 }
 
-func (nc *NodeController) tryUpdateNodeTaintsAccordingToNodeStatus(nodeName string, decisionTimestamp unversioned.Time, observedReadyCondition, currentReadyCondition *api.NodeCondition) {
+// trySyncNodeTaintsWithNodeStatus will try to update node taint according to node status.
+// If node is observed not ready (ready condition false), add taint `notready:NoExecute` to node,
+// if node is observed unknown (ready condition unknown), add taint `unreachable:NoExecute` to node,
+// if node is observed ready, remove these two taints.
+// TODO: may incorporate these into tryUpdateNodeStatus to reduce api call when taint becomes a field of nodeStatus
+func (nc *NodeController) trySyncNodeTaintsWithNodeStatus(nodeName string, decisionTimestamp unversioned.Time, observedReadyCondition, currentReadyCondition *api.NodeCondition) {
 	if currentReadyCondition == nil {
 		return
 	}

@@ -534,13 +534,12 @@ func TestMonitorNodeStatusEvictPods(t *testing.T) {
 					t.Errorf("Node %v no longer present in nodeStore!", value.Value)
 				} else {
 					node, _ := obj.(*api.Node)
-					EvictionsNumber.WithLabelValues(zone).Inc()
 					_, err = nodeController.evictIntolerablePods(node)
 					if err != nil {
 						t.Errorf("unable to evict node %q: %v", value.Value, err)
 					}
 				}
-				// check if and evict intolerable pods after nodeEvictionPeriod
+				// check and evict intolerable pods after nodeEvictionPeriod
 				return false, nodeEvictionPeriod
 			})
 
@@ -556,14 +555,12 @@ func TestMonitorNodeStatusEvictPods(t *testing.T) {
 					t.Errorf("%v: Unexpected err: %v: %v instead %v", item.description, err)
 					return false, 0
 				}
-				EvictionsNumber.WithLabelValues(zone).Inc()
 
-				remaining, err := deletePod(nodeController.kubeClient, nodeController.recorder, pod, string(nodeUID), nodeController.daemonSetStore)
+				remaining, err := deleteSinglePod(nodeController.kubeClient, nodeController.recorder, pod, string(nodeUID), nodeController.daemonSetStore)
 				if err != nil {
 					t.Errorf("%v: Unexpected err: %v: %v instead %v", item.description, err)
 					return false, 0
 				}
-
 				if remaining {
 					nodeController.zoneTerminationEvictor[zone].Add(pod.Spec.NodeName, string(nodeUID))
 				}
@@ -1111,14 +1108,13 @@ func TestMonitorNodeStatusEvictPodsWithDisruption(t *testing.T) {
 					t.Errorf("Node %v no longer present in nodeStore!", value.Value)
 				} else {
 					node, _ := obj.(*api.Node)
-					EvictionsNumber.WithLabelValues(zone).Inc()
 					_, err = nodeController.evictIntolerablePods(node)
 					if err != nil {
 						t.Errorf("unable to evict node %q: %v", value.Value, err)
 					}
 				}
 
-				// check if and evict intolerable pods after nodeEvictionPeriod
+				// check and evict intolerable pods after nodeEvictionPeriod
 				return false, nodeEvictionPeriod
 			})
 
@@ -1134,14 +1130,12 @@ func TestMonitorNodeStatusEvictPodsWithDisruption(t *testing.T) {
 					t.Errorf("%v: Unexpected err: %v: %v instead %v", item.description, err)
 					return false, 0
 				}
-				EvictionsNumber.WithLabelValues(zone).Inc()
 
-				remaining, err := deletePod(nodeController.kubeClient, nodeController.recorder, pod, string(nodeUID), nodeController.daemonSetStore)
+				remaining, err := deleteSinglePod(nodeController.kubeClient, nodeController.recorder, pod, string(nodeUID), nodeController.daemonSetStore)
 				if err != nil {
 					t.Errorf("%v: Unexpected err: %v: %v instead %v", item.description, err)
 					return false, 0
 				}
-
 				if remaining {
 					nodeController.zoneTerminationEvictor[zone].Add(pod.Spec.NodeName, string(nodeUID))
 				}

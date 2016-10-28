@@ -27767,7 +27767,7 @@ func (x *Toleration) CodecEncodeSelf(e *codec1978.Encoder) {
 			yyq2060[1] = x.Operator != ""
 			yyq2060[2] = x.Value != ""
 			yyq2060[3] = x.Effect != ""
-			yyq2060[4] = x.ForgivenessSeconds != nil
+			yyq2060[4] = x.TolerationSeconds != nil
 			var yynn2060 int
 			if yyr2060 || yy2arr2060 {
 				r.EncodeArrayStart(5)
@@ -27864,10 +27864,10 @@ func (x *Toleration) CodecEncodeSelf(e *codec1978.Encoder) {
 			if yyr2060 || yy2arr2060 {
 				z.EncSendContainerState(codecSelfer_containerArrayElem1234)
 				if yyq2060[4] {
-					if x.ForgivenessSeconds == nil {
+					if x.TolerationSeconds == nil {
 						r.EncodeNil()
 					} else {
-						yy2070 := *x.ForgivenessSeconds
+						yy2070 := *x.TolerationSeconds
 						yym2071 := z.EncBinary()
 						_ = yym2071
 						if false {
@@ -27883,10 +27883,10 @@ func (x *Toleration) CodecEncodeSelf(e *codec1978.Encoder) {
 					z.EncSendContainerState(codecSelfer_containerMapKey1234)
 					r.EncodeString(codecSelferC_UTF81234, string("forgivenessSeconds"))
 					z.EncSendContainerState(codecSelfer_containerMapValue1234)
-					if x.ForgivenessSeconds == nil {
+					if x.TolerationSeconds == nil {
 						r.EncodeNil()
 					} else {
-						yy2072 := *x.ForgivenessSeconds
+						yy2072 := *x.TolerationSeconds
 						yym2073 := z.EncBinary()
 						_ = yym2073
 						if false {
@@ -27983,18 +27983,18 @@ func (x *Toleration) codecDecodeSelfFromMap(l int, d *codec1978.Decoder) {
 			}
 		case "forgivenessSeconds":
 			if r.TryDecodeAsNil() {
-				if x.ForgivenessSeconds != nil {
-					x.ForgivenessSeconds = nil
+				if x.TolerationSeconds != nil {
+					x.TolerationSeconds = nil
 				}
 			} else {
-				if x.ForgivenessSeconds == nil {
-					x.ForgivenessSeconds = new(int64)
+				if x.TolerationSeconds == nil {
+					x.TolerationSeconds = new(int64)
 				}
 				yym2082 := z.DecBinary()
 				_ = yym2082
 				if false {
 				} else {
-					*((*int64)(x.ForgivenessSeconds)) = int64(r.DecodeInt(64))
+					*((*int64)(x.TolerationSeconds)) = int64(r.DecodeInt(64))
 				}
 			}
 		default:
@@ -28087,18 +28087,18 @@ func (x *Toleration) codecDecodeSelfFromArray(l int, d *codec1978.Decoder) {
 	}
 	z.DecSendContainerState(codecSelfer_containerArrayElem1234)
 	if r.TryDecodeAsNil() {
-		if x.ForgivenessSeconds != nil {
-			x.ForgivenessSeconds = nil
+		if x.TolerationSeconds != nil {
+			x.TolerationSeconds = nil
 		}
 	} else {
-		if x.ForgivenessSeconds == nil {
-			x.ForgivenessSeconds = new(int64)
+		if x.TolerationSeconds == nil {
+			x.TolerationSeconds = new(int64)
 		}
 		yym2089 := z.DecBinary()
 		_ = yym2089
 		if false {
 		} else {
-			*((*int64)(x.ForgivenessSeconds)) = int64(r.DecodeInt(64))
+			*((*int64)(x.TolerationSeconds)) = int64(r.DecodeInt(64))
 		}
 	}
 	for {

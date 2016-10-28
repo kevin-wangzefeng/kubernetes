@@ -7787,10 +7787,10 @@ func (m *Toleration) MarshalTo(data []byte) (int, error) {
 	i++
 	i = encodeVarintGenerated(data, i, uint64(len(m.Effect)))
 	i += copy(data[i:], m.Effect)
-	if m.ForgivenessSeconds != nil {
+	if m.TolerationSeconds != nil {
 		data[i] = 0x28
 		i++
-		i = encodeVarintGenerated(data, i, uint64(*m.ForgivenessSeconds))
+		i = encodeVarintGenerated(data, i, uint64(*m.TolerationSeconds))
 	}
 	return i, nil
 }
@@ -10700,8 +10700,8 @@ func (m *Toleration) Size() (n int) {
 	n += 1 + l + sovGenerated(uint64(l))
 	l = len(m.Effect)
 	n += 1 + l + sovGenerated(uint64(l))
-	if m.ForgivenessSeconds != nil {
-		n += 1 + sovGenerated(uint64(*m.ForgivenessSeconds))
+	if m.TolerationSeconds != nil {
+		n += 1 + sovGenerated(uint64(*m.TolerationSeconds))
 	}
 	return n
 }
@@ -12964,7 +12964,7 @@ func (this *Toleration) String() string {
 		`Operator:` + fmt.Sprintf("%v", this.Operator) + `,`,
 		`Value:` + fmt.Sprintf("%v", this.Value) + `,`,
 		`Effect:` + fmt.Sprintf("%v", this.Effect) + `,`,
-		`ForgivenessSeconds:` + valueToStringGenerated(this.ForgivenessSeconds) + `,`,
+		`ForgivenessSeconds:` + valueToStringGenerated(this.TolerationSeconds) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -37583,7 +37583,7 @@ func (m *Toleration) Unmarshal(data []byte) error {
 					break
 				}
 			}
-			m.ForgivenessSeconds = &v
+			m.TolerationSeconds = &v
 		default:
 			iNdEx = preIndex
 			skippy, err := skipGenerated(data[iNdEx:])

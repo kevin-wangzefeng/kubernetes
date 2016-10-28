@@ -6241,7 +6241,7 @@ func autoConvert_v1_Toleration_To_api_Toleration(in *Toleration, out *api.Tolera
 	out.Operator = api.TolerationOperator(in.Operator)
 	out.Value = in.Value
 	out.Effect = api.TaintEffect(in.Effect)
-	out.ForgivenessSeconds = in.ForgivenessSeconds
+	out.TolerationSeconds = in.TolerationSeconds
 	return nil
 }
 
@@ -6254,7 +6254,7 @@ func autoConvert_api_Toleration_To_v1_Toleration(in *api.Toleration, out *Tolera
 	out.Operator = TolerationOperator(in.Operator)
 	out.Value = in.Value
 	out.Effect = TaintEffect(in.Effect)
-	out.ForgivenessSeconds = in.ForgivenessSeconds
+	out.TolerationSeconds = in.TolerationSeconds
 	return nil
 }
 

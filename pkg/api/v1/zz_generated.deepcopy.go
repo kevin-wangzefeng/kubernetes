@@ -3505,12 +3505,12 @@ func DeepCopy_v1_Toleration(in interface{}, out interface{}, c *conversion.Clone
 		out.Operator = in.Operator
 		out.Value = in.Value
 		out.Effect = in.Effect
-		if in.ForgivenessSeconds != nil {
-			in, out := &in.ForgivenessSeconds, &out.ForgivenessSeconds
+		if in.TolerationSeconds != nil {
+			in, out := &in.TolerationSeconds, &out.TolerationSeconds
 			*out = new(int64)
 			**out = **in
 		} else {
-			out.ForgivenessSeconds = nil
+			out.TolerationSeconds = nil
 		}
 		return nil
 	}

@@ -1343,7 +1343,7 @@ func TestMonitorNodeStatusUpdateStatus(t *testing.T) {
 				},
 				Clientset: fake.NewSimpleClientset(&api.PodList{Items: []api.Pod{*newPod("pod0", "node0")}}),
 			},
-			expectedRequestCount: 6, // List+Get+List+UpdateStatus+Get+Update
+			expectedRequestCount: 5, // List+Get+List+UpdateStatus+Get
 			timeToPass:           time.Hour,
 			newNodeStatus: api.NodeStatus{
 				Conditions: []api.NodeCondition{

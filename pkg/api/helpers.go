@@ -512,6 +512,7 @@ func GetTaintsFromNodeAnnotations(annotations map[string]string) ([]Taint, error
 
 // ToleratesTaint checks if the toleration tolerates the taint.
 func (t *Toleration) ToleratesTaint(taint *Taint) bool {
+	// empty toleration effect means match all taint effects
 	if len(t.Effect) > 0 && t.Effect != taint.Effect {
 		return false
 	}
@@ -537,6 +538,7 @@ func (t *Toleration) ToleratesTaint(taint *Taint) bool {
 
 	// TODO: Use proper defaulting when Toleration becomes a field of PodSpec
 	switch t.Operator {
+	// empty operator means Equal
 	case "", TolerationOpEqual:
 		return t.Value == taint.Value
 	case TolerationOpExists:
@@ -592,7 +594,7 @@ func DeleteTaintsByKey(taints []Taint, taintKey string) ([]Taint, bool) {
 	return newTaints, deleted
 }
 
-func DeleteTaint(taints []Taint, taintToDelete Taint) ([]Taint, bool) {
+func DeleteTaint(taints []Taint, taintToDelete *Taint) ([]Taint, bool) {
 	newTaints := []Taint{}
 	deleted := false
 	for i := range taints {

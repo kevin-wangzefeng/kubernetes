@@ -17,11 +17,13 @@ limitations under the License.
 package node
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
 
 	"k8s.io/kubernetes/pkg/api"
+	apierrors "k8s.io/kubernetes/pkg/api/errors"
 	"k8s.io/kubernetes/pkg/client/cache"
 	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 	"k8s.io/kubernetes/pkg/client/record"
@@ -90,7 +92,7 @@ func deleteSinglePod(kubeClient clientset.Interface, recorder record.EventRecord
 	}
 	// if the pod is managed by a daemon set, ignore it
 	// TODO: instead of having a special case here,
-	// make all daemon sets tolerate taints `notready:NoExecute`
+	// make all daemon sets tolerate taints `notReady:NoExecute`
 	// and `unreachable:NoExecute`.
 	_, err := daemonStore.GetPodDaemonSets(pod)
 	if err == nil {
@@ -337,14 +339,14 @@ func terminatePods(kubeClient clientset.Interface, recorder record.EventRecorder
 		remaining := grace - elapsed
 		if remaining < 0 {
 			remaining = 0
-			glog.V(2).Infof("Removing pod %v after %s grace period", pod.Name, grace)
+			glog.V(0).Infof("Removing pod %v after %s grace period", pod.Name, grace)
 			recordNodeEvent(recorder, nodeName, nodeUID, api.EventTypeNormal, "TerminatingEvictedPod", fmt.Sprintf("Pod %s has exceeded the grace period for deletion after being evicted from Node %q and is being force killed", pod.Name, nodeName))
 			if err := kubeClient.Core().Pods(pod.Namespace).Delete(pod.Name, api.NewDeleteOptions(0)); err != nil {
 				glog.Errorf("Error completing deletion of pod %s: %v", pod.Name, err)
 				complete = false
 			}
 		} else {
-			glog.V(2).Infof("Pod %v still terminating, requested grace period %s, %s remaining", pod.Name, grace, remaining)
+			glog.V(4).Infof("Pod %v still terminating, requested grace period %s, %s remaining", pod.Name, grace, remaining)
 			complete = false
 		}
 
@@ -359,4 +361,81 @@ type evictionMessage struct {
 	podName      string
 	podNamespace string
 	nodeUID      types.UID
+}
+
+type modifyTaintsFunc func(oldTaints []api.Taint) ([]api.Taint, bool, error)
+
+func tryModifyNodeTaints(kubeClient clientset.Interface, nodeName string, modifyTaints modifyTaintsFunc) (bool, error) {
+	var updateErr error
+	for attempt := 0; attempt < nodeStatusUpdateRetry; attempt++ {
+		node, err := kubeClient.Core().Nodes().Get(nodeName)
+		if err != nil {
+			return false, err
+		}
+
+		oldTaints, err := api.GetTaintsFromNodeAnnotations(node.Annotations)
+		if err != nil {
+			return false, err
+		}
+
+		newTaints, updated, err := modifyTaints(oldTaints)
+		if err != nil || !updated {
+			return false, err
+		}
+
+		taintsData, err := json.Marshal(newTaints)
+		if err != nil {
+			return false, err
+		}
+
+		if len(node.Annotations) == 0 {
+			node.Annotations = map[string]string{}
+		}
+		node.Annotations[api.TaintsAnnotationKey] = string(taintsData)
+
+		// TODO(kevin-wangzefeng): use patch instead here.
+		_, updateErr = kubeClient.Core().Nodes().Update(node)
+		if updateErr != nil {
+			if !apierrors.IsConflict(updateErr) {
+				return false, updateErr
+			}
+		} else {
+			return true, nil
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	return false, updateErr
+}
+
+func tryAddTaintToNode(kubeClient clientset.Interface, nodeName string, taintToAdd *api.Taint) (bool, error) {
+	addTaints := func(oldTaints []api.Taint) ([]api.Taint, bool, error) {
+		newTaints := []api.Taint{}
+		for _, oldTaint := range oldTaints {
+			if taintToAdd.MatchTaint(oldTaint) {
+				return []api.Taint{}, false, nil
+			}
+		}
+		newTaints = append(oldTaints, *taintToAdd)
+		return newTaints, true, nil
+	}
+
+	return tryModifyNodeTaints(kubeClient, nodeName, addTaints)
+}
+
+// tryRemoveTaintsOffNode tries to remove taints off a node,
+// return true if taints removed, or return false if taints don't exist.
+func tryRemoveTaintsOffNode(kubeClient clientset.Interface, nodeName string, taintsToRemove []*api.Taint) (bool, error) {
+	removeTaints := func(taints []api.Taint) ([]api.Taint, bool, error) {
+		removed := false
+		for _, taintToRemove := range taintsToRemove {
+			updated := false
+			taints, updated = api.DeleteTaint(taints, taintToRemove)
+			removed = removed || updated
+		}
+
+		return taints, removed, nil
+	}
+
+	return tryModifyNodeTaints(kubeClient, nodeName, removeTaints)
 }

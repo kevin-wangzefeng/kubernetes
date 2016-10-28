@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package forgiveness
+package tolerationseconds
 
 import (
 	"encoding/json"
@@ -26,16 +26,18 @@ import (
 )
 
 func TestForgivenessAdmission(t *testing.T) {
+	var defaultTolerationSeconds int64 = 300
+
 	marshalTolerations := func(tolerations []api.Toleration) string {
 		tolerationsData, _ := json.Marshal(tolerations)
 		return string(tolerationsData)
 	}
 
-	genForgivenessSeconds := func(s int64) *int64 {
+	genTolerationSeconds := func(s int64) *int64 {
 		return &s
 	}
 
-	handler := NewDefaultForgivenessSeconds(nil)
+	handler := NewDefaultTolerationSeconds(nil)
 	tests := []struct {
 		description  string
 		requestedPod api.Pod
@@ -54,13 +56,13 @@ func TestForgivenessAdmission(t *testing.T) {
 								Key:               unversioned.TaintNodeNotReady,
 								Operator:          api.TolerationOpExists,
 								Effect:            api.TaintEffectNoExecute,
-								TolerationSeconds: &defaultForgivenessSeconds,
+								TolerationSeconds: &defaultTolerationSeconds,
 							},
 							{
 								Key:               unversioned.TaintNodeUnreachable,
 								Operator:          api.TolerationOpExists,
 								Effect:            api.TaintEffectNoExecute,
-								TolerationSeconds: &defaultForgivenessSeconds,
+								TolerationSeconds: &defaultTolerationSeconds,
 							},
 						}),
 					},
@@ -79,7 +81,7 @@ func TestForgivenessAdmission(t *testing.T) {
 								Operator:          api.TolerationOpEqual,
 								Value:             "bar",
 								Effect:            api.TaintEffectNoSchedule,
-								TolerationSeconds: genForgivenessSeconds(700),
+								TolerationSeconds: genTolerationSeconds(700),
 							},
 						}),
 					},
@@ -95,19 +97,19 @@ func TestForgivenessAdmission(t *testing.T) {
 								Operator:          api.TolerationOpEqual,
 								Value:             "bar",
 								Effect:            api.TaintEffectNoSchedule,
-								TolerationSeconds: genForgivenessSeconds(700),
+								TolerationSeconds: genTolerationSeconds(700),
 							},
 							{
 								Key:               unversioned.TaintNodeNotReady,
 								Operator:          api.TolerationOpExists,
 								Effect:            api.TaintEffectNoExecute,
-								TolerationSeconds: &defaultForgivenessSeconds,
+								TolerationSeconds: &defaultTolerationSeconds,
 							},
 							{
 								Key:               unversioned.TaintNodeUnreachable,
 								Operator:          api.TolerationOpExists,
 								Effect:            api.TaintEffectNoExecute,
-								TolerationSeconds: &defaultForgivenessSeconds,
+								TolerationSeconds: &defaultTolerationSeconds,
 							},
 						}),
 					},
@@ -116,7 +118,7 @@ func TestForgivenessAdmission(t *testing.T) {
 			},
 		},
 		{
-			description: "pod specified a toleration for taint `notready:NoExecute`, expect add toleration for `unreachable:NoExecute`",
+			description: "pod specified a toleration for taint `notReady:NoExecute`, expect add toleration for `unreachable:NoExecute`",
 			requestedPod: api.Pod{
 				ObjectMeta: api.ObjectMeta{
 					Annotations: map[string]string{
@@ -125,7 +127,7 @@ func TestForgivenessAdmission(t *testing.T) {
 								Key:               unversioned.TaintNodeNotReady,
 								Operator:          api.TolerationOpExists,
 								Effect:            api.TaintEffectNoExecute,
-								TolerationSeconds: genForgivenessSeconds(700),
+								TolerationSeconds: genTolerationSeconds(700),
 							},
 						}),
 					},
@@ -140,13 +142,13 @@ func TestForgivenessAdmission(t *testing.T) {
 								Key:               unversioned.TaintNodeNotReady,
 								Operator:          api.TolerationOpExists,
 								Effect:            api.TaintEffectNoExecute,
-								TolerationSeconds: genForgivenessSeconds(700),
+								TolerationSeconds: genTolerationSeconds(700),
 							},
 							{
 								Key:               unversioned.TaintNodeUnreachable,
 								Operator:          api.TolerationOpExists,
 								Effect:            api.TaintEffectNoExecute,
-								TolerationSeconds: &defaultForgivenessSeconds,
+								TolerationSeconds: &defaultTolerationSeconds,
 							},
 						}),
 					},
@@ -155,7 +157,7 @@ func TestForgivenessAdmission(t *testing.T) {
 			},
 		},
 		{
-			description: "pod specified a toleration for taint `unreachable:NoExecute`, expect add toleration for `notready:NoExecute`",
+			description: "pod specified a toleration for taint `unreachable:NoExecute`, expect add toleration for `notReady:NoExecute`",
 			requestedPod: api.Pod{
 				ObjectMeta: api.ObjectMeta{
 					Annotations: map[string]string{
@@ -164,7 +166,7 @@ func TestForgivenessAdmission(t *testing.T) {
 								Key:               unversioned.TaintNodeUnreachable,
 								Operator:          api.TolerationOpExists,
 								Effect:            api.TaintEffectNoExecute,
-								TolerationSeconds: genForgivenessSeconds(700),
+								TolerationSeconds: genTolerationSeconds(700),
 							},
 						}),
 					},
@@ -179,13 +181,13 @@ func TestForgivenessAdmission(t *testing.T) {
 								Key:               unversioned.TaintNodeUnreachable,
 								Operator:          api.TolerationOpExists,
 								Effect:            api.TaintEffectNoExecute,
-								TolerationSeconds: genForgivenessSeconds(700),
+								TolerationSeconds: genTolerationSeconds(700),
 							},
 							{
 								Key:               unversioned.TaintNodeNotReady,
 								Operator:          api.TolerationOpExists,
 								Effect:            api.TaintEffectNoExecute,
-								TolerationSeconds: &defaultForgivenessSeconds,
+								TolerationSeconds: &defaultTolerationSeconds,
 							},
 						}),
 					},
@@ -203,13 +205,13 @@ func TestForgivenessAdmission(t *testing.T) {
 								Key:               unversioned.TaintNodeNotReady,
 								Operator:          api.TolerationOpExists,
 								Effect:            api.TaintEffectNoExecute,
-								TolerationSeconds: genForgivenessSeconds(700),
+								TolerationSeconds: genTolerationSeconds(700),
 							},
 							{
 								Key:               unversioned.TaintNodeUnreachable,
 								Operator:          api.TolerationOpExists,
 								Effect:            api.TaintEffectNoExecute,
-								TolerationSeconds: genForgivenessSeconds(700),
+								TolerationSeconds: genTolerationSeconds(700),
 							},
 						}),
 					},
@@ -224,13 +226,13 @@ func TestForgivenessAdmission(t *testing.T) {
 								Key:               unversioned.TaintNodeNotReady,
 								Operator:          api.TolerationOpExists,
 								Effect:            api.TaintEffectNoExecute,
-								TolerationSeconds: genForgivenessSeconds(700),
+								TolerationSeconds: genTolerationSeconds(700),
 							},
 							{
 								Key:               unversioned.TaintNodeUnreachable,
 								Operator:          api.TolerationOpExists,
 								Effect:            api.TaintEffectNoExecute,
-								TolerationSeconds: genForgivenessSeconds(700),
+								TolerationSeconds: genTolerationSeconds(700),
 							},
 						}),
 					},
@@ -253,7 +255,7 @@ func TestForgivenessAdmission(t *testing.T) {
 }
 
 func TestHandles(t *testing.T) {
-	handler := NewDefaultForgivenessSeconds(nil)
+	handler := NewDefaultTolerationSeconds(nil)
 	tests := map[admission.Operation]bool{
 		admission.Update:  true,
 		admission.Create:  true,

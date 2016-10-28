@@ -3591,7 +3591,7 @@ func TestValidatePod(t *testing.T) {
 			},
 			Spec: validPodSpec,
 		},
-		{ // empty key with Exists operator is ok for toleration
+		{ // empty key with Exists operator is OK for toleration, empty toleration key means match all taint keys.
 			ObjectMeta: api.ObjectMeta{
 				Name:      "123",
 				Namespace: "ns",
@@ -3605,7 +3605,7 @@ func TestValidatePod(t *testing.T) {
 			},
 			Spec: validPodSpec,
 		},
-		{ // empty operator is ok for toleration
+		{ // empty operator is OK for toleration, defaults to Equal.
 			ObjectMeta: api.ObjectMeta{
 				Name:      "123",
 				Namespace: "ns",
@@ -3620,7 +3620,7 @@ func TestValidatePod(t *testing.T) {
 			},
 			Spec: validPodSpec,
 		},
-		{ // empty effect is ok for toleration
+		{ // empty effect is OK for toleration, empty toleration effect means match all taint effects.
 			ObjectMeta: api.ObjectMeta{
 				Name:      "123",
 				Namespace: "ns",

@@ -2540,7 +2540,7 @@ func RemoveTaintOffNode(c clientset.Interface, nodeName string, taint api.Taint)
 			return
 		}
 
-		newTaints, deleted := api.DeleteTaint(nodeTaints, taint)
+		newTaints, deleted := api.DeleteTaint(nodeTaints, &taint)
 		Expect(deleted, fmt.Sprintf("taint %q not found.", taint.ToString())).To(BeTrue())
 
 		taintsData, err := json.Marshal(newTaints)

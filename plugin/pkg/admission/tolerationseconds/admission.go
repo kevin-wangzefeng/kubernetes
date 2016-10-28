@@ -14,10 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package forgiveness
+package tolerationseconds
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 
@@ -29,27 +30,35 @@ import (
 	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/internalclientset"
 )
 
+var (
+	defaultNotReadyTolerationSeconds = flag.Int64("default-not-ready-toleration-seconds", 300,
+		"Indicates the tolerationSeconds of default forgiveness tolerations for every pod"+
+			" that tolerate taint `notReady:NoExecute`.")
+
+	defaultUnreachableTolerationSeconds = flag.Int64("default-unreachable-toleration-seconds", 300,
+		"Indicates the tolerationSeconds of default forgiveness tolerations for every pod"+
+			" that tolerate taint `unreachable:NoExecute`.")
+)
+
 func init() {
-	admission.RegisterPlugin("DefaultForgivenessSeconds", func(client clientset.Interface, config io.Reader) (admission.Interface, error) {
-		return NewDefaultForgivenessSeconds(client), nil
+	admission.RegisterPlugin("DefaultTolerationSeconds", func(client clientset.Interface, config io.Reader) (admission.Interface, error) {
+		return NewDefaultTolerationSeconds(client), nil
 	})
 }
 
 // plugin contains the client used by the admission controller
 // It will add default forgiveness tolerations for every pod
-// that tolerate taints `notready:NoExecute` and `unreachable:NoExecute`,
+// that tolerate taints `notReady:NoExecute` and `unreachable:NoExecute`,
 // with forgiveness period of 5 minutes.
-// If the pod already specifies a toleration for taint `notready:NoExecute`
+// If the pod already specifies a toleration for taint `notReady:NoExecute`
 // or `unreachable:NoExecute`, the plugin won't touch it.
 type plugin struct {
 	*admission.Handler
 	client clientset.Interface
 }
 
-var defaultForgivenessSeconds int64 = 300
-
-// NewDefaultForgivenessSeconds creates a new instance of the DefaultForgivenessSeconds admission controller
-func NewDefaultForgivenessSeconds(client clientset.Interface) admission.Interface {
+// NewDefaultTolerationSeconds creates a new instance of the DefaultTolerationSeconds admission controller
+func NewDefaultTolerationSeconds(client clientset.Interface) admission.Interface {
 	return &plugin{
 		Handler: admission.NewHandler(admission.Create, admission.Update),
 		client:  client,
@@ -88,7 +97,7 @@ func (p *plugin) Admit(attributes admission.Attributes) (err error) {
 			Key:               unversioned.TaintNodeNotReady,
 			Operator:          api.TolerationOpExists,
 			Effect:            api.TaintEffectNoExecute,
-			TolerationSeconds: &defaultForgivenessSeconds,
+			TolerationSeconds: &defaultNotReadyTolerationSeconds,
 		})
 	}
 
@@ -97,7 +106,7 @@ func (p *plugin) Admit(attributes admission.Attributes) (err error) {
 			Key:               unversioned.TaintNodeUnreachable,
 			Operator:          api.TolerationOpExists,
 			Effect:            api.TaintEffectNoExecute,
-			TolerationSeconds: &defaultForgivenessSeconds,
+			TolerationSeconds: &defaultUnreachableTolerationSeconds,
 		})
 	}
 
@@ -108,7 +117,7 @@ func (p *plugin) Admit(attributes admission.Attributes) (err error) {
 	tolerationsData, err := json.Marshal(tolerations)
 	if err != nil {
 		return apierrors.NewForbidden(attributes.GetResource().GroupResource(), pod.Name,
-			fmt.Errorf("failed to add default forgiveness tolerations for taints `notready:NoExecute` and `unreachable:NoExecute`, err: %v", err))
+			fmt.Errorf("failed to add default forgiveness tolerations for taints `notReady:NoExecute` and `unreachable:NoExecute`, err: %v", err))
 	}
 
 	pod.Annotations[api.TolerationsAnnotationKey] = string(tolerationsData)

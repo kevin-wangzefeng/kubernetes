@@ -1824,6 +1824,7 @@ func validateTolerations(tolerations []api.Toleration, fldPath *field.Path) fiel
 
 		// validate toleration operator and value
 		switch toleration.Operator {
+		// empty operator means Equal
 		case api.TolerationOpEqual, "":
 			if errs := validation.IsValidLabelValue(toleration.Value); len(errs) != 0 {
 				allErrors = append(allErrors, field.Invalid(idxPath.Child("operator"), toleration.Value, strings.Join(errs, ";")))
@@ -1837,7 +1838,7 @@ func validateTolerations(tolerations []api.Toleration, fldPath *field.Path) fiel
 			allErrors = append(allErrors, field.NotSupported(idxPath.Child("operator"), toleration.Operator, validValues))
 		}
 
-		// validate toleration effect
+		// validate toleration effect, empty toleration effect means match all taint effects
 		if len(toleration.Effect) > 0 {
 			allErrors = append(allErrors, validateTaintEffect(&toleration.Effect, true, idxPath.Child("effect"))...)
 		}

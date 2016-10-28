@@ -1936,7 +1936,7 @@ const (
 // the triple <key,value,effect> using the matching operator <operator>.
 type Toleration struct {
 	// Key is the taint key that the toleration applies to. Empty means match all taint keys.
-	// If the key is empty, operator must be Exists, which means to match all values and all keys.
+	// If the key is empty, operator must be Exists; this combination means to match all values and all keys.
 	// +optional
 	Key string `json:"key,omitempty" patchStrategy:"merge" patchMergeKey:"key" protobuf:"bytes,1,opt,name=key"`
 	// operator represents a key's relationship to the value.
@@ -1953,12 +1953,12 @@ type Toleration struct {
 	// When specified, allowed values are NoSchedule, PreferNoSchedule, and NoExecute.
 	// +optional
 	Effect TaintEffect `json:"effect,omitempty" protobuf:"bytes,4,opt,name=effect,casttype=TaintEffect"`
-	// ForgivenessSeconds represents the period of time the toleration (which must be
+	// TolerationSeconds represents the period of time the toleration (which must be
 	// of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default,
 	// it is not set, which means tolerate the taint forever (do not evict). Zero and
 	// negative values are not allowed.
 	// +optional
-	ForgivenessSeconds *int64 `json:"forgivenessSeconds,omitempty" protobuf:"varint,5,opt,name=forgivenessSeconds"`
+	TolerationSeconds *int64 `json:"tolerationSeconds ,omitempty" protobuf:"varint,5,opt,name=tolerationSeconds"`
 }
 
 // A toleration operator is the set of operators that can be used in a toleration.

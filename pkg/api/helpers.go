@@ -522,7 +522,7 @@ func (t *Toleration) ToleratesTaint(taint *Taint) bool {
 	}
 
 	// nil ForgivenessSeconds means tolerate the taint forever
-	if t.ForgivenessSeconds != nil {
+	if t.TolerationSeconds != nil {
 		// taint with no added time indicated can only be tolerated
 		// by toleration with no forgivenessSeconds.
 		if taint.TimeAdded.IsZero() {
@@ -530,7 +530,7 @@ func (t *Toleration) ToleratesTaint(taint *Taint) bool {
 		}
 
 		// TODO: need to take time skew into consideration, make sure we don't evict pods earlier than we promised.
-		if unversioned.Now().After(taint.TimeAdded.Add(time.Second * time.Duration(*t.ForgivenessSeconds))) {
+		if unversioned.Now().After(taint.TimeAdded.Add(time.Second * time.Duration(*t.TolerationSeconds))) {
 			return false
 		}
 	}
@@ -578,12 +578,25 @@ func TolerationsTolerateTaintsWithFilter(tolerations []Toleration, taints []Tain
 	return true
 }
 
+// DeleteTaintsByKey removes all the taints that have the same key to given taintKey
+func DeleteTaintsByKey(taints []Taint, taintKey string) ([]Taint, bool) {
+	newTaints := []Taint{}
+	deleted := false
+	for i := range taints {
+		if taintKey == taints[i].Key {
+			deleted = true
+			continue
+		}
+		newTaints = append(newTaints, taints[i])
+	}
+	return newTaints, deleted
+}
+
 func DeleteTaint(taints []Taint, taintToDelete Taint) ([]Taint, bool) {
 	newTaints := []Taint{}
 	deleted := false
 	for i := range taints {
-		// if taintToRemove doesn't indicate effect, remove all the taints that have the same key
-		if (len(taintToDelete.Effect) == 0 && taintToDelete.Key == taints[i].Key) || taintToDelete.MatchTaint(taints[i]) {
+		if taintToDelete.MatchTaint(taints[i]) {
 			deleted = true
 			continue
 		}

@@ -85,19 +85,19 @@ func (p *plugin) Admit(attributes admission.Attributes) (err error) {
 
 	if !forgiveNotready {
 		tolerations = append(tolerations, api.Toleration{
-			Key:                unversioned.TaintNodeNotReady,
-			Operator:           api.TolerationOpExists,
-			Effect:             api.TaintEffectNoExecute,
-			ForgivenessSeconds: &defaultForgivenessSeconds,
+			Key:               unversioned.TaintNodeNotReady,
+			Operator:          api.TolerationOpExists,
+			Effect:            api.TaintEffectNoExecute,
+			TolerationSeconds: &defaultForgivenessSeconds,
 		})
 	}
 
 	if !forgiveUnreachable {
 		tolerations = append(tolerations, api.Toleration{
-			Key:                unversioned.TaintNodeUnreachable,
-			Operator:           api.TolerationOpExists,
-			Effect:             api.TaintEffectNoExecute,
-			ForgivenessSeconds: &defaultForgivenessSeconds,
+			Key:               unversioned.TaintNodeUnreachable,
+			Operator:          api.TolerationOpExists,
+			Effect:            api.TaintEffectNoExecute,
+			TolerationSeconds: &defaultForgivenessSeconds,
 		})
 	}
 

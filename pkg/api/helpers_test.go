@@ -399,7 +399,7 @@ func TestMatchTaint(t *testing.T) {
 }
 
 func TestTolerationToleratesTaint(t *testing.T) {
-	genForgivenessSeconds := func(f int64) *int64 {
+	genTolerationSeconds := func(f int64) *int64 {
 		return &f
 	}
 
@@ -512,10 +512,10 @@ func TestTolerationToleratesTaint(t *testing.T) {
 		{
 			description: "forgiveness toleration has not timed out, expect tolerated",
 			toleration: Toleration{
-				Key:                "foo",
-				Operator:           TolerationOpExists,
-				Effect:             TaintEffectNoExecute,
-				ForgivenessSeconds: genForgivenessSeconds(300),
+				Key:               "foo",
+				Operator:          TolerationOpExists,
+				Effect:            TaintEffectNoExecute,
+				TolerationSeconds: genTolerationSeconds(300),
 			},
 			taint: Taint{
 				Key:       "foo",
@@ -527,10 +527,10 @@ func TestTolerationToleratesTaint(t *testing.T) {
 		{
 			description: "forgiveness toleration has timed out, expect not tolerated",
 			toleration: Toleration{
-				Key:                "foo",
-				Operator:           TolerationOpExists,
-				Effect:             TaintEffectNoExecute,
-				ForgivenessSeconds: genForgivenessSeconds(300),
+				Key:               "foo",
+				Operator:          TolerationOpExists,
+				Effect:            TaintEffectNoExecute,
+				TolerationSeconds: genTolerationSeconds(300),
 			},
 			taint: Taint{
 				Key:       "foo",
@@ -542,10 +542,10 @@ func TestTolerationToleratesTaint(t *testing.T) {
 		{
 			description: "toleration with explicit forgiveness can't tolerate taint with no added time, expect not tolerated",
 			toleration: Toleration{
-				Key:                "foo",
-				Operator:           TolerationOpExists,
-				Effect:             TaintEffectNoExecute,
-				ForgivenessSeconds: genForgivenessSeconds(300),
+				Key:               "foo",
+				Operator:          TolerationOpExists,
+				Effect:            TaintEffectNoExecute,
+				TolerationSeconds: genTolerationSeconds(300),
 			},
 			taint: Taint{
 				Key:    "foo",

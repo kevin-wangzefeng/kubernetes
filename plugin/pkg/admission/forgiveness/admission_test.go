@@ -51,16 +51,16 @@ func TestForgivenessAdmission(t *testing.T) {
 					Annotations: map[string]string{
 						api.TolerationsAnnotationKey: marshalTolerations([]api.Toleration{
 							{
-								Key:                unversioned.TaintNodeNotReady,
-								Operator:           api.TolerationOpExists,
-								Effect:             api.TaintEffectNoExecute,
-								ForgivenessSeconds: &defaultForgivenessSeconds,
+								Key:               unversioned.TaintNodeNotReady,
+								Operator:          api.TolerationOpExists,
+								Effect:            api.TaintEffectNoExecute,
+								TolerationSeconds: &defaultForgivenessSeconds,
 							},
 							{
-								Key:                unversioned.TaintNodeUnreachable,
-								Operator:           api.TolerationOpExists,
-								Effect:             api.TaintEffectNoExecute,
-								ForgivenessSeconds: &defaultForgivenessSeconds,
+								Key:               unversioned.TaintNodeUnreachable,
+								Operator:          api.TolerationOpExists,
+								Effect:            api.TaintEffectNoExecute,
+								TolerationSeconds: &defaultForgivenessSeconds,
 							},
 						}),
 					},
@@ -75,11 +75,11 @@ func TestForgivenessAdmission(t *testing.T) {
 					Annotations: map[string]string{
 						api.TolerationsAnnotationKey: marshalTolerations([]api.Toleration{
 							{
-								Key:                "foo",
-								Operator:           api.TolerationOpEqual,
-								Value:              "bar",
-								Effect:             api.TaintEffectNoSchedule,
-								ForgivenessSeconds: genForgivenessSeconds(700),
+								Key:               "foo",
+								Operator:          api.TolerationOpEqual,
+								Value:             "bar",
+								Effect:            api.TaintEffectNoSchedule,
+								TolerationSeconds: genForgivenessSeconds(700),
 							},
 						}),
 					},
@@ -91,23 +91,23 @@ func TestForgivenessAdmission(t *testing.T) {
 					Annotations: map[string]string{
 						api.TolerationsAnnotationKey: marshalTolerations([]api.Toleration{
 							{
-								Key:                "foo",
-								Operator:           api.TolerationOpEqual,
-								Value:              "bar",
-								Effect:             api.TaintEffectNoSchedule,
-								ForgivenessSeconds: genForgivenessSeconds(700),
+								Key:               "foo",
+								Operator:          api.TolerationOpEqual,
+								Value:             "bar",
+								Effect:            api.TaintEffectNoSchedule,
+								TolerationSeconds: genForgivenessSeconds(700),
 							},
 							{
-								Key:                unversioned.TaintNodeNotReady,
-								Operator:           api.TolerationOpExists,
-								Effect:             api.TaintEffectNoExecute,
-								ForgivenessSeconds: &defaultForgivenessSeconds,
+								Key:               unversioned.TaintNodeNotReady,
+								Operator:          api.TolerationOpExists,
+								Effect:            api.TaintEffectNoExecute,
+								TolerationSeconds: &defaultForgivenessSeconds,
 							},
 							{
-								Key:                unversioned.TaintNodeUnreachable,
-								Operator:           api.TolerationOpExists,
-								Effect:             api.TaintEffectNoExecute,
-								ForgivenessSeconds: &defaultForgivenessSeconds,
+								Key:               unversioned.TaintNodeUnreachable,
+								Operator:          api.TolerationOpExists,
+								Effect:            api.TaintEffectNoExecute,
+								TolerationSeconds: &defaultForgivenessSeconds,
 							},
 						}),
 					},
@@ -122,10 +122,10 @@ func TestForgivenessAdmission(t *testing.T) {
 					Annotations: map[string]string{
 						api.TolerationsAnnotationKey: marshalTolerations([]api.Toleration{
 							{
-								Key:                unversioned.TaintNodeNotReady,
-								Operator:           api.TolerationOpExists,
-								Effect:             api.TaintEffectNoExecute,
-								ForgivenessSeconds: genForgivenessSeconds(700),
+								Key:               unversioned.TaintNodeNotReady,
+								Operator:          api.TolerationOpExists,
+								Effect:            api.TaintEffectNoExecute,
+								TolerationSeconds: genForgivenessSeconds(700),
 							},
 						}),
 					},
@@ -137,16 +137,16 @@ func TestForgivenessAdmission(t *testing.T) {
 					Annotations: map[string]string{
 						api.TolerationsAnnotationKey: marshalTolerations([]api.Toleration{
 							{
-								Key:                unversioned.TaintNodeNotReady,
-								Operator:           api.TolerationOpExists,
-								Effect:             api.TaintEffectNoExecute,
-								ForgivenessSeconds: genForgivenessSeconds(700),
+								Key:               unversioned.TaintNodeNotReady,
+								Operator:          api.TolerationOpExists,
+								Effect:            api.TaintEffectNoExecute,
+								TolerationSeconds: genForgivenessSeconds(700),
 							},
 							{
-								Key:                unversioned.TaintNodeUnreachable,
-								Operator:           api.TolerationOpExists,
-								Effect:             api.TaintEffectNoExecute,
-								ForgivenessSeconds: &defaultForgivenessSeconds,
+								Key:               unversioned.TaintNodeUnreachable,
+								Operator:          api.TolerationOpExists,
+								Effect:            api.TaintEffectNoExecute,
+								TolerationSeconds: &defaultForgivenessSeconds,
 							},
 						}),
 					},
@@ -161,10 +161,10 @@ func TestForgivenessAdmission(t *testing.T) {
 					Annotations: map[string]string{
 						api.TolerationsAnnotationKey: marshalTolerations([]api.Toleration{
 							{
-								Key:                unversioned.TaintNodeUnreachable,
-								Operator:           api.TolerationOpExists,
-								Effect:             api.TaintEffectNoExecute,
-								ForgivenessSeconds: genForgivenessSeconds(700),
+								Key:               unversioned.TaintNodeUnreachable,
+								Operator:          api.TolerationOpExists,
+								Effect:            api.TaintEffectNoExecute,
+								TolerationSeconds: genForgivenessSeconds(700),
 							},
 						}),
 					},
@@ -176,16 +176,16 @@ func TestForgivenessAdmission(t *testing.T) {
 					Annotations: map[string]string{
 						api.TolerationsAnnotationKey: marshalTolerations([]api.Toleration{
 							{
-								Key:                unversioned.TaintNodeUnreachable,
-								Operator:           api.TolerationOpExists,
-								Effect:             api.TaintEffectNoExecute,
-								ForgivenessSeconds: genForgivenessSeconds(700),
+								Key:               unversioned.TaintNodeUnreachable,
+								Operator:          api.TolerationOpExists,
+								Effect:            api.TaintEffectNoExecute,
+								TolerationSeconds: genForgivenessSeconds(700),
 							},
 							{
-								Key:                unversioned.TaintNodeNotReady,
-								Operator:           api.TolerationOpExists,
-								Effect:             api.TaintEffectNoExecute,
-								ForgivenessSeconds: &defaultForgivenessSeconds,
+								Key:               unversioned.TaintNodeNotReady,
+								Operator:          api.TolerationOpExists,
+								Effect:            api.TaintEffectNoExecute,
+								TolerationSeconds: &defaultForgivenessSeconds,
 							},
 						}),
 					},
@@ -200,16 +200,16 @@ func TestForgivenessAdmission(t *testing.T) {
 					Annotations: map[string]string{
 						api.TolerationsAnnotationKey: marshalTolerations([]api.Toleration{
 							{
-								Key:                unversioned.TaintNodeNotReady,
-								Operator:           api.TolerationOpExists,
-								Effect:             api.TaintEffectNoExecute,
-								ForgivenessSeconds: genForgivenessSeconds(700),
+								Key:               unversioned.TaintNodeNotReady,
+								Operator:          api.TolerationOpExists,
+								Effect:            api.TaintEffectNoExecute,
+								TolerationSeconds: genForgivenessSeconds(700),
 							},
 							{
-								Key:                unversioned.TaintNodeUnreachable,
-								Operator:           api.TolerationOpExists,
-								Effect:             api.TaintEffectNoExecute,
-								ForgivenessSeconds: genForgivenessSeconds(700),
+								Key:               unversioned.TaintNodeUnreachable,
+								Operator:          api.TolerationOpExists,
+								Effect:            api.TaintEffectNoExecute,
+								TolerationSeconds: genForgivenessSeconds(700),
 							},
 						}),
 					},
@@ -221,16 +221,16 @@ func TestForgivenessAdmission(t *testing.T) {
 					Annotations: map[string]string{
 						api.TolerationsAnnotationKey: marshalTolerations([]api.Toleration{
 							{
-								Key:                unversioned.TaintNodeNotReady,
-								Operator:           api.TolerationOpExists,
-								Effect:             api.TaintEffectNoExecute,
-								ForgivenessSeconds: genForgivenessSeconds(700),
+								Key:               unversioned.TaintNodeNotReady,
+								Operator:          api.TolerationOpExists,
+								Effect:            api.TaintEffectNoExecute,
+								TolerationSeconds: genForgivenessSeconds(700),
 							},
 							{
-								Key:                unversioned.TaintNodeUnreachable,
-								Operator:           api.TolerationOpExists,
-								Effect:             api.TaintEffectNoExecute,
-								ForgivenessSeconds: genForgivenessSeconds(700),
+								Key:               unversioned.TaintNodeUnreachable,
+								Operator:          api.TolerationOpExists,
+								Effect:            api.TaintEffectNoExecute,
+								TolerationSeconds: genForgivenessSeconds(700),
 							},
 						}),
 					},

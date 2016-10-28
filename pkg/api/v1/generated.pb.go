@@ -12964,7 +12964,7 @@ func (this *Toleration) String() string {
 		`Operator:` + fmt.Sprintf("%v", this.Operator) + `,`,
 		`Value:` + fmt.Sprintf("%v", this.Value) + `,`,
 		`Effect:` + fmt.Sprintf("%v", this.Effect) + `,`,
-		`ForgivenessSeconds:` + valueToStringGenerated(this.TolerationSeconds) + `,`,
+		`TolerationSeconds:` + valueToStringGenerated(this.TolerationSeconds) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -37566,7 +37566,7 @@ func (m *Toleration) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 		case 5:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ForgivenessSeconds", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field TolerationSeconds", wireType)
 			}
 			var v int64
 			for shift := uint(0); ; shift += 7 {

@@ -26928,7 +26928,7 @@ func (x *Toleration) CodecEncodeSelf(e *codec1978.Encoder) {
 			} else {
 				if yyq1980[4] {
 					z.EncSendContainerState(codecSelfer_containerMapKey1234)
-					r.EncodeString(codecSelferC_UTF81234, string("forgivenessSeconds"))
+					r.EncodeString(codecSelferC_UTF81234, string("tolerationSeconds"))
 					z.EncSendContainerState(codecSelfer_containerMapValue1234)
 					if x.TolerationSeconds == nil {
 						r.EncodeNil()
@@ -27028,7 +27028,7 @@ func (x *Toleration) codecDecodeSelfFromMap(l int, d *codec1978.Decoder) {
 			} else {
 				x.Effect = TaintEffect(r.DecodeString())
 			}
-		case "forgivenessSeconds":
+		case "tolerationSeconds":
 			if r.TryDecodeAsNil() {
 				if x.TolerationSeconds != nil {
 					x.TolerationSeconds = nil

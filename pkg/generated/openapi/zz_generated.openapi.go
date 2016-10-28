@@ -12729,7 +12729,7 @@ var OpenAPIDefinitions *common.OpenAPIDefinitions = &common.OpenAPIDefinitions{
 					},
 					"timeAdded": {
 						SchemaProps: spec.SchemaProps{
-							Description: "TimeAdded represents the time at which the taint was added. Taint's effect must be NoExecute, otherwise this field is ignored. Toleration with forgivenessSeconds will tolerate the taint for only a duration (indicated with toleration.forgivenessSeconds) that starts at timeAdded. By default, it is not set, which means the taint can only be tolerated by toleration that tolerates infinite duration.",
+							Description: "TimeAdded represents the time at which the taint was added. Taint's effect must be NoExecute, otherwise this field is ignored. Toleration with tolerationSeconds will tolerate the taint for only a duration (indicated with toleration.tolerationSeconds) that starts at timeAdded. By default, it is not set, which means the taint can only be tolerated by toleration that tolerates infinite duration.",
 							Ref:         spec.MustCreateRef("#/definitions/unversioned.Time"),
 						},
 					},
@@ -12806,7 +12806,7 @@ var OpenAPIDefinitions *common.OpenAPIDefinitions = &common.OpenAPIDefinitions{
 				Properties: map[string]spec.Schema{
 					"key": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Key is the taint key that the toleration applies to. Empty means match all taint keys. If the key is empty, operator must be Exists, which means to match all values and all keys.",
+							Description: "Key is the taint key that the toleration applies to. Empty means match all taint keys. If the key is empty, operator must be Exists; this combination means to match all values and all keys.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -12832,9 +12832,9 @@ var OpenAPIDefinitions *common.OpenAPIDefinitions = &common.OpenAPIDefinitions{
 							Format:      "",
 						},
 					},
-					"forgivenessSeconds": {
+					"tolerationSeconds": {
 						SchemaProps: spec.SchemaProps{
-							Description: "ForgivenessSeconds represents the period of time the toleration (which must be of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default, it is not set, which means tolerate the taint forever (do not evict). Zero and negative values are not allowed.",
+							Description: "TolerationSeconds represents the period of time the toleration (which must be of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default, it is not set, which means tolerate the taint forever (do not evict). Zero and negative values are not allowed.",
 							Type:        []string{"integer"},
 							Format:      "int64",
 						},

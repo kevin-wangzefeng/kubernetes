@@ -493,7 +493,7 @@ func (nc *NodeController) Run() {
 						podNamespace := message.podNamespace
 						nodeUID := message.nodeUID
 
-						pod, err := nc.kubeClient.Core().Pods(podNamespace).Get(podName)
+						pod, err := nc.podStore.Pods(podNamespace).Get(podName)
 						if err != nil {
 							// pod has been deleted, no more action needed
 							if apierrors.IsNotFound(err) {

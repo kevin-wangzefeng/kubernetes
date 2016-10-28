@@ -3529,7 +3529,7 @@ func TestValidatePod(t *testing.T) {
 						"operator": "Exists",
 						"value": "",
 						"effect": "NoExecute",
-						"forgivenessSeconds": 60
+						"tolerationSeconds": 60
 					}]`,
 				},
 			},
@@ -3550,7 +3550,7 @@ func TestValidatePod(t *testing.T) {
 						"operator": "Equal",
 						"value": "bar",
 						"effect": "NoExecute",
-						"forgivenessSeconds": 60
+						"tolerationSeconds": 60
 					}]`,
 				},
 			},
@@ -4088,7 +4088,7 @@ func TestValidatePod(t *testing.T) {
 			},
 			Spec: validPodSpec,
 		},
-		"effect must be 'NoExecute' when `ForgivenessSeconds` is set": {
+		"effect must be 'NoExecute' when `TolerationSeconds` is set": {
 			ObjectMeta: api.ObjectMeta{
 				Name:      "pod-forgiveness-invalid",
 				Namespace: "ns",
@@ -4098,13 +4098,13 @@ func TestValidatePod(t *testing.T) {
 						"key": ` + unversioned.TaintNodeNotReady + `,
 						"operator": "Exists",
 						"effect": "NoSchedule",
-						"forgivenessSeconds": 20
+						"tolerationSeconds": 20
 					}]`,
 				},
 			},
 			Spec: validPodSpec,
 		},
-		"forgivenessSeconds must be greater than zero when set": {
+		"tolerationSeconds must be greater than zero when set": {
 			ObjectMeta: api.ObjectMeta{
 				Name:      "pod-forgiveness-invalid",
 				Namespace: "ns",
@@ -4114,7 +4114,7 @@ func TestValidatePod(t *testing.T) {
 						"key": ` + unversioned.TaintNodeNotReady + `,
 						"operator": "Exists",
 						"effect": "NoExecute",
-						"forgivenessSeconds": 0
+						"tolerationSeconds": 0
 					}]`,
 				},
 			},

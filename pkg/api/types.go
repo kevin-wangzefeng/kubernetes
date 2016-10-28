@@ -1690,8 +1690,8 @@ type Taint struct {
 	Effect TaintEffect `json:"effect"`
 	// TimeAdded represents the time at which the taint was added.
 	// Taint's effect must be NoExecute, otherwise this field is ignored.
-	// Toleration with forgivenessSeconds will tolerate the taint for
-	// only a duration (indicated with toleration.forgivenessSeconds)
+	// Toleration with tolerationSeconds will tolerate the taint for
+	// only a duration (indicated with toleration.tolerationSeconds)
 	// that starts at timeAdded. By default, it is not set, which means
 	// the taint can only be tolerated by toleration that tolerates
 	// infinite duration.

@@ -496,7 +496,7 @@ func TestTolerationToleratesTaint(t *testing.T) {
 			expectTolerated: false,
 		},
 		{
-			description: "expect toleration with nil forgivenessSeconds tolerates taint that is newly added",
+			description: "expect toleration with nil tolerationSeconds tolerates taint that is newly added",
 			toleration: Toleration{
 				Key:      "foo",
 				Operator: TolerationOpExists,

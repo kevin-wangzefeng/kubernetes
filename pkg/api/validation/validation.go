@@ -1813,12 +1813,12 @@ func validateTolerations(tolerations []api.Toleration, fldPath *field.Path) fiel
 
 		if toleration.TolerationSeconds != nil {
 			if *toleration.TolerationSeconds <= 0 {
-				allErrors = append(allErrors, field.Invalid(idxPath.Child("forgivenessSeconds"), toleration.TolerationSeconds,
-					"forgivenessSeconds must be greater than zero when set"))
+				allErrors = append(allErrors, field.Invalid(idxPath.Child("tolerationSeconds"), toleration.TolerationSeconds,
+					"tolerationSeconds must be greater than zero when set"))
 			}
 			if toleration.Effect != api.TaintEffectNoExecute {
 				allErrors = append(allErrors, field.Invalid(idxPath.Child("effect"), toleration.Effect,
-					"effect must be 'NoExecute' when `forgivenessSeconds` is set"))
+					"effect must be 'NoExecute' when `tolerationSeconds` is set"))
 			}
 		}
 

@@ -522,10 +522,10 @@ func (t *Toleration) ToleratesTaint(taint *Taint) bool {
 		return false
 	}
 
-	// nil ForgivenessSeconds means tolerate the taint forever
+	// nil TolerationSeconds means tolerate the taint forever
 	if t.TolerationSeconds != nil {
 		// taint with no added time indicated can only be tolerated
-		// by toleration with no forgivenessSeconds.
+		// by toleration with no tolerationSeconds.
 		if taint.TimeAdded.IsZero() {
 			return false
 		}

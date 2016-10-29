@@ -1958,7 +1958,7 @@ type Toleration struct {
 	// it is not set, which means tolerate the taint forever (do not evict). Zero and
 	// negative values are not allowed.
 	// +optional
-	TolerationSeconds *int64 `json:"tolerationSeconds ,omitempty" protobuf:"varint,5,opt,name=tolerationSeconds"`
+	TolerationSeconds *int64 `json:"tolerationSeconds,omitempty" protobuf:"varint,5,opt,name=tolerationSeconds"`
 }
 
 // A toleration operator is the set of operators that can be used in a toleration.

@@ -1143,10 +1143,6 @@ func (nc *NodeController) trySyncNodeTaintsWithNodeStatus(nodeName string, decis
 		}
 	}
 
-	//if currentReadyCondition.Status != api.ConditionTrue && observedReadyCondition.Status == api.ConditionTrue {
-	//	taintToAdd = &nodeUnreachableTaint
-	//}
-
 	if taintToAdd != nil {
 		added, err := tryAddTaintToNode(nc.kubeClient, nodeName, taintToAdd)
 		if err != nil {

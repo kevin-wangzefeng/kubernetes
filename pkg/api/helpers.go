@@ -534,6 +534,16 @@ func GetNodeTaints(node *Node) ([]Taint, error) {
 	return GetTaintsFromNodeAnnotations(node.Annotations)
 }
 
+func SetNodeTaints(node *Node, newTaints []Taint) error {
+	taintsData, err := json.Marshal(newTaints)
+	if err != nil {
+		return err
+	}
+
+	SetMetaDataAnnotation(&node.ObjectMeta, TaintsAnnotationKey, string(taintsData))
+	return nil
+}
+
 // ToleratesTaint checks if the toleration tolerates the taint.
 func (t *Toleration) ToleratesTaint(taint *Taint) bool {
 	// empty toleration effect means match all taint effects

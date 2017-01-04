@@ -32,12 +32,12 @@ import (
 
 var (
 	defaultNotReadyTolerationSeconds = flag.Int64("default-not-ready-toleration-seconds", 300,
-		"Indicates the tolerationSeconds of default forgiveness tolerations for every pod"+
-			" that tolerate taint `notReady:NoExecute`.")
+		"Indicates the tolerationSeconds of the toleration for `notReady:NoExecute`"+
+			" that is added by default to every pod that does not already have such a toleration.")
 
 	defaultUnreachableTolerationSeconds = flag.Int64("default-unreachable-toleration-seconds", 300,
-		"Indicates the tolerationSeconds of default forgiveness tolerations for every pod"+
-			" that tolerate taint `unreachable:NoExecute`.")
+		"Indicates the tolerationSeconds of the toleration for `unreachable:NoExecute`"+
+			" that is added by default to every pod that does not already have such a toleration.")
 )
 
 func init() {
@@ -47,7 +47,7 @@ func init() {
 }
 
 // plugin contains the client used by the admission controller
-// It will add default forgiveness tolerations for every pod
+// It will add default tolerations for every pod
 // that tolerate taints `notReady:NoExecute` and `unreachable:NoExecute`,
 // with forgiveness period of 5 minutes.
 // If the pod already specifies a toleration for taint `notReady:NoExecute`
@@ -117,7 +117,7 @@ func (p *plugin) Admit(attributes admission.Attributes) (err error) {
 	tolerationsData, err := json.Marshal(tolerations)
 	if err != nil {
 		return apierrors.NewForbidden(attributes.GetResource().GroupResource(), pod.Name,
-			fmt.Errorf("failed to add default forgiveness tolerations for taints `notReady:NoExecute` and `unreachable:NoExecute`, err: %v", err))
+			fmt.Errorf("failed to add default tolerations for taints `notReady:NoExecute` and `unreachable:NoExecute`, err: %v", err))
 	}
 
 	pod.Annotations[api.TolerationsAnnotationKey] = string(tolerationsData)

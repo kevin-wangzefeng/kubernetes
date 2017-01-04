@@ -70,6 +70,8 @@ const (
 	apiserverStartupGracePeriod = 10 * time.Minute
 	// The amount of time the nodecontroller should sleep between retrying NodeStatus updates
 	retrySleepTime = 20 * time.Millisecond
+	// taintUpdateRetry controls the number of retries of writing node taints update.
+	taintUpdateRetry = 5
 )
 
 type zoneState string
@@ -250,8 +252,7 @@ func NewNodeController(
 		AddFunc:    nc.maybeDeleteTerminatingPod,
 		UpdateFunc: func(_, obj interface{}) { nc.maybeDeleteTerminatingPod(obj) },
 		DeleteFunc: func(obj interface{}) {
-			// TODO(kevin-wangzefeng): flag-gate this part to disable alpha feature forgiveness by default.
-			if true {
+			if nc.useTaintBasedEvictions {
 				pod, ok := obj.(*api.Pod)
 				// When a delete is dropped, the relist will notice a pod in the store not
 				// in the list, leading to the insertion of a tombstone object which contains
@@ -524,7 +525,7 @@ func (nc *NodeController) monitorNodeStatus() error {
 		// When adding new Nodes we need to check if new zone appeared, and if so add new evictor.
 		zone := utilnode.GetZoneKey(added[i])
 
-		if nc.untoleratedTaintEvictor == nil {
+		if nc.untoleratedTaintEvictor == nil && nc.useTaintBasedEvictions {
 			nc.untoleratedTaintEvictor = NewRateLimitedTimedQueue(flowcontrol.NewFakeAlwaysRateLimiter())
 		}
 
@@ -937,6 +938,21 @@ func (nc *NodeController) tryUpdateNodeStatus(node *api.Node) (time.Duration, ap
 
 		_, currentCondition := api.GetNodeCondition(&node.Status, api.NodeReady)
 		if !api.Semantic.DeepEqual(currentCondition, &observedReadyCondition) {
+			if nc.useTaintBasedEvictions {
+				taintToAdd := api.Taint{
+					Key:       unversioned.TaintNodeUnreachable,
+					Effect:    api.TaintEffectNoExecute,
+					TimeAdded: nc.now(),
+				}
+				updated, err := tryUpdateNodeTaints(node, &taintToAdd, unversioned.TaintNodeNotReady)
+				if err == nil && updated {
+					glog.V(2).Infof("Added taintNodeUnreachable to node %s", node.Name)
+					_, err = nc.kubeClient.Core().Nodes().Update(node)
+				}
+				if err != nil {
+					return gracePeriod, observedReadyCondition, currentReadyCondition, err
+				}
+			}
 			if _, err = nc.kubeClient.Core().Nodes().UpdateStatus(node); err != nil {
 				glog.Errorf("Error updating node %s: %v", node.Name, err)
 				return gracePeriod, observedReadyCondition, currentReadyCondition, err
@@ -954,6 +970,7 @@ func (nc *NodeController) tryUpdateNodeStatus(node *api.Node) (time.Duration, ap
 					if added {
 						glog.V(2).Infof("Added taintNodeUnreachable to node %s", node.Name)
 					}
+
 				}
 
 				return gracePeriod, observedReadyCondition, currentReadyCondition, err
@@ -1014,6 +1031,7 @@ func (nc *NodeController) cancelPodEviction(node *api.Node) bool {
 	zone := utilnode.GetZoneKey(node)
 	nc.evictorLock.Lock()
 	defer nc.evictorLock.Unlock()
+	nc.evictFromNodeForUntoleratedTaints(node)
 	wasDeleting := nc.zonePodEvictor[zone].Remove(node.Name)
 	if wasDeleting {
 		glog.V(2).Infof("Cancelling pod Eviction on Node: %v", node.Name)
@@ -1112,3 +1130,4 @@ func (nc *NodeController) tryAddTaintByKeyToNode(nodeName string, taintKey strin
 
 	return tryModifyNodeTaints(nc.kubeClient, nodeName, addTaints)
 }
+

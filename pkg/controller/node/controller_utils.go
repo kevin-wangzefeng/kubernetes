@@ -121,7 +121,6 @@ func setPodTerminationReason(kubeClient clientset.Interface, pod *api.Pod, nodeN
 // deleteSinglePod will delete the pod that is running on given node from master,
 // and return true if the pod was deleted, or was found pending deletion.
 func deleteSinglePod(kubeClient clientset.Interface, recorder record.EventRecorder, pod *api.Pod, daemonStore cache.StoreToDaemonSetLister) (bool, error) {
-	// if the pod has already been marked for deletion, we still return true that there are remaining pods.
 	if pod.DeletionGracePeriodSeconds != nil {
 		return true, nil
 	}
@@ -317,7 +316,7 @@ type modifyTaintsFunc func(oldTaints []api.Taint) ([]api.Taint, bool, error)
 
 func tryModifyNodeTaints(kubeClient clientset.Interface, nodeName string, modifyTaints modifyTaintsFunc) (bool, error) {
 	var updateErr error
-	for attempt := 0; attempt < nodeStatusUpdateRetry; attempt++ {
+	for attempt := 0; attempt < taintUpdateRetry; attempt++ {
 		node, err := kubeClient.Core().Nodes().Get(nodeName)
 		if err != nil {
 			return false, err
@@ -339,7 +338,7 @@ func tryModifyNodeTaints(kubeClient clientset.Interface, nodeName string, modify
 		}
 
 		patch := `{"metadata":{"annotations":{` + api.TaintsAnnotationKey + ":" + string(taintsData) + `}}`
-		_, updateErr = kubeClient.Core().Nodes().Patch(node.Name, api.MergePatchType, []byte(patch))
+		_, updateErr = kubeClient.Core().Nodes().Patch(nodeName, api.MergePatchType, []byte(patch))
 		if updateErr != nil {
 			if !errors.IsConflict(updateErr) {
 				return false, updateErr
@@ -351,4 +350,42 @@ func tryModifyNodeTaints(kubeClient clientset.Interface, nodeName string, modify
 	}
 
 	return false, updateErr
+}
+
+func tryUpdateNodeTaints(node *api.Node, taintToAdd *api.Taint, taintKeysToRemove []string) (bool, error) {
+	taintsToRemove := []*api.Taint{}
+	for i := range taintKeysToRemove {
+		taintsToRemove = append(taintsToRemove, &api.Taint{
+			Key:    taintKeysToRemove[i],
+			Effect: api.TaintEffectNoExecute,
+		})
+	}
+
+	taints, err := api.GetNodeTaints(node)
+	if err != nil {
+		return false, err
+	}
+
+	needAdd := true
+	newTaints := []api.Taint{}
+	for _, oldTaint := range taints {
+		if taintToAdd.MatchTaint(oldTaint) {
+			needAdd = false
+		}
+	}
+	if needAdd {
+		newTaints = append(taints, *taintToAdd)
+	}
+
+	removed := false
+	for _, taintToRemove := range taintsToRemove {
+		updated := false
+		newTaints, updated = api.DeleteTaint(newTaints, taintToRemove)
+		removed = removed || updated
+	}
+
+	if needAdd || removed {
+		err = api.SetNodeTaints(node, newTaints)
+	}
+	return err == nil, err
 }

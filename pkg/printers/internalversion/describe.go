@@ -3308,33 +3308,34 @@ func printTolerationsMultilineWithIndent(w PrefixWriter, initialIndent, title, i
 	}
 
 	// to print tolerations in the sorted order
-	keys := make([]string, 0, len(tolerations))
-	for _, toleration := range tolerations {
-		keys = append(keys, toleration.Key)
-	}
-	sort.Strings(keys)
-
-	for i, key := range keys {
-		for _, toleration := range tolerations {
-			if toleration.Key == key {
-				if i != 0 {
-					w.Write(LEVEL_0, "%s", initialIndent)
-					w.Write(LEVEL_0, "%s", innerIndent)
-				}
-				w.Write(LEVEL_0, "%s", toleration.Key)
-				if len(toleration.Value) != 0 {
-					w.Write(LEVEL_0, "=%s", toleration.Value)
-				}
-				if len(toleration.Effect) != 0 {
-					w.Write(LEVEL_0, ":%s", toleration.Effect)
-				}
-				if toleration.TolerationSeconds != nil {
-					w.Write(LEVEL_0, " for %ds", *toleration.TolerationSeconds)
-				}
-				w.Write(LEVEL_0, "\n")
-				i++
-			}
+	tolerationStrings := make([]string, 0, len(tolerations))
+	for _, t := range tolerations {
+		tb := bytes.Buffer{}
+		tb.WriteString(t.Key)
+		if len(t.Key) == 0 {
+			tb.WriteString("<any>")
 		}
+		if len(t.Value) != 0 {
+			tb.WriteString("=" + t.Value)
+		}
+		tb.WriteString(":" + string(t.Effect))
+		if len(t.Effect) == 0 {
+			tb.WriteString("<any>")
+		}
+		if t.TolerationSeconds != nil {
+			tb.WriteString(fmt.Sprintf(" for %ds", *t.TolerationSeconds))
+		}
+		tolerationStrings = append(tolerationStrings, tb.String())
+	}
+	sort.Strings(tolerationStrings)
+
+	for i, ts := range tolerationStrings {
+		if i != 0 {
+			w.Write(LEVEL_0, "%s", initialIndent)
+			w.Write(LEVEL_0, "%s", innerIndent)
+		}
+		w.Write(LEVEL_0, "%s\n", ts)
+		i++
 	}
 }
 

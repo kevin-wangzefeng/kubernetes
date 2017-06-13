@@ -102,6 +102,8 @@ func TestDescribePodTolerations(t *testing.T) {
 		},
 		Spec: api.PodSpec{
 			Tolerations: []api.Toleration{
+				{Operator: api.TolerationOpExists},
+				{Operator: api.TolerationOpExists, Effect: api.TaintEffectNoSchedule},
 				{Key: "key0", Operator: api.TolerationOpExists},
 				{Key: "key1", Value: "value1"},
 				{Key: "key2", Operator: api.TolerationOpEqual, Value: "value2", Effect: api.TaintEffectNoSchedule},
@@ -113,11 +115,14 @@ func TestDescribePodTolerations(t *testing.T) {
 	c := &describeClient{T: t, Namespace: "foo", Interface: fake}
 	d := PodDescriber{c}
 	out, err := d.Describe("foo", "bar", printers.DescriberSettings{})
+	fmt.Print(out)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
-	if !strings.Contains(out, "key0\n") ||
-		!strings.Contains(out, "key1=value1\n") ||
+	if !strings.Contains(out, "<any>:<any>\n") ||
+		!strings.Contains(out, "<any>:NoSchedule\n") ||
+		!strings.Contains(out, "key0:<any>\n") ||
+		!strings.Contains(out, "key1=value1:<any>\n") ||
 		!strings.Contains(out, "key2=value2:NoSchedule\n") ||
 		!strings.Contains(out, "key3=value3:NoExecute for 300s\n") ||
 		!strings.Contains(out, "key4:NoExecute for 60s\n") ||

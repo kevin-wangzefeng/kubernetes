@@ -107,7 +107,7 @@ var _ = framework.KubeDescribe("Cluster size autoscaler scalability [Slow]", fun
 		By(fmt.Sprintf("Restoring initial size of the cluster"))
 		setMigSizes(originalSizes)
 		framework.ExpectNoError(framework.WaitForClusterSize(c, nodeCount, scaleDownTimeout))
-		nodes, err := c.Core().Nodes().List(metav1.ListOptions{})
+		nodes, err := c.CoreV1().Nodes().List(metav1.ListOptions{})
 		framework.ExpectNoError(err)
 		s := time.Now()
 	makeSchedulableLoop:
@@ -234,7 +234,7 @@ var _ = framework.KubeDescribe("Cluster size autoscaler scalability [Slow]", fun
 		// annotate all nodes with no-scale-down
 		ScaleDownDisabledKey := "cluster-autoscaler.kubernetes.io/scale-down-disabled"
 
-		nodes, err := f.ClientSet.Core().Nodes().List(metav1.ListOptions{
+		nodes, err := f.ClientSet.CoreV1().Nodes().List(metav1.ListOptions{
 			FieldSelector: fields.Set{
 				"spec.unschedulable": "false",
 			}.AsSelector().String(),
@@ -423,7 +423,7 @@ func addAnnotation(f *framework.Framework, nodes []v1.Node, key, value string) e
 			return err
 		}
 
-		_, err = f.ClientSet.Core().Nodes().Patch(string(node.Name), types.StrategicMergePatchType, patchBytes)
+		_, err = f.ClientSet.CoreV1().Nodes().Patch(string(node.Name), types.StrategicMergePatchType, patchBytes)
 		if err != nil {
 			return err
 		}

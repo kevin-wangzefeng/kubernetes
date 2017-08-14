@@ -212,13 +212,13 @@ func NewNodeController(
 	eventBroadcaster.StartLogging(glog.Infof)
 	if kubeClient != nil {
 		glog.V(0).Infof("Sending events to api server.")
-		eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: v1core.New(kubeClient.Core().RESTClient()).Events("")})
+		eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: v1core.New(kubeClient.CoreV1().RESTClient()).Events("")})
 	} else {
 		glog.Fatalf("kubeClient is nil when starting NodeController")
 	}
 
-	if kubeClient != nil && kubeClient.Core().RESTClient().GetRateLimiter() != nil {
-		metrics.RegisterMetricAndTrackRateLimiterUsage("node_controller", kubeClient.Core().RESTClient().GetRateLimiter())
+	if kubeClient != nil && kubeClient.CoreV1().RESTClient().GetRateLimiter() != nil {
+		metrics.RegisterMetricAndTrackRateLimiterUsage("node_controller", kubeClient.CoreV1().RESTClient().GetRateLimiter())
 	}
 
 	if allocateNodeCIDRs {
@@ -311,7 +311,7 @@ func NewNodeController(
 		// We must poll because apiserver might not be up. This error causes
 		// controller manager to restart.
 		if pollErr := wait.Poll(10*time.Second, apiserverStartupGracePeriod, func() (bool, error) {
-			nodeList, err = kubeClient.Core().Nodes().List(metav1.ListOptions{
+			nodeList, err = kubeClient.CoreV1().Nodes().List(metav1.ListOptions{
 				FieldSelector: fields.Everything().String(),
 				LabelSelector: labels.Everything().String(),
 			})
@@ -571,7 +571,7 @@ func (nc *NodeController) monitorNodeStatus() error {
 				return true, nil
 			}
 			name := node.Name
-			node, err = nc.kubeClient.Core().Nodes().Get(name, metav1.GetOptions{})
+			node, err = nc.kubeClient.CoreV1().Nodes().Get(name, metav1.GetOptions{})
 			if err != nil {
 				glog.Errorf("Failed while getting a Node to retry updating NodeStatus. Probably Node %s was deleted.", name)
 				return false, err
@@ -979,7 +979,7 @@ func (nc *NodeController) tryUpdateNodeStatus(node *v1.Node) (time.Duration, v1.
 
 		_, currentCondition := v1node.GetNodeCondition(&node.Status, v1.NodeReady)
 		if !apiequality.Semantic.DeepEqual(currentCondition, &observedReadyCondition) {
-			if _, err = nc.kubeClient.Core().Nodes().UpdateStatus(node); err != nil {
+			if _, err = nc.kubeClient.CoreV1().Nodes().UpdateStatus(node); err != nil {
 				glog.Errorf("Error updating node %s: %v", node.Name, err)
 				return gracePeriod, observedReadyCondition, currentReadyCondition, err
 			} else {

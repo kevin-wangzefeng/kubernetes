@@ -101,7 +101,7 @@ var _ = SIGDescribe("NodeOutOfDisk [Serial] [Flaky] [Disruptive]", func() {
 	})
 
 	It("runs out of disk space", func() {
-		unfilledNode, err := c.Core().Nodes().Get(unfilledNodeName, metav1.GetOptions{})
+		unfilledNode, err := c.CoreV1().Nodes().Get(unfilledNodeName, metav1.GetOptions{})
 		framework.ExpectNoError(err)
 
 		By(fmt.Sprintf("Calculating CPU availability on node %s", unfilledNode.Name))
@@ -116,7 +116,7 @@ var _ = SIGDescribe("NodeOutOfDisk [Serial] [Flaky] [Disruptive]", func() {
 		podCPU := int64(float64(milliCpu/(numNodeOODPods-1)) * 0.99)
 
 		ns := f.Namespace.Name
-		podClient := c.Core().Pods(ns)
+		podClient := c.CoreV1().Pods(ns)
 
 		By("Creating pods and waiting for all but one pods to be scheduled")
 
@@ -143,7 +143,7 @@ var _ = SIGDescribe("NodeOutOfDisk [Serial] [Flaky] [Disruptive]", func() {
 				"reason":                   "FailedScheduling",
 			}.AsSelector().String()
 			options := metav1.ListOptions{FieldSelector: selector}
-			schedEvents, err := c.Core().Events(ns).List(options)
+			schedEvents, err := c.CoreV1().Events(ns).List(options)
 			framework.ExpectNoError(err)
 
 			if len(schedEvents.Items) > 0 {
@@ -172,7 +172,7 @@ var _ = SIGDescribe("NodeOutOfDisk [Serial] [Flaky] [Disruptive]", func() {
 
 // createOutOfDiskPod creates a pod in the given namespace with the requested amount of CPU.
 func createOutOfDiskPod(c clientset.Interface, ns, name string, milliCPU int64) {
-	podClient := c.Core().Pods(ns)
+	podClient := c.CoreV1().Pods(ns)
 
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -201,7 +201,7 @@ func createOutOfDiskPod(c clientset.Interface, ns, name string, milliCPU int64) 
 // availCpu calculates the available CPU on a given node by subtracting the CPU requested by
 // all the pods from the total available CPU capacity on the node.
 func availCpu(c clientset.Interface, node *v1.Node) (int64, error) {
-	podClient := c.Core().Pods(metav1.NamespaceAll)
+	podClient := c.CoreV1().Pods(metav1.NamespaceAll)
 
 	selector := fields.Set{"spec.nodeName": node.Name}.AsSelector().String()
 	options := metav1.ListOptions{FieldSelector: selector}
@@ -223,7 +223,7 @@ func availCpu(c clientset.Interface, node *v1.Node) (int64, error) {
 func availSize(c clientset.Interface, node *v1.Node) (uint64, error) {
 	statsResource := fmt.Sprintf("api/v1/proxy/nodes/%s/stats/", node.Name)
 	framework.Logf("Querying stats for node %s using url %s", node.Name, statsResource)
-	res, err := c.Core().RESTClient().Get().AbsPath(statsResource).Timeout(time.Minute).Do().Raw()
+	res, err := c.CoreV1().RESTClient().Get().AbsPath(statsResource).Timeout(time.Minute).Do().Raw()
 	if err != nil {
 		return 0, fmt.Errorf("error querying cAdvisor API: %v", err)
 	}

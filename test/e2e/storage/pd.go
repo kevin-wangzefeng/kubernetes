@@ -62,8 +62,8 @@ var _ = SIGDescribe("Pod Disks", func() {
 	BeforeEach(func() {
 		framework.SkipUnlessNodeCountIsAtLeast(2)
 
-		podClient = f.ClientSet.Core().Pods(f.Namespace.Name)
-		nodeClient = f.ClientSet.Core().Nodes()
+		podClient = f.ClientSet.CoreV1().Pods(f.Namespace.Name)
+		nodeClient = f.ClientSet.CoreV1().Nodes()
 		nodes = framework.GetReadySchedulableNodesOrDie(f.ClientSet)
 
 		Expect(len(nodes.Items)).To(BeNumerically(">=", 2), "Requires at least 2 nodes")

@@ -160,7 +160,7 @@ func NewRuntimeOperationMonitor(c clientset.Interface) *RuntimeOperationMonitor 
 		client:          c,
 		nodesRuntimeOps: make(map[string]NodeRuntimeOperationErrorRate),
 	}
-	nodes, err := m.client.Core().Nodes().List(metav1.ListOptions{})
+	nodes, err := m.client.CoreV1().Nodes().List(metav1.ListOptions{})
 	if err != nil {
 		Failf("RuntimeOperationMonitor: unable to get list of nodes: %v", err)
 	}
@@ -289,7 +289,7 @@ func getStatsSummary(c clientset.Interface, nodeName string) (*stats.Summary, er
 
 	var data []byte
 	if subResourceProxyAvailable {
-		data, err = c.Core().RESTClient().Get().
+		data, err = c.CoreV1().RESTClient().Get().
 			Context(ctx).
 			Resource("nodes").
 			SubResource("proxy").
@@ -298,7 +298,7 @@ func getStatsSummary(c clientset.Interface, nodeName string) (*stats.Summary, er
 			Do().Raw()
 
 	} else {
-		data, err = c.Core().RESTClient().Get().
+		data, err = c.CoreV1().RESTClient().Get().
 			Context(ctx).
 			Prefix("proxy").
 			Resource("nodes").
@@ -412,7 +412,7 @@ func getNodeStatsSummary(c clientset.Interface, nodeName string) (*stats.Summary
 
 	var data []byte
 	if subResourceProxyAvailable {
-		data, err = c.Core().RESTClient().Get().
+		data, err = c.CoreV1().RESTClient().Get().
 			Resource("nodes").
 			SubResource("proxy").
 			Name(fmt.Sprintf("%v:%v", nodeName, ports.KubeletPort)).
@@ -421,7 +421,7 @@ func getNodeStatsSummary(c clientset.Interface, nodeName string) (*stats.Summary
 			Do().Raw()
 
 	} else {
-		data, err = c.Core().RESTClient().Get().
+		data, err = c.CoreV1().RESTClient().Get().
 			Prefix("proxy").
 			Resource("nodes").
 			Name(fmt.Sprintf("%v:%v", nodeName, ports.KubeletPort)).
@@ -699,7 +699,7 @@ func NewResourceMonitor(c clientset.Interface, containerNames []string, pollingI
 
 func (r *ResourceMonitor) Start() {
 	// It should be OK to monitor unschedulable Nodes
-	nodes, err := r.client.Core().Nodes().List(metav1.ListOptions{})
+	nodes, err := r.client.CoreV1().Nodes().List(metav1.ListOptions{})
 	if err != nil {
 		Failf("ResourceMonitor: unable to get list of nodes: %v", err)
 	}

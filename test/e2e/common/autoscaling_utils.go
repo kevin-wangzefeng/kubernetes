@@ -235,7 +235,7 @@ func (rc *ResourceConsumer) makeConsumeCustomMetric() {
 }
 
 func (rc *ResourceConsumer) sendConsumeCPURequest(millicores int) {
-	proxyRequest, err := framework.GetServicesProxyRequest(rc.framework.ClientSet, rc.framework.ClientSet.Core().RESTClient().Post())
+	proxyRequest, err := framework.GetServicesProxyRequest(rc.framework.ClientSet, rc.framework.ClientSet.CoreV1().RESTClient().Post())
 	framework.ExpectNoError(err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), framework.SingleCallTimeout)
@@ -263,7 +263,7 @@ func (rc *ResourceConsumer) sendConsumeCPURequest(millicores int) {
 
 // sendConsumeMemRequest sends POST request for memory consumption
 func (rc *ResourceConsumer) sendConsumeMemRequest(megabytes int) {
-	proxyRequest, err := framework.GetServicesProxyRequest(rc.framework.ClientSet, rc.framework.ClientSet.Core().RESTClient().Post())
+	proxyRequest, err := framework.GetServicesProxyRequest(rc.framework.ClientSet, rc.framework.ClientSet.CoreV1().RESTClient().Post())
 	framework.ExpectNoError(err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), framework.SingleCallTimeout)
@@ -291,7 +291,7 @@ func (rc *ResourceConsumer) sendConsumeMemRequest(megabytes int) {
 
 // sendConsumeCustomMetric sends POST request for custom metric consumption
 func (rc *ResourceConsumer) sendConsumeCustomMetric(delta int) {
-	proxyRequest, err := framework.GetServicesProxyRequest(rc.framework.ClientSet, rc.framework.ClientSet.Core().RESTClient().Post())
+	proxyRequest, err := framework.GetServicesProxyRequest(rc.framework.ClientSet, rc.framework.ClientSet.CoreV1().RESTClient().Post())
 	framework.ExpectNoError(err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), framework.SingleCallTimeout)
@@ -320,7 +320,7 @@ func (rc *ResourceConsumer) sendConsumeCustomMetric(delta int) {
 func (rc *ResourceConsumer) GetReplicas() int {
 	switch rc.kind {
 	case KindRC:
-		replicationController, err := rc.framework.ClientSet.Core().ReplicationControllers(rc.framework.Namespace.Name).Get(rc.name, metav1.GetOptions{})
+		replicationController, err := rc.framework.ClientSet.CoreV1().ReplicationControllers(rc.framework.Namespace.Name).Get(rc.name, metav1.GetOptions{})
 		framework.ExpectNoError(err)
 		if replicationController == nil {
 			framework.Failf(rcIsNil)
@@ -403,9 +403,9 @@ func (rc *ResourceConsumer) CleanUp() {
 	kind, err := kindOf(rc.kind)
 	framework.ExpectNoError(err)
 	framework.ExpectNoError(framework.DeleteResourceAndPods(rc.framework.ClientSet, rc.framework.InternalClientset, kind, rc.framework.Namespace.Name, rc.name))
-	framework.ExpectNoError(rc.framework.ClientSet.Core().Services(rc.framework.Namespace.Name).Delete(rc.name, nil))
+	framework.ExpectNoError(rc.framework.ClientSet.CoreV1().Services(rc.framework.Namespace.Name).Delete(rc.name, nil))
 	framework.ExpectNoError(framework.DeleteResourceAndPods(rc.framework.ClientSet, rc.framework.InternalClientset, api.Kind("ReplicationController"), rc.framework.Namespace.Name, rc.controllerName))
-	framework.ExpectNoError(rc.framework.ClientSet.Core().Services(rc.framework.Namespace.Name).Delete(rc.controllerName, nil))
+	framework.ExpectNoError(rc.framework.ClientSet.CoreV1().Services(rc.framework.Namespace.Name).Delete(rc.controllerName, nil))
 }
 
 func kindOf(kind string) (schema.GroupKind, error) {
@@ -423,7 +423,7 @@ func kindOf(kind string) (schema.GroupKind, error) {
 
 func runServiceAndWorkloadForResourceConsumer(c clientset.Interface, internalClient internalclientset.Interface, ns, name, kind string, replicas int, cpuLimitMillis, memLimitMb int64) {
 	By(fmt.Sprintf("Running consuming RC %s via %s with %v replicas", name, kind, replicas))
-	_, err := c.Core().Services(ns).Create(&v1.Service{
+	_, err := c.CoreV1().Services(ns).Create(&v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
@@ -477,7 +477,7 @@ func runServiceAndWorkloadForResourceConsumer(c clientset.Interface, internalCli
 
 	By(fmt.Sprintf("Running controller"))
 	controllerName := name + "-ctrl"
-	_, err = c.Core().Services(ns).Create(&v1.Service{
+	_, err = c.CoreV1().Services(ns).Create(&v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: controllerName,
 		},

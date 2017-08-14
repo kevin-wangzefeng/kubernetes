@@ -34,7 +34,7 @@ import (
 const acceleratorsFeatureGate = "Accelerators=true"
 
 func getGPUsAvailable(f *framework.Framework) int64 {
-	nodeList, err := f.ClientSet.Core().Nodes().List(metav1.ListOptions{})
+	nodeList, err := f.ClientSet.CoreV1().Nodes().List(metav1.ListOptions{})
 	framework.ExpectNoError(err, "getting node list")
 	var gpusAvailable int64
 	for _, node := range nodeList.Items {
@@ -44,7 +44,7 @@ func getGPUsAvailable(f *framework.Framework) int64 {
 }
 
 func gpusExistOnAllNodes(f *framework.Framework) bool {
-	nodeList, err := f.ClientSet.Core().Nodes().List(metav1.ListOptions{})
+	nodeList, err := f.ClientSet.CoreV1().Nodes().List(metav1.ListOptions{})
 	framework.ExpectNoError(err, "getting node list")
 	for _, node := range nodeList.Items {
 		if node.Name == "kubernetes-master" {
@@ -111,7 +111,7 @@ var _ = framework.KubeDescribe("GPU [Serial]", func() {
 			By("Checking the containers in the pod had restarted at-least twice successfully thereby ensuring GPUs are reused")
 			const minContainerRestartCount = 2
 			Eventually(func() bool {
-				p, err := f.ClientSet.Core().Pods(f.Namespace.Name).Get(podSuccess.Name, metav1.GetOptions{})
+				p, err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).Get(podSuccess.Name, metav1.GetOptions{})
 				if err != nil {
 					framework.Logf("failed to get pod status: %v", err)
 					return false

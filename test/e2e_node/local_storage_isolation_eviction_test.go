@@ -399,7 +399,7 @@ func runLocalStorageIsolationEvictionTest(f *framework.Framework, testCondition 
 			evictMap := make(map[string]string)
 			Eventually(func() error {
 				// Gather current information
-				updatedPodList, err := f.ClientSet.Core().Pods(f.Namespace.Name).List(metav1.ListOptions{})
+				updatedPodList, err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).List(metav1.ListOptions{})
 				if err != nil {
 					return fmt.Errorf("failed to get the list of pod: %v", err)
 				}

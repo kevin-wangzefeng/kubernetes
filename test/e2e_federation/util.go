@@ -365,7 +365,7 @@ func podExitCodeDetector(f *fedframework.Framework, name, namespace string, code
 	}
 
 	return func() error {
-		pod, err := f.ClientSet.Core().Pods(namespace).Get(name, metav1.GetOptions{})
+		pod, err := f.ClientSet.CoreV1().Pods(namespace).Get(name, metav1.GetOptions{})
 		if err != nil {
 			return logerr(err)
 		}
@@ -413,12 +413,12 @@ func discoverService(f *fedframework.Framework, name string, exists bool, podNam
 
 	nsName := f.FederationNamespace.Name
 	By(fmt.Sprintf("Creating pod %q in namespace %q", pod.Name, nsName))
-	_, err := f.ClientSet.Core().Pods(nsName).Create(pod)
+	_, err := f.ClientSet.CoreV1().Pods(nsName).Create(pod)
 	framework.ExpectNoError(err, "Trying to create pod to run %q", command)
 	By(fmt.Sprintf("Successfully created pod %q in namespace %q", pod.Name, nsName))
 	defer func() {
 		By(fmt.Sprintf("Deleting pod %q from namespace %q", podName, nsName))
-		err := f.ClientSet.Core().Pods(nsName).Delete(podName, metav1.NewDeleteOptions(0))
+		err := f.ClientSet.CoreV1().Pods(nsName).Delete(podName, metav1.NewDeleteOptions(0))
 		framework.ExpectNoError(err, "Deleting pod %q from namespace %q", podName, nsName)
 		By(fmt.Sprintf("Deleted pod %q from namespace %q", podName, nsName))
 	}()

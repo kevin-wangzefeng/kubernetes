@@ -125,7 +125,7 @@ profile %s flags=(attach_disconnected) {
 			profileName: profile,
 		},
 	}
-	return f.ClientSet.Core().ConfigMaps(f.Namespace.Name).Create(cm)
+	return f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Create(cm)
 }
 
 func createAppArmorProfileLoader(f *framework.Framework) (*extensions.DaemonSet, error) {

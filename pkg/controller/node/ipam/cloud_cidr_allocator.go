@@ -92,7 +92,7 @@ func (ca *cloudCIDRAllocator) AllocateOrOccupyCIDR(node *v1.Node) error {
 		return fmt.Errorf("failed to allocate cidr (none exist)")
 	}
 
-	node, err = ca.client.Core().Nodes().Get(node.Name, metav1.GetOptions{})
+	node, err = ca.client.CoreV1().Nodes().Get(node.Name, metav1.GetOptions{})
 	if err != nil {
 		glog.Errorf("Could not get Node object from Kubernetes: %v", err)
 		return err
@@ -115,7 +115,7 @@ func (ca *cloudCIDRAllocator) AllocateOrOccupyCIDR(node *v1.Node) error {
 	}
 
 	node.Spec.PodCIDR = cidrs[0]
-	if _, err := ca.client.Core().Nodes().Update(node); err == nil {
+	if _, err := ca.client.CoreV1().Nodes().Update(node); err == nil {
 		glog.V(2).Infof("Node %v PodCIDR set to %v", node.Name, podCIDR)
 	} else {
 		glog.Errorf("Could not update node %v PodCIDR to %v: %v",

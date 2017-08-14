@@ -157,7 +157,7 @@ func (d *deploymentTester) markAllPodsReady() {
 	var readyPods int32
 	err = wait.Poll(100*time.Millisecond, pollTimeout, func() (bool, error) {
 		readyPods = 0
-		pods, err := d.c.Core().Pods(ns).List(metav1.ListOptions{LabelSelector: selector.String()})
+		pods, err := d.c.CoreV1().Pods(ns).List(metav1.ListOptions{LabelSelector: selector.String()})
 		if err != nil {
 			d.t.Logf("failed to list Deployment pods, will retry later: %v", err)
 			return false, nil
@@ -169,7 +169,7 @@ func (d *deploymentTester) markAllPodsReady() {
 				continue
 			}
 			addPodConditionReady(&pod, metav1.Now())
-			if _, err = d.c.Core().Pods(ns).UpdateStatus(&pod); err != nil {
+			if _, err = d.c.CoreV1().Pods(ns).UpdateStatus(&pod); err != nil {
 				d.t.Logf("failed to update Deployment pod %s, will retry later: %v", pod.Name, err)
 			} else {
 				readyPods++

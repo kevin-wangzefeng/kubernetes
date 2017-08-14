@@ -61,11 +61,11 @@ var _ = SIGDescribe("Advanced Audit [Feature:Audit]", func() {
 				"top-secret": []byte("foo-bar"),
 			},
 		}
-		_, err := f.ClientSet.Core().Secrets(f.Namespace.Name).Create(secret)
+		_, err := f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Create(secret)
 		framework.ExpectNoError(err, "failed to create audit-secret")
-		_, err = f.ClientSet.Core().Secrets(f.Namespace.Name).Get(secret.Name, metav1.GetOptions{})
+		_, err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Get(secret.Name, metav1.GetOptions{})
 		framework.ExpectNoError(err, "failed to get audit-secret")
-		err = f.ClientSet.Core().Secrets(f.Namespace.Name).Delete(secret.Name, &metav1.DeleteOptions{})
+		err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Delete(secret.Name, &metav1.DeleteOptions{})
 		framework.ExpectNoError(err, "failed to delete audit-secret")
 
 		expectedEvents := []auditEvent{{
@@ -110,7 +110,7 @@ func expectAuditLines(f *framework.Framework, expected []auditEvent) {
 	}
 
 	// Fetch the log stream.
-	stream, err := f.ClientSet.Core().RESTClient().Get().AbsPath("/logs/kube-apiserver-audit.log").Stream()
+	stream, err := f.ClientSet.CoreV1().RESTClient().Get().AbsPath("/logs/kube-apiserver-audit.log").Stream()
 	framework.ExpectNoError(err, "could not read audit log")
 	defer stream.Close()
 

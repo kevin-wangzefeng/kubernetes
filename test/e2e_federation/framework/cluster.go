@@ -212,7 +212,7 @@ func clusterConfigFromSecrets(f *Framework) []*clusterConfig {
 func clusterConfigFromSecret(f *Framework, clusterName string, secretName string) []byte {
 	By(fmt.Sprintf("Loading configuration for cluster %q", clusterName))
 	namespace := framework.FederationSystemNamespace()
-	secret, err := f.Framework.ClientSet.Core().Secrets(namespace).Get(secretName, metav1.GetOptions{})
+	secret, err := f.Framework.ClientSet.CoreV1().Secrets(namespace).Get(secretName, metav1.GetOptions{})
 	framework.ExpectNoError(err, fmt.Sprintf("Error loading config secret \"%s/%s\" for cluster %q: %+v", namespace, secretName, clusterName, err))
 
 	config, ok := secret.Data[util.KubeconfigSecretDataKey]

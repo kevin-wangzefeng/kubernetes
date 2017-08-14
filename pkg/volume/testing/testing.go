@@ -145,13 +145,13 @@ func (f *fakeVolumeHost) GetNodeAllocatable() (v1.ResourceList, error) {
 
 func (f *fakeVolumeHost) GetSecretFunc() func(namespace, name string) (*v1.Secret, error) {
 	return func(namespace, name string) (*v1.Secret, error) {
-		return f.kubeClient.Core().Secrets(namespace).Get(name, metav1.GetOptions{})
+		return f.kubeClient.CoreV1().Secrets(namespace).Get(name, metav1.GetOptions{})
 	}
 }
 
 func (f *fakeVolumeHost) GetConfigMapFunc() func(namespace, name string) (*v1.ConfigMap, error) {
 	return func(namespace, name string) (*v1.ConfigMap, error) {
-		return f.kubeClient.Core().ConfigMaps(namespace).Get(name, metav1.GetOptions{})
+		return f.kubeClient.CoreV1().ConfigMaps(namespace).Get(name, metav1.GetOptions{})
 	}
 }
 

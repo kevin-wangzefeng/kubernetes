@@ -110,7 +110,7 @@ func waitForReplicaSetPodsGone(c clientset.Interface, rs *extensions.ReplicaSet)
 		selector, err := metav1.LabelSelectorAsSelector(rs.Spec.Selector)
 		ExpectNoError(err)
 		options := metav1.ListOptions{LabelSelector: selector.String()}
-		if pods, err := c.Core().Pods(rs.Namespace).List(options); err == nil && len(pods.Items) == 0 {
+		if pods, err := c.CoreV1().Pods(rs.Namespace).List(options); err == nil && len(pods.Items) == 0 {
 			return true, nil
 		}
 		return false, nil

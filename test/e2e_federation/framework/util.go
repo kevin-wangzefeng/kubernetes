@@ -43,7 +43,7 @@ const FederatedDefaultTestTimeout = 5 * time.Minute
 func SkipUnlessFederated(c clientset.Interface) {
 	federationNS := framework.FederationSystemNamespace()
 
-	_, err := c.Core().Namespaces().Get(federationNS, metav1.GetOptions{})
+	_, err := c.CoreV1().Namespaces().Get(federationNS, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			framework.Skipf("Could not find federation namespace %s: skipping federated test", federationNS)

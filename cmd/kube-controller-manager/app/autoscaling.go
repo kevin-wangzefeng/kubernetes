@@ -64,9 +64,9 @@ func startHPAControllerWithLegacyClient(ctx ControllerContext) (bool, error) {
 
 func startHPAControllerWithMetricsClient(ctx ControllerContext, metricsClient metrics.MetricsClient) (bool, error) {
 	hpaClient := ctx.ClientBuilder.ClientOrDie("horizontal-pod-autoscaler")
-	replicaCalc := podautoscaler.NewReplicaCalculator(metricsClient, hpaClient.Core())
+	replicaCalc := podautoscaler.NewReplicaCalculator(metricsClient, hpaClient.CoreV1())
 	go podautoscaler.NewHorizontalController(
-		ctx.ClientBuilder.ClientGoClientOrDie("horizontal-pod-autoscaler").Core(),
+		ctx.ClientBuilder.ClientGoClientOrDie("horizontal-pod-autoscaler").CoreV1(),
 		hpaClient.Extensions(),
 		hpaClient.Autoscaling(),
 		replicaCalc,

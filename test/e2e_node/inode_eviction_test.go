@@ -149,7 +149,7 @@ func runEvictionTest(f *framework.Framework, testCondition string, podTestSpecs 
 
 		Eventually(func() error {
 			// Gather current information
-			updatedPodList, err := f.ClientSet.Core().Pods(f.Namespace.Name).List(metav1.ListOptions{})
+			updatedPodList, err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).List(metav1.ListOptions{})
 			updatedPods := updatedPodList.Items
 			for _, p := range updatedPods {
 				framework.Logf("fetching pod %s; phase= %v", p.Name, p.Status.Phase)
@@ -235,7 +235,7 @@ func runEvictionTest(f *framework.Framework, testCondition string, podTestSpecs 
 				return fmt.Errorf("%s dissappeared and then reappeared", testCondition)
 			}
 			// Gather current information
-			updatedPodList, _ := f.ClientSet.Core().Pods(f.Namespace.Name).List(metav1.ListOptions{})
+			updatedPodList, _ := f.ClientSet.CoreV1().Pods(f.Namespace.Name).List(metav1.ListOptions{})
 			for _, priorityPodSpec := range podTestSpecs {
 				// EvictionPriority 0 pods should not fail
 				if priorityPodSpec.evictionPriority == 0 {
